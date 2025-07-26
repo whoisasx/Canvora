@@ -6,17 +6,15 @@ const { auth } = NextAuth(authConfig);
 
 export default auth(async (req: NextRequest) => {
 	const session = await auth();
-	console.log(session);
-	console.log(req);
 	if (!session) {
-		const newUrl = new URL("/", req.nextUrl.origin);
+		const newUrl = new URL("/signin", req.nextUrl.origin);
 		return res.redirect(newUrl);
 	}
 	return res.next();
 });
 
 export const config = {
-	matcher: ["/signin", "/signup"],
+	matcher: ["/dashboard"],
 };
 
 // const nextAuth = NextAuth(authConfig);

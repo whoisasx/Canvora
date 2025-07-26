@@ -3,7 +3,6 @@ import { roomNameSchem } from "@/lib/zod";
 import { prisma } from "@repo/db/prisma";
 import { NextAuthRequest } from "next-auth";
 import { NextResponse as res } from "next/server";
-import { z } from "zod";
 
 export const POST = auth(async function POST(req: NextAuthRequest) {
 	if (!req.auth) {
@@ -73,7 +72,7 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 			{
 				message: "room created.",
 				success: true,
-				data: { newRoom },
+				data: newRoom,
 			},
 			{
 				status: 201,

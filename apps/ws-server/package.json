@@ -1,0 +1,19 @@
+{
+	"name": "ws-server",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@types/jsonwebtoken": "^9.0.10",
+		"@types/ws": "^8.18.1",
+		"jsonwebtoken": "^9.0.2",
+		"ws": "^8.18.3"
+	}
+}
