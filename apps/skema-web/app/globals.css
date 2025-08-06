@@ -3,7 +3,9 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
+@theme inline {
+	--font-sans: var(--font-jakarta);
+
 	/* Red */
 	--color-oc-red-0: var(--oc-red-0); /* #fff5f5 */
 	--color-oc-red-1: var(--oc-red-1); /* #ffe3e3 */

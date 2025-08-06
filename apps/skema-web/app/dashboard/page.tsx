@@ -149,7 +149,7 @@ export default function () {
 						<div className="bg-red-100 p-5 rounded-xl" key={index}>
 							<p className="my-5">
 								<button
-									className="h-10 w-32 rounded-2xl border-1 border-red-600 mx-3"
+									className="h-10 w-32 rounded-2xl border-1 border-red-600 mx-3 "
 									onClick={() => handleEnterRoom(room.slug)}
 								>
 									{room.name}
