@@ -1,7 +1,6 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import jwt from "jsonwebtoken";
 import Canvas from "./Canvas";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -10,7 +9,6 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const router = useRouter();
 	const { data: session, status } = useSession();
-	let token: string;
 
 	useEffect(() => {
 		if (status == "loading") return;
@@ -19,15 +17,12 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 			return;
 		}
 
-		const user = session.user;
-
+		let token: string;
 		const getConnection = async function () {
 			try {
 				const getToken = async function () {
 					try {
-						const response = await axios.post("/api/get-token", {
-							user,
-						});
+						const response = await axios.get("/api/get-token");
 
 						if (response.data.success) {
 							token = response.data.data;
@@ -39,15 +34,11 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 					}
 				};
 				await getToken();
-				const ws = new WebSocket(`ws://localhost:8080/${token}`);
+
+				const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
 				ws.onopen = (e: Event) => {
 					setSocket(ws);
-					ws.send(
-						JSON.stringify({
-							type: "join-room",
-							roomId,
-						})
-					);
+					ws.send(JSON.stringify({ type: "join-room", roomId }));
 				};
 
 				ws.onerror = () => {
@@ -63,7 +54,7 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 				router.push("/dashboard");
 			}
 		};
-		getConnection();
+		if (session) getConnection();
 	}, [session, status, roomId, router]);
 
 	if (!socket || status === "loading" || !session) {

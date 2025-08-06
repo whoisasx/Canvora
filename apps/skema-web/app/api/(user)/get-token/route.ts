@@ -3,7 +3,7 @@ import { NextAuthRequest } from "next-auth";
 import { NextResponse as res } from "next/server";
 import jwt from "jsonwebtoken";
 
-export const POST = auth(async function POST(req: NextAuthRequest) {
+export const GET = auth(async function GET(req: NextAuthRequest) {
 	if (!req.auth) {
 		return res.json(
 			{
@@ -14,12 +14,11 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 		);
 	}
 	try {
-		const { user } = await req.json();
 		const secret = process.env.JWT_SECRET;
-		if (!user || !secret) {
+		if (!secret) {
 			return res.json(
 				{
-					message: "user or secret is absent",
+					message: "secret is absent",
 					success: false,
 				},
 				{
@@ -28,7 +27,7 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 			);
 		}
 
-		const token = jwt.sign(user, secret, { expiresIn: "10m" });
+		const token = jwt.sign(req.auth.user, secret, { expiresIn: "1h" });
 
 		return res.json(
 			{

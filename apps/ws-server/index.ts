@@ -57,6 +57,45 @@ wss.on("connection", (ws, req) => {
 		});
 	}
 
+	ws.on("message", async (data) => {
+		const parsedData = JSON.parse(data.toString());
+
+		if (parsedData.type === "join-room") {
+			const roomId = parsedData.roomId;
+			for (let user of users) {
+				if (user.ws === ws) {
+					user.rooms.push(roomId);
+				}
+			}
+		}
+
+		if (parsedData.type === "leave-room") {
+			const roomId = parsedData.roomId;
+			for (let user of users) {
+				if (user.ws == ws) {
+					user.rooms = user.rooms.filter((room) => room != roomId);
+				}
+			}
+		}
+
+		if (parsedData.type === "shape") {
+			const message = parsedData.message;
+			const roomId = parsedData.roomId;
+			for (let user of users) {
+				for (let room of user.rooms) {
+					if (room == roomId) {
+						user.ws.send(
+							JSON.stringify({
+								type: "shape",
+								message,
+							})
+						);
+					}
+				}
+			}
+		}
+	});
+
 	ws.on("close", () => {
 		console.log("client disconneted.");
 	});

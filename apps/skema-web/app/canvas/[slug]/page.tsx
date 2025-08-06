@@ -1,4 +1,4 @@
-import RoomCanvas from "@/app/components/RoomCanvas";
+import RoomCanvas from "@/components/RoomCanvas";
 import { auth } from "@/auth";
 import { prisma } from "@repo/db/prisma";
 import { SessionProvider } from "next-auth/react";
