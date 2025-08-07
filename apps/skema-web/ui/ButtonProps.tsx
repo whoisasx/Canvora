@@ -22,7 +22,7 @@ export default function ButtonProps({
 						: `#${color}`
 					: "",
 			}}
-			className={`w-7 h-7 rounded-md flex items-center justify-center hover:scale-110 transition-all delay-100 ease-in-out cursor-pointer ${className}`}
+			className={`w-7 h-7 rounded-md border-[0.5px] border-gray-300 dark:border-gray-600 flex items-center justify-center hover:scale-110 transition-all delay-100 ease-in-out cursor-pointer ${className}`}
 			onClick={onClick}
 		>
 			{children}

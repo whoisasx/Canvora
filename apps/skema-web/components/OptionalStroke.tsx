@@ -1,4 +1,5 @@
 import ButtonProps from "@/ui/ButtonProps";
+import { useThemeStore } from "@/utils/canvasStore";
 import {
 	useActiveStroke,
 	useStrokeShades,
@@ -7,6 +8,8 @@ import {
 import { ChangeEvent, useState } from "react";
 
 export default function OptionalStroke() {
+	const theme = useThemeStore((state) => state.theme);
+
 	const stroke = useStrokeStore((state) => state.currentColor);
 	const setStroke = useStrokeStore((state) => state.setCurrentColor);
 
@@ -39,10 +42,10 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-white ${currentStroke == 6 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-white ${currentStroke == (theme === "light" ? 6 : 0) ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
 						onClick={() => {
 							setStroke("ffffff");
-							setCurrentStroke(6);
+							setCurrentStroke(theme === "light" ? 6 : 0);
 							setStrokeShades([]);
 						}}
 					/>
@@ -64,10 +67,10 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#1e1e1e] ${currentStroke == 0 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#1e1e1e] ${currentStroke == (theme === "light" ? 0 : 6) ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
 						onClick={() => {
 							setStroke("1e1e1e");
-							setCurrentStroke(0);
+							setCurrentStroke(theme === "light" ? 0 : 6);
 							setStrokeShades([]);
 						}}
 					/>
@@ -277,7 +280,7 @@ export default function OptionalStroke() {
 			</div>
 			<div className="flex flex-col gap-1">
 				<p className="text-xs">Hexcode</p>
-				<div className="group focus-within:border-0.5 focus-within:border-gray-600 w-full h-full border-[0.5] border-gray-300 rounded-lg flex py-1">
+				<div className="group focus-within:border-0.5 focus-within:border-gray-600 w-full h-full border-[0.5] border-gray-300 dark:border-gray-600 rounded-lg flex py-1">
 					<div className="px-2">{"#"}</div>
 					<input
 						className="appearance-none outline-none border-none px-1 w-full flex items-center text-sm"

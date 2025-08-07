@@ -14,6 +14,7 @@ import {
 	textAlign,
 } from "@/app/draw/types";
 import { create } from "zustand";
+import { useThemeStore } from "./canvasStore";
 
 interface strokeStore {
 	currentColor: string;
@@ -45,7 +46,8 @@ interface bgShades {
 }
 
 export const useStrokeStore = create<strokeStore>()((set, get) => ({
-	currentColor: "212529",
+	currentColor:
+		useThemeStore.getState().theme === "light" ? "1e1e1e" : "ffffff",
 	setCurrentColor: (color) => {
 		set((state) => ({
 			currentColor: color,

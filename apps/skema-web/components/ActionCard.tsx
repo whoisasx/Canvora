@@ -32,14 +32,15 @@ export default function ActionCard() {
 	}, [resolvedTheme]);
 
 	return (
-		<div className="h-10 w-10 rounded-lg z-10 relative">
+		<div className="h-10 w-10 rounded-lg z-20 relative">
 			<ButtonTool
 				children={"a"}
 				onClick={() => setClicked((prev) => !prev)}
-				color={`${clicked ? "d0bfff" : ""}`}
+				className="bg-gray-2 dark:bg-[#232329]"
+				color={`${clicked ? (theme === "light" ? "d0bfff" : "495057") : ""}`}
 			/>
 			{clicked && (
-				<div className="w-55 py-2 px-2 border border-gray-300 shadow-xl absolute top-[110%] flex flex-col gap-2 rounded-lg z-30">
+				<div className="w-65 py-2 px-2 border border-gray-300 dark:bg-[#232329] bg-white shadow-xl absolute top-[110%] flex flex-col gap-2 rounded-lg z-20">
 					<ButtonAction
 						children={"reset"}
 						onClick={() => console.log("hi")}
@@ -52,10 +53,10 @@ export default function ActionCard() {
 						children={"sign out"}
 						onClick={() => console.log("hi")}
 					/>
-					<div className="w-full border-t-[0.5px] border-t-oc-gray-300 mx-auto"></div>
-					<div className="w-full flex justify-between items-center border rounded-lg border-gray-300 px-1 py-1">
+					<div className="w-full border-t-[0.5px] border-t-gray-300 dark:border-t-gray-600 mx-auto"></div>
+					<div className="w-full flex justify-between items-center border rounded-lg border-gray-300 dark:border-gray-600 px-1 py-1">
 						<p className="text-sm">Theme</p>
-						<div className="w-auto h-full px-1 flex gap-1.5 border border-oc-violet-2 py-1 rounded-xl">
+						<div className="w-auto h-full px-1 flex gap-1.5 border border-oc-violet-2 dark:border-oc-violet-6 py-1 rounded-xl">
 							{["light", "dark", "system"].map((val, i) => (
 								<button
 									key={i}
@@ -71,11 +72,11 @@ export default function ActionCard() {
 					</div>
 					<div className="w-full flex flex-col gap-1">
 						<p className="text-xs">canvas background</p>
-						<div className="w-full h-10 flex gap-1 items-center">
+						<div className=" w-full h-10 flex gap-1.5 items-center">
 							{backgrounds.map((val, i) => (
 								<button
 									key={i}
-									className={` w-7 h-7 rounded-lg cursor-pointer ${background === val ? "outline outline-offset-1 outline-oc-violet-8" : ""}`}
+									className={` w-8 h-8 rounded-lg cursor-pointer ${background === val ? "outline outline-offset-1 outline-oc-violet-8" : ""}`}
 									style={{
 										backgroundColor: `#${val}`,
 									}}

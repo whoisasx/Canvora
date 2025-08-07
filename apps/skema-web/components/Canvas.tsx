@@ -62,7 +62,7 @@ export default function Canvas({
 					<ActionCard />
 				</div>
 				<div className="pointer-events-auto">
-					<div className="w-xl h-12 border border-gray-300 rounded-lg shadow-md z-10">
+					<div className="w-xl h-12 border border-gray-300 rounded-lg shadow-md z-10 bg-white dark:bg-[#232329]">
 						<CanvasTool />
 					</div>
 				</div>
@@ -71,7 +71,7 @@ export default function Canvas({
 				</div>
 			</div>
 			{propsSize > 0 && (
-				<div className="w-60 max-h-[70vh] overflow-auto border border-gray-300 fixed top-20 left-3 rounded-lg shadow-xl z-10 flex flex-col custom-scrollbar">
+				<div className="w-60 max-h-[70vh] overflow-auto border border-gray-300 fixed top-20 left-3 rounded-lg shadow-xl z-10 flex flex-col custom-scrollbar dark:custom-scrollbar bg-oc-white dark:bg-[#232329]">
 					<CanvasOpt />
 				</div>
 			)}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import useToolStore from "@/utils/toolStore";
 import ButtonProps from "@/ui/ButtonProps";
 import {
@@ -51,8 +51,10 @@ import textAlignIcon from "@/ui/icons/textAlign";
 import layersIcon from "@/ui/icons/layers";
 import frontHeadIcons from "@/ui/icons/arrowHead/frontHead";
 import backHeadIcons from "@/ui/icons/arrowHead/backHead";
+import { useThemeStore } from "@/utils/canvasStore";
 
 export default function CanvasOpt() {
+	const theme = useThemeStore((state) => state.theme);
 	const [activeSubOption, setActiveSubOption] = useState<string | null>(null);
 
 	const props = useToolStore((state) => state.props);
@@ -121,10 +123,16 @@ export default function CanvasOpt() {
 	const backArrow = useBackArrowStore((state) => state.backArrow);
 	const setBackArrow = useBackArrowStore((state) => state.setBackArrowType);
 
+	useEffect(() => {
+		if (currentStroke === 0) {
+			setStroke(theme === "light" ? "1e1e1e" : "ffffff");
+		}
+	}, [theme]);
+
 	return (
 		<>
 			{props.length > 0 && (
-				<div className="w-full h-fit px-3 py-4 flex flex-col gap-4 justify-center rounded-2xl">
+				<div className="w-full h-fit px-3 py-4 flex flex-col gap-4 justify-center rounded-lg bg-white dark:bg-[#232329]">
 					{props.length > 0 &&
 						props.map((prop, index) => (
 							<div key={`${prop}-${index}`}>
@@ -134,9 +142,13 @@ export default function CanvasOpt() {
 										<div className="flex gap-1.5 items-center">
 											<ButtonProps
 												children={""}
-												className={`bg-oc-gray-9 ${currentStroke == 0 ? "outline-1 outline-offset-1 outline-oc-violet-8" : ""}`}
+												className={`${theme === "light" ? "bg-[#1e1e1e]" : "bg-white"} ${currentStroke == 0 ? "outline-1 outline-offset-1 outline-oc-violet-8" : ""}`}
 												onClick={() => {
-													setStroke("1e1e1e");
+													setStroke(
+														theme === "light"
+															? "1e1e1e"
+															: "ffffff"
+													);
 													setCurrentStroke(0);
 												}}
 											/>
@@ -177,7 +189,7 @@ export default function CanvasOpt() {
 											</div>
 											<ButtonProps
 												children={""}
-												className={`w-7 h-7 outline-1 outline-offset-1 outline-oc-gray-7`}
+												className={`w-7 h-7 outline-1 outline-offset-1 outline-oc-gray-7 dark:outline-oc-gray-6`}
 												color={`${stroke}`}
 												onClick={() => {
 													if (
@@ -197,7 +209,7 @@ export default function CanvasOpt() {
 											/>
 										</div>
 										{activeSubOption === "stroke" && (
-											<div className="w-full max-h-auto border-[0.5] border-gray-300 rounded-xl z-20">
+											<div className="w-full max-h-auto border-[0.5] border-gray-300 dark:border-gray-600 rounded-xl z-10">
 												<OptionalStroke />
 											</div>
 										)}
@@ -271,7 +283,7 @@ export default function CanvasOpt() {
 											/>
 										</div>
 										{activeSubOption === "bg" && (
-											<div className="w-full max-h-auto border-[0.5] border-gray-300 rounded-xl z-20">
+											<div className="w-full max-h-auto border-[0.5] border-gray-300 dark:border-gray-600 rounded-xl z-20">
 												<OptionalBg />
 											</div>
 										)}
@@ -288,8 +300,8 @@ export default function CanvasOpt() {
 														children={
 															fillIcons[val]
 														}
-														color={`${val === fill ? "d0bfff" : ""}`}
-														className={`bg-oc-gray-2`}
+														color={`${val === fill ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 														onClick={() => {
 															setFill(
 																val as fill
@@ -312,8 +324,8 @@ export default function CanvasOpt() {
 														children={
 															strokeWidthIcon[val]
 														}
-														color={`${val === strokeWidth ? "d0bfff" : ""}`}
-														className={`bg-oc-gray-2`}
+														color={`${val === strokeWidth ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 														onClick={() => {
 															setStrokeWidth(
 																val as strokeWidth
@@ -336,8 +348,8 @@ export default function CanvasOpt() {
 														children={
 															strokeStyleIcon[val]
 														}
-														color={`${val === strokeStyle ? "d0bfff" : ""}`}
-														className={`bg-oc-gray-2`}
+														color={`${val === strokeStyle ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 														onClick={() => {
 															setStrokeStyle(
 																val as strokeStyle
@@ -363,8 +375,8 @@ export default function CanvasOpt() {
 													children={
 														slopinessIcon[val]
 													}
-													color={`${val === slopiness ? "d0bfff" : ""}`}
-													className={`bg-oc-gray-2`}
+													color={`${val === slopiness ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 													onClick={() => {
 														setSlopiness(
 															val as slopiness
@@ -386,8 +398,8 @@ export default function CanvasOpt() {
 														children={
 															edgesIcon[val]
 														}
-														color={`${val === edges ? "d0bfff" : ""}`}
-														className={`bg-oc-gray-2`}
+														color={`${val === edges ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 														onClick={() => {
 															setEdges(
 																val as edges
@@ -410,8 +422,8 @@ export default function CanvasOpt() {
 														children={
 															arrowTypeIcon[val]
 														}
-														color={`${val === arrowType ? "d0bfff" : ""}`}
-														className={`bg-oc-gray-2`}
+														color={`${val === arrowType ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 														onClick={() => {
 															setArrowType(
 																val as arrowType
@@ -441,8 +453,8 @@ export default function CanvasOpt() {
 													children={
 														fontFamilyIcon[val]
 													}
-													color={`${val === fontFamily ? "d0bfff" : ""}`}
-													className={`bg-oc-gray-2`}
+													color={`${val === fontFamily ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 													onClick={() => {
 														setFontFamily(
 															val as fontFamily
@@ -466,8 +478,8 @@ export default function CanvasOpt() {
 												<ButtonProps
 													key={i}
 													children={fontSizeIcon[val]}
-													color={`${val === fontSize ? "d0bfff" : ""}`}
-													className={`bg-oc-gray-2`}
+													color={`${val === fontSize ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 													onClick={() => {
 														setFontSize(
 															val as fontSize
@@ -489,8 +501,8 @@ export default function CanvasOpt() {
 														children={
 															textAlignIcon[val]
 														}
-														color={`${val === textAlign ? "d0bfff" : ""}`}
-														className={`bg-oc-gray-2`}
+														color={`${val === textAlign ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 														onClick={() => {
 															setTextAlign(
 																val as textAlign
@@ -512,8 +524,8 @@ export default function CanvasOpt() {
 														arrowHead.front
 													]
 												}
-												className="bg-oc-gray-2"
-												color={`${activeSubOption === "left-arrow" ? "d0bfff" : ""}`}
+												className="bg-oc-gray-1 dark:bg-[#2e2d29] "
+												color={`${activeSubOption === "left-arrow" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 												onClick={() => {
 													if (
 														!activeSubOption ||
@@ -535,8 +547,8 @@ export default function CanvasOpt() {
 														arrowHead.back
 													]
 												}
-												className="bg-oc-gray-2"
-												color={`${activeSubOption === "right-arrow" ? "d0bfff" : ""}`}
+												className="bg-oc-gray-1 dark:bg-[#2e2d29] "
+												color={`${activeSubOption === "right-arrow" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 												onClick={() => {
 													if (
 														!activeSubOption ||
@@ -569,8 +581,8 @@ export default function CanvasOpt() {
 																	val
 																]
 															}
-															className="bg-oc-gray-2"
-															color={`${val === frontArrow ? "d0bfff" : ""}`}
+															className="bg-oc-gray-1 dark:bg-[#2e2d29] "
+															color={`${val === frontArrow ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 															onClick={() =>
 																setFrontArrow(
 																	val as frontArrow
@@ -597,8 +609,8 @@ export default function CanvasOpt() {
 																	val
 																]
 															}
-															className="bg-oc-gray-2"
-															color={`${val === backArrow ? "d0bfff" : ""}`}
+															className="bg-oc-gray-1 dark:bg-[#2e2d29] "
+															color={`${val === backArrow ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 															onClick={() =>
 																setBackArrow(
 																	val as backArrow
@@ -663,8 +675,8 @@ export default function CanvasOpt() {
 												<ButtonProps
 													key={i}
 													children={layersIcon[val]}
-													color={`${val === layers ? "d0bfff" : ""}`}
-													className={`bg-oc-gray-2`}
+													color={`${val === layers ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 													onClick={() => {
 														setLayers(
 															val as layers

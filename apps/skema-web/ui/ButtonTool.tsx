@@ -3,9 +3,10 @@ import { ReactNode } from "react";
 interface ButtonProps {
 	children: ReactNode;
 	color?: string;
+	className?: string;
 	onClick: (e: React.PointerEvent<HTMLButtonElement>) => void;
 }
-const ButtonTool = ({ children, onClick, color }: ButtonProps) => {
+const ButtonTool = ({ children, onClick, color, className }: ButtonProps) => {
 	return (
 		<button
 			style={{
@@ -15,7 +16,7 @@ const ButtonTool = ({ children, onClick, color }: ButtonProps) => {
 						: `#${color}`
 					: "",
 			}}
-			className="max-w-auto w-10 h-full rounded-lg bg-oc-gray-2 hover:scale-105 hover:bg-oc-violet-1 transition-all delay-100 ease-in-out cursor-pointer"
+			className={`max-w-auto w-10 h-full rounded-lg hover:scale-105 hover:bg-oc-gray-3 dark:hover:bg-oc-gray-8 transition-all delay-100 ease-in-out cursor-pointer ${className}`}
 			onClick={onClick}
 		>
 			{children}

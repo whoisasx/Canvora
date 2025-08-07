@@ -169,9 +169,9 @@
 		height: 50px;
 	}
 
-	/* .custom-scrollbar::-webkit-scrollbar-track {
-		background: var(--oc-gray-2); 
-	} */
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: var(--oc-gray-2);
+	}
 
 	.custom-scrollbar::-webkit-scrollbar-thumb {
 		background-color: var(--oc-gray-4);
@@ -180,6 +180,37 @@
 
 	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
 		background: var(--oc-gray-2);
+	}
+	.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+		background-color: var(--oc-gray-6);
+	}
+
+	.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: var(--oc-gray-6);
+		border-radius: 50px;
+	}
+	.dark .custom-scrollbar::-webkit-scrollbar-track {
+		background: var(--oc-gray-9);
+	}
+
+	.dark .custom-slider {
+		@apply bg-oc-gray-9;
+	}
+
+	.dark .custom-slider::-webkit-slider-thumb {
+		@apply bg-oc-gray-2;
+	}
+
+	.dark .custom-slider::-moz-range-thumb {
+		@apply bg-oc-gray-2;
+	}
+
+	.dark .custom-slider::-webkit-slider-runnable-track {
+		@apply bg-oc-gray-7;
+	}
+
+	.dark .custom-slider::-moz-range-track {
+		@apply bg-oc-gray-7;
 	}
 
 	.custom-slider {
