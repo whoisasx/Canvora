@@ -6,6 +6,9 @@ import CanvasOpt from "./CanvasOpt";
 import useToolStore from "@/utils/toolStore";
 import ActionCard from "./ActionCard";
 import ShareCard from "./ShareCard";
+import ZoomBar from "./ZoomBar";
+import UndoRedo from "./UndoRedo";
+import { useZoomStore } from "@/utils/canvasStore";
 
 export default function Canvas({
 	roomId,
@@ -14,6 +17,9 @@ export default function Canvas({
 	roomId: string;
 	socket: WebSocket;
 }) {
+	const zoom = useZoomStore((state) => state.zoom);
+	const setZoom = useZoomStore((state) => state.setZoom);
+
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [game, setGame] = useState<Game>();
 
@@ -23,19 +29,6 @@ export default function Canvas({
 	// 	if (!game) return;
 	// 	game.selectTool(tool);
 	// }, [game, tool]);
-	useEffect(() => {
-		if (!canvasRef.current) return;
-
-		const handleResize = () => {
-			canvasRef.current!.width = window.innerWidth;
-			canvasRef.current!.height = window.innerHeight;
-		};
-		window.addEventListener("resize", handleResize);
-
-		return () => {
-			window.removeEventListener("resize", handleResize);
-		};
-	});
 
 	useEffect(() => {
 		if (canvasRef.current) {
@@ -55,7 +48,7 @@ export default function Canvas({
 				height={window.innerHeight}
 				width={window.innerWidth}
 				className="bg-zinc-100 min-h-screen min-w-screen"
-			></canvas>
+			/>
 
 			<div className="w-full px-3 absolute top-4 flex items-center justify-between pointer-events-none">
 				<div className="pointer-events-auto rounded-lg">
@@ -68,6 +61,14 @@ export default function Canvas({
 				</div>
 				<div className="pointer-events-auto">
 					<ShareCard />
+				</div>
+			</div>
+			<div className="w-auto flex gap-2 pointer-events-none absolute bottom-4 px-3">
+				<div className="pointer-events-auto">
+					<ZoomBar />
+				</div>
+				<div className="pointer-events-auto">
+					<UndoRedo />
 				</div>
 			</div>
 			{propsSize > 0 && (

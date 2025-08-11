@@ -36,7 +36,7 @@ export default function ActionCard() {
 			<ButtonTool
 				children={"a"}
 				onClick={() => setClicked((prev) => !prev)}
-				className="bg-gray-2 dark:bg-[#232329]"
+				className="bg-oc-gray-3 dark:bg-[#232329]"
 				color={`${clicked ? (theme === "light" ? "d0bfff" : "495057") : ""}`}
 			/>
 			{clicked && (

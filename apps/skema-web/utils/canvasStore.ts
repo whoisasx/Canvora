@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 
 interface themeStore {
 	theme: "light" | "dark";
@@ -11,6 +12,13 @@ interface canvasBgStore {
 	background: string;
 	setBackground: (val: string) => void;
 }
+
+interface zoomStore {
+	zoom: number;
+	setZoom: (val: number) => void;
+}
+
+// ------------------------------------------------
 
 export const useThemeStore = create<themeStore>()((set, get) => ({
 	theme: "light" as "light",
@@ -46,3 +54,14 @@ export const useCanvasBgStore = create<canvasBgStore>()((set, get) => ({
 		}));
 	},
 }));
+
+export const useZoomStore = create<zoomStore>()(
+	subscribeWithSelector((set, get) => ({
+		zoom: 100,
+		setZoom: (val) => {
+			set((state) => ({
+				zoom: val,
+			}));
+		},
+	}))
+);

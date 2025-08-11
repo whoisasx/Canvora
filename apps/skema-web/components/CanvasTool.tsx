@@ -76,7 +76,7 @@ export default function CanvasTool() {
 				<ButtonTool
 					key={i}
 					children={toolsIcon[val]}
-					color={`${val === tool ? (theme === "light" ? "d0bfff" : "5f3dc4") : ""}`}
+					color={`${val === tool ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 					// className={`${val === tool ? (theme === "light" ? "bg-oc-grape-3" : "bg-oc-grape-6") : ""}`}
 					onClick={() => {
 						setTool(val as Tool);
@@ -88,7 +88,7 @@ export default function CanvasTool() {
 			<div className="h-[70%] border-r-1 border-r-gray-300 dark:border-gray-600"></div>
 			<ButtonTool
 				children={toolsIcon["options"]}
-				color={`${tool === "web" || tool === "laser" ? (theme === "light" ? "d0bfff" : "5f3dc4") : ""}`}
+				color={`${tool === "web" || tool === "laser" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 				onClick={(e: React.PointerEvent<HTMLButtonElement>) => {
 					e.stopPropagation();
 					setOptionsClicked((prev) => !prev);
@@ -101,7 +101,7 @@ export default function CanvasTool() {
 				>
 					<ButtonAction
 						children={"W"}
-						color={`${tool === "web" ? (theme === "light" ? "d0bfff" : "5f3dc4") : ""}`}
+						color={`${tool === "web" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 						onClick={() => {
 							setTool("web");
 							setProps("web");
@@ -110,7 +110,7 @@ export default function CanvasTool() {
 					/>
 					<ButtonAction
 						children={"Ls"}
-						color={`${tool === "laser" ? (theme === "light" ? "d0bfff" : "5f3dc4") : ""}`}
+						color={`${tool === "laser" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 						onClick={() => {
 							setTool("laser");
 							setProps("laser");
