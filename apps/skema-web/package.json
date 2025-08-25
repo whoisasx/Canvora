@@ -26,7 +26,9 @@
 		"postcss": "^8.5.6",
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",
+		"roughjs": "^4.6.6",
 		"tailwindcss": "^4.1.11",
+		"uuid": "^11.1.0",
 		"zod": "^4.0.5",
 		"zustand": "^5.0.6"
 	},

@@ -1,5 +1,6 @@
 import { Tool } from "@/app/draw/types";
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 
 interface ToolStore {
 	tool: Tool;
@@ -7,10 +8,15 @@ interface ToolStore {
 	setTool: (tool: Tool) => void;
 	setProps: (tool: Tool) => void;
 }
+interface LockStore {
+	lockClicked: boolean;
+	setLockClicked: (val: boolean) => void;
+}
 
 const useToolStore = create<ToolStore>()((set, get) => ({
-	tool: "mouse",
+	tool: "mouse" as Tool,
 	props: [],
+	propsVal: {},
 	setTool: (tool: Tool) => {
 		set((state) => ({
 			tool: tool,
@@ -51,9 +57,9 @@ const useToolStore = create<ToolStore>()((set, get) => ({
 				return {
 					props: [
 						"stroke",
-						"background",
 						"strokeWidth",
 						"strokeStyle",
+						"slopiness",
 						"arrowType",
 						"arrowHead",
 						"opacity",
@@ -76,13 +82,7 @@ const useToolStore = create<ToolStore>()((set, get) => ({
 			}
 			if (tool === "pencil") {
 				return {
-					props: [
-						"stroke",
-						"background",
-						"strokeWidth",
-						"opacity",
-						"layers",
-					],
+					props: ["stroke", "strokeWidth", "opacity", "layers"],
 				};
 			}
 			if (tool === "text") {
@@ -108,5 +108,16 @@ const useToolStore = create<ToolStore>()((set, get) => ({
 		});
 	},
 }));
+
+export const useLockStore = create<LockStore>()(
+	subscribeWithSelector<LockStore>((set, get) => ({
+		lockClicked: false,
+		setLockClicked: (val: boolean) => {
+			set((state) => ({
+				lockClicked: val,
+			}));
+		},
+	}))
+);
 
 export default useToolStore;

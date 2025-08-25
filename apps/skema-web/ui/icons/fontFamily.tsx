@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 
-function TlDraw() {
-	return <p>t</p>;
+function Caveat() {
+	return <p>cv</p>;
 }
 
 function Draw() {
@@ -25,7 +25,7 @@ function Mono() {
 }
 
 const fontFamilyIcon: Record<string, ReactNode> = {
-	tldraw: <TlDraw />,
+	caveat: <Caveat />,
 	draw: <Draw />,
 	code: <Code />,
 	normal: <Normal />,

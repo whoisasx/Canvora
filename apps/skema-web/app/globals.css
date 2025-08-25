@@ -4,7 +4,22 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-	--font-sans: var(--font-jakarta);
+	--font-excali: var(--font-excali);
+	--font-mononoki: var(--font-mononoki);
+	--font-firacode: var(--font-firacode);
+	--font-sourcecode: var(--font-sourceCode);
+	--font-nunito: var(--font-nunito);
+	--font-inter: var(--font-inter);
+	--font-jakarta: var(--font-jakarta);
+	--font-ibm: var(--font-ibm);
+	--font-cutivemono: var(--font-cutivemono);
+	--font-chilanka: var(--font-chilanka);
+	--font-comic: var(--font-comic);
+	--font-excali: var(--font-excali);
+	--font-monospace: var(--font-monospace);
+	--font-virgil: var(--font-virgil);
+	--font-mononoki: var(--font-mononoki);
+	--font-caveat: var(--font-caveat);
 
 	/* Red */
 	--color-oc-red-0: var(--oc-red-0); /* #fff5f5 */

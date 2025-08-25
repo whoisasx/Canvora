@@ -29,10 +29,11 @@ export default function ActionCard() {
 		if (resolvedTheme === "dark") setThemeTool("dark" as "dark");
 		else setThemeTool("light" as "light");
 		setBackgrounds();
-	}, [resolvedTheme]);
+		setBackground(resolvedTheme === "dark" ? "121212" : "ffffff");
+	}, [resolvedTheme, theme]);
 
 	return (
-		<div className="h-10 w-10 rounded-lg z-20 relative">
+		<div className="h-10 w-10 rounded-lg z-50 relative">
 			<ButtonTool
 				children={"a"}
 				onClick={() => setClicked((prev) => !prev)}

@@ -112,8 +112,7 @@ export default function CanvasOpt() {
 
 	const percent = (opacity / 100) * 100;
 
-	const arrowHead = useArrowHeadStore((state) => state.arrowHead);
-	const setArrowHead = useArrowHeadStore((state) => state.setArrowHead);
+	const arrowHead = useArrowHeadStore();
 
 	const frontArrow = useFrontArrowStore((state) => state.frontArrow);
 	const setFrontArrow = useFrontArrowStore(
@@ -289,8 +288,8 @@ export default function CanvasOpt() {
 										)}
 									</div>
 								)}
-								{prop === "fill" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+								{prop === "fill" && bg !== "transparent" && (
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">fill</p>
 										<div className="flex gap-1.5">
 											{["hachure", "cross", "solid"].map(
@@ -314,7 +313,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "strokeWidth" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">stroke width</p>
 										<div className="flex gap-1.5">
 											{["thin", "normal", "thick"].map(
@@ -338,7 +337,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "strokeStyle" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">stroke style</p>
 										<div className="flex gap-1.5">
 											{["solid", "dashed", "dotted"].map(
@@ -362,7 +361,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "slopiness" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">slopiness</p>
 										<div className="flex gap-1.5">
 											{[
@@ -388,7 +387,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "edge" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">edges</p>
 										<div className="flex gap-1.5">
 											{["sharp", "round"].map(
@@ -412,7 +411,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "arrowType" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">arrow type</p>
 										<div className="flex gap-1.5">
 											{["sharp", "curved", "elbow"].map(
@@ -436,11 +435,11 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "fontFamily" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-sm">font family</p>
 										<div className="flex flex-wrap gap-1.5">
 											{[
-												"tldraw",
+												"caveat",
 												"draw",
 												"code",
 												"normal",
@@ -466,7 +465,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "fontSize" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">font size</p>
 										<div className="flex gap-1.5">
 											{[
@@ -491,7 +490,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "textAlign" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">text align</p>
 										<div className="flex gap-1.5">
 											{["left", "center", "right"].map(
@@ -515,7 +514,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "arrowHead" && (
-									<div className="flex flex-col gap-0.5 justify-center relative">
+									<div className="flex flex-col gap-1.5 justify-center relative">
 										<p className="text-xs">arrow heads</p>
 										<div className="flex gap-1.5">
 											<ButtonProps
@@ -566,7 +565,7 @@ export default function CanvasOpt() {
 											/>
 										</div>
 										{activeSubOption === "left-arrow" && (
-											<div className=" max-h-[70] py-1.5 border border-gray-300 rounded-lg  z-20 absolute top-[108%] bg-white">
+											<div className=" max-h-[70] py-1.5 border border-gray-300 rounded-lg  z-20 absolute top-[108%] bg-white dark:bg-[#2e2d29]">
 												<div className="flex gap-1.5 px-1.5 ">
 													{[
 														"none",
@@ -594,7 +593,7 @@ export default function CanvasOpt() {
 											</div>
 										)}
 										{activeSubOption === "right-arrow" && (
-											<div className=" max-h-[70] py-1.5 border border-gray-300 rounded-lg z-20 bg-white absolute top-[108%]">
+											<div className=" max-h-[70] py-1.5 border border-gray-300 rounded-lg z-20 bg-white dark:bg-[#2e2d29] absolute top-[108%]">
 												<div className="flex gap-1.5 px-1.5 ">
 													{[
 														"none",
@@ -624,7 +623,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "opacity" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-sm">opacity</p>
 										<div>
 											<div className="w-full rounded-lg flex items-center justify-center">
@@ -663,7 +662,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "layers" && (
-									<div className="flex flex-col gap-0.5 justify-center">
+									<div className="flex flex-col gap-1.5 justify-center">
 										<p className="text-xs">layers</p>
 										<div className="flex gap-1.5">
 											{[

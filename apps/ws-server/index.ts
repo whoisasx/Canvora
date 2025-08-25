@@ -94,6 +94,42 @@ wss.on("connection", (ws, req) => {
 				}
 			}
 		}
+
+		if (parsedData.type === "delete-message") {
+			const id = parsedData.id;
+			const roomId = parsedData.roomId;
+			for (let user of users) {
+				for (let room of user.rooms) {
+					if (room == roomId) {
+						user.ws.send(
+							JSON.stringify({
+								type: "delete",
+								id,
+							})
+						);
+					}
+				}
+			}
+		}
+
+		if (parsedData.type === "update-message") {
+			const id = parsedData.id;
+			const newMessage = parsedData.newMessage;
+			const roomId = parsedData.roomId;
+			for (let user of users) {
+				for (let room of user.rooms) {
+					if (room == roomId) {
+						user.ws.send(
+							JSON.stringify({
+								type: "update",
+								id,
+								newMessage,
+							})
+						);
+					}
+				}
+			}
+		}
 	});
 
 	ws.on("close", () => {

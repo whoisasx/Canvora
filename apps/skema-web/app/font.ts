@@ -1,4 +1,5 @@
 import {
+	Caveat,
 	Cutive_Mono,
 	Fira_Code,
 	IBM_Plex_Sans,
@@ -39,6 +40,10 @@ export const ibm = IBM_Plex_Sans({
 export const cutive_mono = Cutive_Mono({
 	weight: ["400"],
 	variable: "--font-cutivemono",
+});
+export const caveat = Caveat({
+	weight: ["400"],
+	variable: "--font-caveat",
 });
 
 export const chilanka = localFont({

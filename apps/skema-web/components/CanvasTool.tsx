@@ -5,7 +5,7 @@ import ButtonAction from "@/ui/ButtonAction";
 import ButtonTool from "@/ui/ButtonTool";
 import toolsIcon from "@/ui/icons/tools";
 import { useThemeStore } from "@/utils/canvasStore";
-import useToolStore from "@/utils/toolStore";
+import useToolStore, { useLockStore } from "@/utils/toolStore";
 import { useState } from "react";
 import { useEffect, useRef } from "react";
 
@@ -19,7 +19,8 @@ export default function CanvasTool() {
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const [lock, setLock] = useState<string>("");
-	const [lockClicked, setLockClicked] = useState<boolean>(false);
+	const lockClicked = useLockStore((state) => state.lockClicked);
+	const setLockClicked = useLockStore((state) => state.setLockClicked);
 
 	useEffect(() => {
 		function handleClickOutside(event: PointerEvent) {
@@ -55,16 +56,17 @@ export default function CanvasTool() {
 				children={toolsIcon["lock"]}
 				color={lock}
 				onClick={() => {
-					setLockClicked((prev) => !prev);
+					setLockClicked(!lockClicked);
 					if (lock.length > 0) setLock("");
 					else setLock(theme === "light" ? "b197fc" : "7950f2");
 				}}
 			/>
 			<div className="h-[70%] border-r-1 border-r-gray-300 dark:border-gray-600"></div>
 			{[
+				"hand",
 				"mouse",
-				"rhombus",
 				"rectangle",
+				"rhombus",
 				"arc",
 				"arrow",
 				"line",
@@ -96,7 +98,7 @@ export default function CanvasTool() {
 			/>
 			{optionsClicked && (
 				<div
-					className="w-50 h-fit py-2 px-2 border-1 border-gray-300 rounded-lg shadow-lg absolute top-[115%] right-0 z-20 flex flex-col gap-2 justify-center items-start bg-white dark:bg-[#232329]"
+					className="w-50 h-fit py-2 px-2 border-1 border-gray-300 rounded-lg shadow-lg absolute top-[115%] right-0 z-40 flex flex-col gap-2 justify-center items-start bg-white dark:bg-[#232329]"
 					aria-expanded={optionsClicked}
 				>
 					<ButtonAction

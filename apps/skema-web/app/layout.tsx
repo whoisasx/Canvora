@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={`${jakarta.variable} font-sans`}>
+			<body className={`font-mononoki ${mononoki.variable}`}>
 				<ThemeWrapper>{children}</ThemeWrapper>
 			</body>
 		</html>

@@ -1,20 +1,26 @@
 import {
+	actions,
 	arrowHead,
 	arrowType,
 	backArrow,
+	CommonProps,
 	edges,
 	fill,
 	fontFamily,
 	fontSize,
 	frontArrow,
 	layers,
+	Props,
 	slopiness,
 	strokeStyle,
 	strokeWidth,
 	textAlign,
 } from "@/app/draw/types";
 import { create } from "zustand";
-import { useThemeStore } from "./canvasStore";
+import { useSelectedMessageStore, useThemeStore } from "./canvasStore";
+import useToolStore from "./toolStore";
+import { subscribeWithSelector } from "zustand/middleware";
+import { shallow } from "zustand/shallow";
 
 interface strokeStore {
 	currentColor: string;
@@ -45,23 +51,27 @@ interface bgShades {
 	setShades: (shades: string[]) => void;
 }
 
-export const useStrokeStore = create<strokeStore>()((set, get) => ({
-	currentColor:
-		useThemeStore.getState().theme === "light" ? "1e1e1e" : "ffffff",
-	setCurrentColor: (color) => {
-		set((state) => ({
-			currentColor: color,
-		}));
-	},
-}));
-export const useBgStore = create<bgStore>()((set, get) => ({
-	currentColor: "transparent",
-	setCurrentColor: (color) => {
-		set((state) => ({
-			currentColor: color,
-		}));
-	},
-}));
+export const useStrokeStore = create<strokeStore>()(
+	subscribeWithSelector((set, get) => ({
+		currentColor:
+			useThemeStore.getState().theme === "light" ? "1e1e1e" : "ffffff",
+		setCurrentColor: (color) => {
+			set((state) => ({
+				currentColor: color,
+			}));
+		},
+	}))
+);
+export const useBgStore = create<bgStore>()(
+	subscribeWithSelector((set, get) => ({
+		currentColor: "transparent",
+		setCurrentColor: (color) => {
+			set((state) => ({
+				currentColor: color,
+			}));
+		},
+	}))
+);
 
 export const useActiveStroke = create<activeStroke>()((set, get) => ({
 	current: 0,
@@ -98,6 +108,37 @@ export const useBgShades = create<bgShades>()((set, get) => ({
 		}));
 	},
 }));
+
+const findActiveStroke = () => {
+	const stroke = useStrokeStore.getState().currentColor;
+	const currentStroke = new Map<string, number>([
+		["1e1e1e", 0],
+		["ffffff", 0],
+		["e03131", 1],
+		["2f9e44", 2],
+		["1971c2", 3],
+		["f08c00", 4],
+	]);
+	useActiveStroke.setState({
+		current: currentStroke.get(stroke),
+	});
+};
+const findActiveBg = () => {
+	const bg = useBgStore.getState().currentColor;
+	const currentBg = new Map<string, number>([
+		["transparent", 0],
+		["ffc9c9", 1],
+		["b2f2bb", 2],
+		["a5d8ff", 3],
+		["ffec99", 4],
+	]);
+	useActiveBg.setState({
+		current: currentBg.get(bg),
+	});
+};
+
+useStrokeStore.subscribe(findActiveStroke);
+useBgStore.subscribe(findActiveBg);
 
 //-------------------------------
 
@@ -158,79 +199,307 @@ interface opacityStore {
 	setOpacity: (val: number) => void;
 }
 
-export const useOpacityStore = create<opacityStore>()((set, get) => ({
-	opacity: 100,
-	setOpacity: (val: number) => set({ opacity: val }),
-}));
+export const useOpacityStore = create<opacityStore>()(
+	subscribeWithSelector((set, get) => ({
+		opacity: 100,
+		setOpacity: (val: number) => set({ opacity: val }),
+	}))
+);
 
-export const useFillStore = create<fillStore>()((set, get) => ({
-	fill: "solid" as fill,
-	setFill: (val: fill) => {
-		set((state) => ({
-			fill: val,
-		}));
-	},
-}));
+export const useFillStore = create<fillStore>()(
+	subscribeWithSelector((set, get) => ({
+		fill: "solid" as fill,
+		setFill: (val: fill) => {
+			set((state) => ({
+				fill: val,
+			}));
+		},
+	}))
+);
 
-export const useStrokeWidthStore = create<strokeWidthStore>()((set) => ({
-	width: "normal",
-	setWidth: (val: strokeWidth) => set({ width: val }),
-}));
+export const useStrokeWidthStore = create<strokeWidthStore>()(
+	subscribeWithSelector((set) => ({
+		width: "normal",
+		setWidth: (val: strokeWidth) => set({ width: val }),
+	}))
+);
 
-export const useStrokeStyleStore = create<strokeStyleStore>()((set) => ({
-	style: "solid",
-	setStyle: (val: strokeStyle) => set({ style: val }),
-}));
+export const useStrokeStyleStore = create<strokeStyleStore>()(
+	subscribeWithSelector((set) => ({
+		style: "solid",
+		setStyle: (val: strokeStyle) => set({ style: val }),
+	}))
+);
 
-export const useSlopinessStore = create<slopinessStore>()((set) => ({
-	slopiness: "artist",
-	setSlopiness: (val: slopiness) => set({ slopiness: val }),
-}));
+export const useSlopinessStore = create<slopinessStore>()(
+	subscribeWithSelector((set) => ({
+		slopiness: "artist",
+		setSlopiness: (val: slopiness) => set({ slopiness: val }),
+	}))
+);
 
-export const useEdgesStore = create<edgesStore>()((set) => ({
-	edges: "round",
-	setEdges: (val: edges) => set({ edges: val }),
-}));
+export const useEdgesStore = create<edgesStore>()(
+	subscribeWithSelector((set) => ({
+		edges: "round",
+		setEdges: (val: edges) => set({ edges: val }),
+	}))
+);
 
-export const useLayersStore = create<layersStore>()((set) => ({
-	layers: "front",
-	setLayers: (val: layers) => set({ layers: val }),
-}));
+export const useLayersStore = create<layersStore>()(
+	subscribeWithSelector((set) => ({
+		layers: "front",
+		setLayers: (val: layers) => set({ layers: val }),
+	}))
+);
 
-export const useFontFamilyStore = create<fontFamilyStore>()((set) => ({
-	fontFamily: "draw",
-	setFontFamily: (val: fontFamily) => set({ fontFamily: val }),
-}));
+export const useFontFamilyStore = create<fontFamilyStore>()(
+	subscribeWithSelector((set) => ({
+		fontFamily: "draw",
+		setFontFamily: (val: fontFamily) => set({ fontFamily: val }),
+	}))
+);
 
-export const useFontSizeStore = create<fontSizeStore>()((set) => ({
-	fontSize: "medium",
-	setFontSize: (val: fontSize) => set({ fontSize: val }),
-}));
+export const useFontSizeStore = create<fontSizeStore>()(
+	subscribeWithSelector((set) => ({
+		fontSize: "medium",
+		setFontSize: (val: fontSize) => set({ fontSize: val }),
+	}))
+);
 
-export const useTextAlignStore = create<textAlignStore>()((set) => ({
-	textAlign: "center",
-	setTextAlign: (val: textAlign) => set({ textAlign: val }),
-}));
+export const useTextAlignStore = create<textAlignStore>()(
+	subscribeWithSelector((set) => ({
+		textAlign: "left",
+		setTextAlign: (val: textAlign) => set({ textAlign: val }),
+	}))
+);
 
-export const useArrowTypeStore = create<arrowTypeStore>()((set) => ({
-	arrowType: "curved",
-	setArrowType: (val: arrowType) => set({ arrowType: val }),
-}));
+export const useArrowTypeStore = create<arrowTypeStore>()(
+	subscribeWithSelector((set) => ({
+		arrowType: "curved",
+		setArrowType: (val: arrowType) => set({ arrowType: val }),
+	}))
+);
 
-export const useFrontArrowStore = create<frontArrowStore>()((set) => ({
-	frontArrow: "arrow",
-	setFrontArrowType: (val: frontArrow) => set({ frontArrow: val }),
-}));
+export const useFrontArrowStore = create<frontArrowStore>()(
+	subscribeWithSelector((set) => ({
+		frontArrow: "arrow",
+		setFrontArrowType: (val: frontArrow) => set({ frontArrow: val }),
+	}))
+);
 
-export const useBackArrowStore = create<backArrowStore>()((set) => ({
-	backArrow: "none",
-	setBackArrowType: (val: backArrow) => set({ backArrow: val }),
-}));
+export const useBackArrowStore = create<backArrowStore>()(
+	subscribeWithSelector((set) => ({
+		backArrow: "none",
+		setBackArrowType: (val: backArrow) => set({ backArrow: val }),
+	}))
+);
 
-export const useArrowHeadStore = create<arrowHeadStore>()((set) => ({
-	arrowHead: {
+export const useArrowHeadStore = () => {
+	const front = useFrontArrowStore((s) => s.frontArrow);
+	const back = useBackArrowStore((s) => s.backArrow);
+
+	return {
+		front,
+		back,
+	};
+};
+
+export interface CommonPropsGame {
+	stroke?: string;
+	opacity?: number;
+	layers?: layers;
+	actions?: actions;
+	background?: string;
+	fillStyle?: "none" | "solid" | "hachure" | "cross-hatch";
+	strokeWidth?: number;
+	lineDash?: number[];
+	roughness?: 0 | 1 | 2;
+	edges?: edges;
+	arrowType?: arrowType;
+	arrowHead?: arrowHead;
+	fontSize?: 16 | 24 | 32 | 40;
+	textAlign?: textAlign;
+	fontFamily?:
+		| "caveat"
+		| "excali"
+		| "firaCode"
+		| "jakarta"
+		| "sourceCode"
+		| "monospace"
+		| "nunito";
+}
+
+const computeProps = (): any => {
+	let tool = useToolStore.getState().tool;
+	const selectedMessage = useSelectedMessageStore.getState().selectedMessage;
+	if (tool === "mouse" && selectedMessage) {
+		tool = selectedMessage.shape;
+	}
+
+	let stroke = `#${useStrokeStore.getState().currentColor}`;
+	let opacity = useOpacityStore.getState().opacity / 100;
+	const layers = useLayersStore.getState().layers;
+	const actions: actions = "none";
+
+	let background = useBgStore.getState().currentColor;
+	background =
+		background === "transparent" ? "transparent" : `#${background}`;
+
+	// stroke width
+	const stroke_width = useStrokeWidthStore.getState().width;
+	let strokeWidth =
+		stroke_width === "thin" ? 1 : stroke_width === "normal" ? 2 : 3;
+
+	// fill
+	const fillValue = useFillStore.getState().fill;
+	const fillStyle = fillValue === "cross" ? "cross-hatch" : fillValue;
+
+	// stroke style
+	const strokeStyle = useStrokeStyleStore.getState().style;
+	let lineDash: number[] = [];
+	if (strokeStyle === "dashed") lineDash = [10, 10];
+	else if (strokeStyle === "dotted") lineDash = [2, 8];
+
+	// slopiness → roughness
+	const slopiness = useSlopinessStore.getState().slopiness;
+	const roughness =
+		slopiness === "architect" ? 0 : slopiness === "artist" ? 1 : 2;
+
+	const edges = useEdgesStore.getState().edges;
+	const arrowType = useArrowTypeStore.getState().arrowType;
+	const arrowHead = {
 		front: useFrontArrowStore.getState().frontArrow,
 		back: useBackArrowStore.getState().backArrow,
-	},
-	setArrowHead: (val: arrowHead) => set({ arrowHead: val }),
-}));
+	};
+
+	// text
+	const font_famliy = useFontFamilyStore.getState().fontFamily;
+	let fontFamily = "excali";
+	if (font_famliy === "caveat") fontFamily = "caveat";
+	else if (font_famliy === "draw") fontFamily = "excali";
+	else if (font_famliy === "code") fontFamily = "firaCode";
+	else if (font_famliy === "normal") fontFamily = "jakarta";
+	else if (font_famliy === "little") fontFamily = "sourceCode";
+	else if (font_famliy === "mono") fontFamily = "monospace";
+	else if (font_famliy === "nunito") fontFamily = "nunito";
+
+	const font_size = useFontSizeStore.getState().fontSize;
+	const fontSize =
+		font_size === "small"
+			? 16
+			: font_size === "large"
+				? 32
+				: font_size === "xlarge"
+					? 48
+					: 24;
+	const textAlign = useTextAlignStore.getState().textAlign;
+
+	// switch by tool
+	switch (tool) {
+		case "rectangle":
+		case "rhombus":
+		case "web":
+			return {
+				stroke,
+				opacity,
+				layers,
+				actions,
+				background,
+				fillStyle,
+				strokeWidth,
+				lineDash,
+				roughness,
+				edges,
+			};
+
+		case "arc":
+			return {
+				stroke,
+				opacity,
+				layers,
+				actions,
+				background,
+				fillStyle,
+				strokeWidth,
+				lineDash,
+				roughness,
+			};
+
+		case "arrow":
+			return {
+				stroke,
+				opacity,
+				layers,
+				actions,
+				strokeWidth,
+				lineDash,
+				roughness,
+				arrowType,
+				arrowHead,
+			};
+
+		case "line":
+			return {
+				stroke,
+				opacity,
+				layers,
+				actions,
+				strokeWidth,
+				lineDash,
+				roughness,
+				edges,
+			};
+
+		case "text":
+			return {
+				stroke,
+				opacity,
+				layers,
+				actions,
+				fontFamily,
+				fontSize,
+				textAlign,
+			};
+
+		case "pencil":
+			return { stroke, opacity, layers, actions, strokeWidth };
+
+		case "image":
+			return { opacity, edges, layers };
+
+		default:
+			return {};
+	}
+};
+
+export const usePropsStore = create<CommonPropsGame>()(
+	subscribeWithSelector((set, get) => ({
+		...computeProps(),
+	}))
+);
+
+const recompute = () => {
+	const newProps = computeProps();
+	const prevProps = usePropsStore.getState();
+
+	if (JSON.stringify(newProps) !== JSON.stringify(prevProps)) {
+		usePropsStore.setState(newProps);
+	}
+};
+
+useStrokeStore.subscribe(recompute);
+useOpacityStore.subscribe(recompute);
+useBgStore.subscribe(recompute);
+useStrokeWidthStore.subscribe(recompute);
+useFillStore.subscribe(recompute);
+useStrokeStyleStore.subscribe(recompute);
+useSlopinessStore.subscribe(recompute);
+useEdgesStore.subscribe(recompute);
+useLayersStore.subscribe(recompute);
+useFontFamilyStore.subscribe(recompute);
+useFontSizeStore.subscribe(recompute);
+useTextAlignStore.subscribe(recompute);
+useArrowTypeStore.subscribe(recompute);
+useFrontArrowStore.subscribe(recompute);
+useBackArrowStore.subscribe(recompute);
+useToolStore.subscribe(recompute);

@@ -11,10 +11,14 @@ function Cross() {
 function Solid() {
 	return <p>s</p>;
 }
+function Dots() {
+	return <p>d</p>;
+}
 
 const fillIcons: Record<string, ReactNode> = {
 	hachure: <Hachure />,
 	cross: <Cross />,
 	solid: <Solid />,
+	dots: <Dots />,
 };
 export default fillIcons;

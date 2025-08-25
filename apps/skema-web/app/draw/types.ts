@@ -13,7 +13,7 @@ export type Tool =
 	| "web"
 	| "laser";
 
-export type fill = "hachure" | "cross" | "solid";
+export type fill = "hachure" | "cross" | "solid" | "none";
 export type strokeWidth = "thin" | "normal" | "thick";
 export type strokeStyle = "solid" | "dashed" | "dotted";
 export type slopiness = "architect" | "artist" | "cartoonist";
@@ -21,7 +21,7 @@ export type edges = "sharp" | "round";
 export type layers = "back" | "backward" | "forward" | "front";
 export type actions = "duplicate" | "delete" | "link" | "none";
 export type fontFamily =
-	| "tldraw"
+	| "caveat"
 	| "draw"
 	| "code"
 	| "normal"
@@ -64,6 +64,22 @@ export const defaultShape: ShapeProps = {
 	strokeStyle: "solid",
 	slopiness: "artist",
 	edges: "round",
+};
+export interface ArcProps extends BaseProps {
+	background: string;
+	strokeWidth: strokeWidth;
+	strokeStyle: strokeStyle;
+	slopiness: slopiness;
+}
+export const defaultArc: ArcProps = {
+	stroke: "#000000",
+	opacity: 100,
+	layers: "front",
+	actions: "none",
+	background: "transparent",
+	strokeWidth: "normal",
+	strokeStyle: "solid",
+	slopiness: "artist",
 };
 
 export interface ArrowProps extends BaseProps {
@@ -132,3 +148,29 @@ export const defaultPencil: PencilProps = {
 	background: "#000000",
 	strokeWidth: "normal",
 };
+
+export interface CommonProps {
+	stroke?: string;
+	opacity?: number;
+	layers?: layers;
+	actions?: actions;
+	background?: string;
+	strokeWidth?: strokeWidth;
+	strokeStyle?: strokeStyle;
+	slopiness?: slopiness;
+	edges?: edges;
+	arrowType?: arrowType;
+	arrowHead?: arrowHead;
+	fontFamily?: fontFamily;
+	fontSize?: fontSize;
+	textAlign?: textAlign;
+}
+
+export type Props =
+	| ShapeProps
+	| ArcProps
+	| ArrowProps
+	| LineProps
+	| TextProps
+	| PencilProps
+	| null;
