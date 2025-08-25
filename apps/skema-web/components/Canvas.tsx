@@ -24,6 +24,43 @@ export default function Canvas({
 
 	const tool = useToolStore((state) => state.tool);
 	const props = usePropsStore();
+
+	// keep previous props to avoid reacting to identity-only changes
+	const prevPropsRef = useRef<any>(null);
+	// keep previous tool to detect tool-only changes
+	const prevToolRef = useRef<string | null>(null);
+
+	const shallowEq = (a: any, b: any) => {
+		if (a === b) return true;
+		if (!a || !b) return false;
+		const aKeys = Object.keys(a);
+		const bKeys = Object.keys(b);
+		if (aKeys.length !== bKeys.length) return false;
+		for (const k of aKeys) {
+			const va = a[k];
+			const vb = b[k];
+			if (Array.isArray(va) && Array.isArray(vb)) {
+				if (va.length !== vb.length) return false;
+				for (let i = 0; i < va.length; i++)
+					if (va[i] !== vb[i]) return false;
+				continue;
+			}
+			if (
+				typeof va === "object" &&
+				va !== null &&
+				typeof vb === "object" &&
+				vb !== null
+			) {
+				const vaKeys = Object.keys(va);
+				const vbKeys = Object.keys(vb);
+				if (vaKeys.length !== vbKeys.length) return false;
+				for (const kk of vaKeys) if (va[kk] !== vb[kk]) return false;
+				continue;
+			}
+			if (va !== vb) return false;
+		}
+		return true;
+	};
 	const setSelectedMessage = useSelectedMessageStore(
 		(state) => state.setSelectedMessage
 	);
@@ -32,10 +69,23 @@ export default function Canvas({
 
 	useEffect(() => {
 		if (!game) return;
+
+		// clear selected message when switching away from mouse
 		if (tool !== "mouse") {
 			setSelectedMessage(null);
 		}
-		game.selectTool(tool, props);
+
+		const prev = prevPropsRef.current;
+		const propsChanged = !shallowEq(prev ?? {}, props);
+		const prevTool = prevToolRef.current;
+		const toolChanged = prevTool !== tool;
+
+		// call selectTool when tool changed or props changed meaningfully (or first run)
+		if (propsChanged || prev === null || toolChanged) {
+			prevPropsRef.current = props;
+			prevToolRef.current = tool;
+			game.selectTool(tool, props);
+		}
 	}, [game, tool, props]);
 
 	useEffect(() => {

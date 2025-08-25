@@ -22,6 +22,18 @@ import useToolStore from "./toolStore";
 import { subscribeWithSelector } from "zustand/middleware";
 import { shallow } from "zustand/shallow";
 
+const shallowEqual = (a: any, b: any) => {
+	if (a === b) return true;
+	if (!a || !b) return false;
+	const aKeys = Object.keys(a);
+	const bKeys = Object.keys(b);
+	if (aKeys.length !== bKeys.length) return false;
+	for (const k of aKeys) {
+		if (a[k] !== b[k]) return false; // shallow compare only
+	}
+	return true;
+};
+
 interface strokeStore {
 	currentColor: string;
 	setCurrentColor: (color: string) => void;
@@ -472,34 +484,71 @@ const computeProps = (): any => {
 	}
 };
 
+// memoize computeProps to keep stable object identity when inputs unchanged
+let _cachedProps: any = null;
+let _cachedInputsHash = "";
+const getComputedProps = () => {
+	const p = computeProps();
+	// simple hash based on key values (stringify of primitive fields) — lightweight
+	const hash = Object.keys(p)
+		.sort()
+		.map((k) => {
+			const v = p[k];
+			if (Array.isArray(v)) return k + ":" + v.join(",");
+			if (typeof v === "object" && v !== null)
+				return k + ":" + JSON.stringify(v);
+			return k + ":" + String(v);
+		})
+		.join("|");
+
+	if (hash === _cachedInputsHash) {
+		return _cachedProps;
+	}
+	_cachedInputsHash = hash;
+	_cachedProps = p;
+	return _cachedProps;
+};
+
 export const usePropsStore = create<CommonPropsGame>()(
 	subscribeWithSelector((set, get) => ({
-		...computeProps(),
+		...getComputedProps(),
 	}))
 );
 
+let recomputing = false;
 const recompute = () => {
-	const newProps = computeProps();
-	const prevProps = usePropsStore.getState();
+	if (recomputing) return;
+	recomputing = true;
+	try {
+		const newProps = getComputedProps();
+		const prevProps = usePropsStore.getState();
 
-	if (JSON.stringify(newProps) !== JSON.stringify(prevProps)) {
-		usePropsStore.setState(newProps);
+		// use shallow equality instead of JSON.stringify
+		if (!shallowEqual(newProps, prevProps)) {
+			usePropsStore.setState(newProps);
+		}
+	} finally {
+		recomputing = false;
 	}
 };
 
-useStrokeStore.subscribe(recompute);
-useOpacityStore.subscribe(recompute);
-useBgStore.subscribe(recompute);
-useStrokeWidthStore.subscribe(recompute);
-useFillStore.subscribe(recompute);
-useStrokeStyleStore.subscribe(recompute);
-useSlopinessStore.subscribe(recompute);
-useEdgesStore.subscribe(recompute);
-useLayersStore.subscribe(recompute);
-useFontFamilyStore.subscribe(recompute);
-useFontSizeStore.subscribe(recompute);
-useTextAlignStore.subscribe(recompute);
-useArrowTypeStore.subscribe(recompute);
-useFrontArrowStore.subscribe(recompute);
-useBackArrowStore.subscribe(recompute);
-useToolStore.subscribe(recompute);
+// at the bottom: subscribe only to the slices that affect computeProps
+useStrokeStore.subscribe((s) => s.currentColor, recompute);
+useOpacityStore.subscribe((s) => s.opacity, recompute);
+useBgStore.subscribe((s) => s.currentColor, recompute);
+useStrokeWidthStore.subscribe((s) => s.width, recompute);
+useFillStore.subscribe((s) => s.fill, recompute);
+useStrokeStyleStore.subscribe((s) => s.style, recompute);
+useSlopinessStore.subscribe((s) => s.slopiness, recompute);
+useEdgesStore.subscribe((s) => s.edges, recompute);
+useLayersStore.subscribe((s) => s.layers, recompute);
+useFontFamilyStore.subscribe((s) => s.fontFamily, recompute);
+useFontSizeStore.subscribe((s) => s.fontSize, recompute);
+useTextAlignStore.subscribe((s) => s.textAlign, recompute);
+useArrowTypeStore.subscribe((s) => s.arrowType, recompute);
+useFrontArrowStore.subscribe((s) => s.frontArrow, recompute);
+useBackArrowStore.subscribe((s) => s.backArrow, recompute);
+
+// important: subscribe to the tool and selectedMessage slices explicitly
+useToolStore.subscribe((s) => s.tool, recompute);
+useSelectedMessageStore.subscribe((s) => s.selectedMessage, recompute);

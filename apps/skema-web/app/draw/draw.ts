@@ -379,7 +379,7 @@ export class Game {
 		}
 		if (this.selectedMessage) {
 			this.setProps(this.selectedMessage.shape as Tool);
-			// this.setSelectedProps(this.selectedMessage);
+			this.setSelectedProps(this.selectedMessage);
 			this.handleSelectedMessage(this.selectedMessage);
 			this.preSelectedMessage = null;
 		}
@@ -406,7 +406,7 @@ export class Game {
 						this.setSelectedMessage(this.preSelectedMessage);
 						this.preSelectedMessage = null;
 						this.setProps(this.selectedMessage.shape as Tool);
-						// this.setSelectedProps(this.selectedMessage);
+						this.setSelectedProps(this.selectedMessage);
 						this.renderCanvas();
 						this.handleSelectedMessage(this.selectedMessage);
 						return;
@@ -435,7 +435,7 @@ export class Game {
 					this.setSelectedMessage(this.preSelectedMessage);
 					this.preSelectedMessage = null;
 					this.setProps(this.selectedMessage.shape as Tool);
-					// this.setSelectedProps(this.selectedMessage);
+					this.setSelectedProps(this.selectedMessage);
 					this.renderCanvas();
 					this.handleSelectedMessage(this.selectedMessage);
 					return;
@@ -1175,6 +1175,7 @@ export class Game {
 		// Hidden span for measuring text size
 		let span: HTMLSpanElement | null = null;
 		let width = 0;
+		let height = 0;
 		const resize = () => {
 			if (this.tool === "mouse") return;
 			const lineHeight = Math.round(this.props.fontSize! * 1.2);
@@ -1208,6 +1209,7 @@ export class Game {
 			textarea.style.height = "auto";
 			const newHeight = textarea.scrollHeight;
 			textarea.style.height = `${newHeight}px`;
+			height = newHeight;
 
 			document.body.removeChild(span);
 		};
@@ -1229,6 +1231,16 @@ export class Game {
 
 			const tempValue = textarea.value.trim();
 			const totalLines = tempValue.split("\n").length;
+			// Convert measurements taken in screen pixels back to world coordinates
+			// width and height were measured from a hidden span at scaled font size
+			// convert measured dimensions (screen pixels) back to world coordinates
+			const bboxWidthWorld = width / this.scale;
+			const bboxHeightWorld = Math.max(
+				(height || totalLines * this.props.fontSize! * this.scale) /
+					this.scale,
+				this.props.fontSize!
+			);
+
 			const message: Message = {
 				id: uuidv4(),
 				shape: "text" as Tool,
@@ -1242,11 +1254,12 @@ export class Game {
 					textAlign: this.props.textAlign!,
 					pos,
 				},
+				// store bounding box in world coordinates so hit testing and rendering align
 				boundingBox: {
 					x: pos.x,
 					y: pos.y,
-					w: width,
-					h: (totalLines + 2) * this.props.fontSize! * this.scale,
+					w: bboxWidthWorld,
+					h: bboxHeightWorld,
 				},
 			};
 
@@ -1314,31 +1327,51 @@ export class Game {
 		this.ctx.save();
 		this.ctx.globalAlpha = message.opacity ?? 1;
 		this.ctx.font = `${message.textData.fontSize} ${fontFamily}`;
-		this.ctx.textBaseline = "middle";
+		// use top baseline so y corresponds to top of text box
+		this.ctx.textBaseline = "top";
 		this.ctx.textAlign = (message.textData.textAlign ||
 			"left") as CanvasTextAlign;
 		this.ctx.fillStyle = normalizeStroke(
 			this.theme,
 			message.textData.textColor
 		);
-		const x = message.textData.pos.x;
-		const y =
-			message.textData.pos.y +
-			parseInt(message.textData.fontSize) * (9 / 10);
-		const lineHeight = parseInt(message.textData.fontSize) * 1.4;
 
-		const maxLineWidth = Math.max(
-			...lines.map((line) => this.ctx.measureText(line).width)
-		);
-		let drawX = x + 5;
-		if (message.textData.textAlign === "center") {
-			drawX = x + maxLineWidth / 2;
-		} else if (message.textData.textAlign === "right") {
-			drawX = x + maxLineWidth;
-		}
+		const x = message.textData.pos.x;
+		const y = message.textData.pos.y;
+		// textarea used `padding: "4px 8px"` in screen pixels.
+		// Convert that to world units so canvas rendering lines up with the textarea.
+		const topPaddingWorld = 8 / this.scale; // 8px top padding (increased per requirement)
+		const leftPaddingWorld = 8 / this.scale; // 8px horizontal padding
+		const fontSizeNum = parseInt(message.textData.fontSize);
+		const lineHeight = fontSizeNum * 1.5;
+
+		// bounding box width is stored in world units
+		const bboxW = message.boundingBox.w;
 
 		for (let i = 0; i < lines.length; i++) {
-			this.ctx.fillText(lines[i]!, drawX, y + i * lineHeight);
+			const line = lines[i] || "";
+			let drawX = x;
+
+			if (message.textData.textAlign === "center") {
+				// center within the bounding box
+				const textW = this.ctx.measureText(line).width;
+				drawX = x + bboxW / 2;
+				this.ctx.textAlign = "center";
+			} else if (message.textData.textAlign === "right") {
+				// right align to bounding box right edge
+				drawX = x + bboxW;
+				this.ctx.textAlign = "right";
+			} else {
+				// left align -> use same left padding as the textarea
+				drawX = x + leftPaddingWorld;
+				this.ctx.textAlign = "left";
+			}
+
+			this.ctx.fillText(
+				line,
+				drawX,
+				y + topPaddingWorld + i * lineHeight
+			);
 		}
 
 		this.ctx.restore();
@@ -2227,7 +2260,20 @@ export class Game {
 				this.setOpacity(opacity ? opacity * 100 : 100);
 			} else if (message.shape === "text") {
 				this.setStroke(textColor!.split("#")[1]!);
-				this.setFontFamily(fontFamily as fontFamily);
+				if (fontFamily === "caveat")
+					this.setFontFamily("caveat" as fontFamily);
+				else if (fontFamily === "excali")
+					this.setFontFamily("draw" as fontFamily);
+				else if (fontFamily === "firaCode")
+					this.setFontFamily("code" as fontFamily);
+				else if (fontFamily === "jakarta")
+					this.setFontFamily("normal" as fontFamily);
+				else if (fontFamily === "sourceCode")
+					this.setFontFamily("little" as fontFamily);
+				else if (fontFamily === "monospace")
+					this.setFontFamily("mono" as fontFamily);
+				else if (fontFamily === "nunito")
+					this.setFontFamily("nunito" as fontFamily);
 				this.setFontSize(
 					fontSize === "16px"
 						? "small"
@@ -3554,83 +3600,218 @@ export class Game {
 	}
 	//* 7.text
 	handleTextDrag(message: Message, pos: { x: number; y: number }) {
-		// if (!message.boundingBox) return;
-		// const dx = pos.x - this.prevX;
-		// const dy = pos.y - this.prevY;
-		// const rect = {
-		// 	...message.boundingBox,
-		// 	x: message.boundingBox.x + dx,
-		// 	y: message.boundingBox.y + dy,
-		// };
-		// const newMessage: Message = {
-		// 	...message,
-		// 	boundingBox: rect,
-		// };
-		// this.prevX = pos.x;
-		// this.prevY = pos.y;
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		// this.setSelectedMessage(newMessage);
-		// this.renderCanvas();
+		if (!message.boundingBox) return;
+		const dx = pos.x - this.prevX;
+		const dy = pos.y - this.prevY;
+		const rect = {
+			...message.boundingBox,
+			x: message.boundingBox.x + dx,
+			y: message.boundingBox.y + dy,
+		};
+		// also translate any text position inside the message so the visible text moves with the box
+		const newTextData = message.textData
+			? {
+					...message.textData,
+					pos: {
+						x: message.textData.pos.x + dx,
+						y: message.textData.pos.y + dy,
+					},
+				}
+			: undefined;
+		const newMessage: Message = {
+			...message,
+			boundingBox: rect,
+			textData: newTextData,
+		};
+		this.prevX = pos.x;
+		this.prevY = pos.y;
+		this.messages = this.messages.map((msg) =>
+			msg.id === message.id ? newMessage : msg
+		);
+		this.setSelectedMessage(newMessage);
+		this.renderCanvas();
+		// send update to server so other clients receive the changed position
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+			})
+		);
 	}
 	handleTextResize(message: Message, pos: { x: number; y: number }) {
-		// if (!message.boundingBox) return;
-		// if (this.resizeHandler === "none") return;
-		// const { x, y, w, h } = message.boundingBox;
-		// let newRect = { x, y, w, h };
-		// if (this.resizeHandler === "se") {
-		// 	newRect = { x, y, w: pos.x - x, h: pos.y - y };
-		// } else if (this.resizeHandler === "nw") {
-		// 	newRect = {
-		// 		x: pos.x,
-		// 		y: pos.y,
-		// 		w: w + (x - pos.x),
-		// 		h: h + (y - pos.y),
-		// 	};
-		// }
-		// // font scaling (optional: lock ratio)
-		// const scale = newRect.h / h;
-		// const newFontSize = parseFloat(message.textData!.fontSize) * scale;
-		// const newMessage: Message = {
-		// 	...message,
-		// 	boundingBox: newRect,
-		// 	textData: {
-		// 		...message.textData!,
-		// 		fontSize: `${newFontSize}`,
-		// 	},
-		// };
-		// this.prevX = pos.x;
-		// this.prevY = pos.y;
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		// this.setSelectedMessage(newMessage);
-		// this.renderCanvas();
+		if (!message.boundingBox || !message.textData) return;
+		if (this.resizeHandler === "none") return;
+
+		const { x, y, w, h } = message.boundingBox;
+		let newRect = { x, y, w, h };
+
+		// --- resize logic (only corners) ---
+		switch (this.resizeHandler) {
+			case "se": // bottom-right
+				newRect = { x, y, w: pos.x - x, h: pos.y - y };
+				break;
+			case "sw": // bottom-left
+				newRect = { x: pos.x, y, w: w + (x - pos.x), h: pos.y - y };
+				break;
+			case "ne": // top-right
+				newRect = { x, y: pos.y, w: pos.x - x, h: h + (y - pos.y) };
+				break;
+			case "nw": // top-left
+				newRect = {
+					x: pos.x,
+					y: pos.y,
+					w: w + (x - pos.x),
+					h: h + (y - pos.y),
+				};
+				break;
+			default:
+				return; // ❌ ignore side handles
+		}
+
+		// --- ❌ prevent flip ---
+		if (newRect.w <= 0 || newRect.h <= 0) {
+			return; // freeze
+		}
+
+		// --- uniform scaling (based on width + height) ---
+		const scaleX = w === 0 ? 1 : newRect.w / w;
+		const scaleY = h === 0 ? 1 : newRect.h / h;
+		const scale = Math.min(scaleX, scaleY); // uniform scale
+
+		const oldFont = message.textData?.fontSize ?? "16px";
+		const oldFontNum = parseFloat(oldFont);
+		const newFontSizeNum = Math.max(16, oldFontNum * scale); // clamp >= 16px
+		const newFontSize = `${newFontSizeNum}px`;
+
+		// --- adjust pos if origin moved ---
+		const deltaX = newRect.x - x;
+		const deltaY = newRect.y - y;
+		const newTextPos = {
+			...message.textData.pos,
+			x: message.textData.pos.x + deltaX,
+			y: message.textData.pos.y + deltaY,
+		};
+
+		// --- new message ---
+		const newMessage: Message = {
+			...message,
+			boundingBox: newRect,
+			textData: {
+				...message.textData,
+				fontSize: newFontSize,
+				pos: newTextPos,
+			},
+		};
+
+		this.prevX = pos.x;
+		this.prevY = pos.y;
+
+		this.messages = this.messages.map((msg) =>
+			msg.id === message.id ? newMessage : msg
+		);
+		this.setSelectedMessage(newMessage);
+		this.renderCanvas();
+
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+			})
+		);
 	}
 	handleTextPropsChange(message: Message) {
-		// if (!message.boundingBox) return;
-		// const newMessage: Message = {
-		// 	...message,
-		// 	opacity: this.props.opacity,
-		// 	textData: {
-		// 		...message.textData!,
-		// 		fontSize: `${this.props.fontSize}`,
-		// 		fontFamily: this.props.fontFamily!,
-		// 		textColor: this.props.stroke!,
-		// 		textAlign: this.props.textAlign!,
-		// 	},
-		// };
-		// this.setSelectedMessage(newMessage);
-		// this.renderCanvas();
-		// this.socket.send(
-		// 	JSON.stringify({
-		// 		type: "update-message",
-		// 		id: newMessage.id,
-		// 		newMessage,
-		// 		roomId: this.roomId,
-		// 	})
-		// );
+		if (!message.boundingBox || !message.textData) return;
+
+		// ensure fontSize uses px like drawText/handleTextInput
+		const fontSizePx = `${this.props.fontSize}px`;
+
+		// compute lines and height (use similar lineHeight as drawText)
+		const lines = message.textData.text
+			? message.textData.text.split("\n")
+			: [""];
+		const fontSizeNum = this.props.fontSize!;
+		const lineHeight = fontSizeNum * 1.5; // same multiplier as drawText
+		const estimatedHeight = Math.max(
+			lines.length * lineHeight,
+			fontSizeNum
+		);
+
+		// compute width using canvas measureText so we can update bbox.w
+		let fontFamily = "";
+		if (this.props.fontFamily === "caveat")
+			fontFamily = caveat.style.fontFamily;
+		if (this.props.fontFamily === "excali")
+			fontFamily = excali.style.fontFamily;
+		if (this.props.fontFamily === "firaCode")
+			fontFamily = firaCode.style.fontFamily;
+		if (this.props.fontFamily === "jakarta")
+			fontFamily = jakarta.style.fontFamily;
+		if (this.props.fontFamily === "sourceCode")
+			fontFamily = sourceCode.style.fontFamily;
+		if (this.props.fontFamily === "monospace")
+			fontFamily = monospace.style.fontFamily;
+		if (this.props.fontFamily === "nunito")
+			fontFamily = nunito.style.fontFamily;
+
+		this.ctx.save();
+		this.ctx.font = `${fontSizePx} ${fontFamily}`;
+		let maxLineWidth = 0;
+		for (let l of lines) {
+			const w = this.ctx.measureText(l || " ").width;
+			if (w > maxLineWidth) maxLineWidth = w;
+		}
+		this.ctx.restore();
+
+		// textarea horizontal padding was 8px each side -> convert to world units
+		const horizontalPaddingWorld = (8 + 8) / this.scale; // 16px total / scale
+
+		// convert measured pixel width to world units (match handleTextInput flow)
+		const textWidthWorld = maxLineWidth / this.scale;
+		const estimatedWidth = Math.max(
+			textWidthWorld + horizontalPaddingWorld,
+			fontSizeNum
+		);
+
+		// assign estimated width/height directly so bbox shrinks when font size reduces
+		const newBoundingBox = {
+			...message.boundingBox,
+			w: estimatedWidth,
+			h: estimatedHeight,
+		};
+
+		const newMessage: Message = {
+			...message,
+			opacity: this.props.opacity,
+			textData: {
+				...message.textData,
+				fontSize: fontSizePx,
+				fontFamily: this.props.fontFamily!,
+				textColor: this.props.stroke!,
+				textAlign: this.props.textAlign!,
+			},
+			boundingBox: newBoundingBox,
+		};
+
+		// update in messages list so render/diffs use the new value
+		this.messages = this.messages.map((msg) =>
+			msg.id === message.id ? { ...newMessage } : msg
+		);
+
+		this.setSelectedMessage(newMessage);
+		this.renderCanvas();
+
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+			})
+		);
 	}
 	//* 8.image
 	handleImageDrag(message: Message, pos: { x: number; y: number }) {
