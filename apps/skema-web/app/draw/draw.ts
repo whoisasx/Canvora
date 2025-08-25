@@ -266,31 +266,101 @@ export class Game {
 		//TODO: fetch the messages from the database, push it to the existing shapes and render the canvas.
 	}
 	initSocketHandler() {
-		//TODO: on every message recieved, push it to the existing shapes and render the canvas.
+		// on every message received, validate and safely apply updates to local state
 		this.socket.onmessage = (e: MessageEvent) => {
-			const parsedData = JSON.parse(e.data);
-			if (parsedData.type === "shape") {
-				const message: Message = parsedData.message;
-				this.messages.push(message);
-				this.renderCanvas();
+			let parsedData: any;
+			try {
+				parsedData = JSON.parse(e.data);
+			} catch (err) {
+				console.warn("socket: received invalid JSON", err);
+				return;
 			}
-			if (parsedData.type === "delete") {
-				const id = parsedData.id;
-				this.messages = this.messages.filter(
-					(message) => id !== message.id
-				);
 
-				this.renderCanvas();
+			if (!parsedData || typeof parsedData.type !== "string") {
+				console.warn("socket: invalid message format", parsedData);
+				return;
 			}
-			if (parsedData.type === "update") {
-				const id = parsedData.id;
-				this.messages = this.messages.map((message) => {
-					if (message.id === id) {
-						return { ...parsedData.newMessage };
+
+			switch (parsedData.type) {
+				case "shape": {
+					const msg = parsedData.message;
+					if (
+						!msg ||
+						typeof msg.id !== "string" ||
+						typeof msg.shape !== "string"
+					) {
+						console.warn(
+							"socket: invalid shape payload",
+							parsedData
+						);
+						return;
 					}
-					return message;
-				});
-				this.renderCanvas();
+					// basic bounding box sanity check if present
+					if (msg.boundingBox) {
+						const bb = msg.boundingBox;
+						if (
+							typeof bb.x !== "number" ||
+							typeof bb.y !== "number" ||
+							typeof bb.w !== "number" ||
+							typeof bb.h !== "number"
+						) {
+							console.warn(
+								"socket: invalid boundingBox",
+								parsedData
+							);
+							return;
+						}
+					}
+
+					this.messages.push(msg as Message);
+					this.renderCanvas();
+					break;
+				}
+				case "delete": {
+					const id = parsedData.id;
+					if (typeof id !== "string") {
+						console.warn(
+							"socket: invalid delete payload",
+							parsedData
+						);
+						return;
+					}
+					this.messages = this.messages.filter(
+						(message) => id !== message.id
+					);
+					this.renderCanvas();
+					break;
+				}
+				case "update": {
+					const id = parsedData.id;
+					const newMessage = parsedData.newMessage;
+					if (
+						typeof id !== "string" ||
+						!newMessage ||
+						typeof newMessage.id !== "string"
+					) {
+						console.warn(
+							"socket: invalid update payload",
+							parsedData
+						);
+						return;
+					}
+					this.messages = this.messages.map((message) => {
+						if (message.id === id) {
+							return { ...newMessage } as Message;
+						}
+						return message;
+					});
+					this.renderCanvas();
+					break;
+				}
+				default: {
+					console.warn(
+						"socket: unknown message type",
+						parsedData.type
+					);
+					return;
+				}
 			}
 		};
 	}
