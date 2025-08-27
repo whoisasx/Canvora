@@ -259,7 +259,7 @@ export const useEdgesStore = create<edgesStore>()(
 
 export const useLayersStore = create<layersStore>()(
 	subscribeWithSelector((set) => ({
-		layers: "front",
+		layers: "none",
 		setLayers: (val: layers) => set({ layers: val }),
 	}))
 );
@@ -319,7 +319,6 @@ export const useArrowHeadStore = () => {
 export interface CommonPropsGame {
 	stroke?: string;
 	opacity?: number;
-	layers?: layers;
 	actions?: actions;
 	background?: string;
 	fillStyle?: "none" | "solid" | "hachure" | "cross-hatch";
@@ -350,7 +349,6 @@ const computeProps = (): any => {
 
 	let stroke = `#${useStrokeStore.getState().currentColor}`;
 	let opacity = useOpacityStore.getState().opacity / 100;
-	const layers = useLayersStore.getState().layers;
 	const actions: actions = "none";
 
 	let background = useBgStore.getState().currentColor;
@@ -414,7 +412,6 @@ const computeProps = (): any => {
 			return {
 				stroke,
 				opacity,
-				layers,
 				actions,
 				background,
 				fillStyle,
@@ -428,7 +425,6 @@ const computeProps = (): any => {
 			return {
 				stroke,
 				opacity,
-				layers,
 				actions,
 				background,
 				fillStyle,
@@ -441,7 +437,6 @@ const computeProps = (): any => {
 			return {
 				stroke,
 				opacity,
-				layers,
 				actions,
 				strokeWidth,
 				lineDash,
@@ -454,7 +449,6 @@ const computeProps = (): any => {
 			return {
 				stroke,
 				opacity,
-				layers,
 				actions,
 				strokeWidth,
 				lineDash,
@@ -466,7 +460,6 @@ const computeProps = (): any => {
 			return {
 				stroke,
 				opacity,
-				layers,
 				actions,
 				fontFamily,
 				fontSize,
@@ -474,10 +467,10 @@ const computeProps = (): any => {
 			};
 
 		case "pencil":
-			return { stroke, opacity, layers, actions, strokeWidth };
+			return { stroke, opacity, actions, strokeWidth };
 
 		case "image":
-			return { opacity, edges, layers };
+			return { opacity, edges };
 
 		default:
 			return {};
@@ -541,7 +534,6 @@ useFillStore.subscribe((s) => s.fill, recompute);
 useStrokeStyleStore.subscribe((s) => s.style, recompute);
 useSlopinessStore.subscribe((s) => s.slopiness, recompute);
 useEdgesStore.subscribe((s) => s.edges, recompute);
-useLayersStore.subscribe((s) => s.layers, recompute);
 useFontFamilyStore.subscribe((s) => s.fontFamily, recompute);
 useFontSizeStore.subscribe((s) => s.fontSize, recompute);
 useTextAlignStore.subscribe((s) => s.textAlign, recompute);

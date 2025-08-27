@@ -38,8 +38,7 @@ export default function () {
 				);
 				if (!response.data.success) return;
 				const allRooms = response.data.data;
-				// @ts-ignore
-				const pulledRooms: IRoom[] = allRooms.map((room) => ({
+				const pulledRooms: IRoom[] = allRooms.map((room: IRoom) => ({
 					id: room.id,
 					name: room.name,
 					slug: room.slug,

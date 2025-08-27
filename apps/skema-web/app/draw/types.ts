@@ -18,7 +18,7 @@ export type strokeWidth = "thin" | "normal" | "thick";
 export type strokeStyle = "solid" | "dashed" | "dotted";
 export type slopiness = "architect" | "artist" | "cartoonist";
 export type edges = "sharp" | "round";
-export type layers = "back" | "backward" | "forward" | "front";
+export type layers = "back" | "backward" | "forward" | "front" | "none";
 export type actions = "duplicate" | "delete" | "link" | "none";
 export type fontFamily =
 	| "caveat"

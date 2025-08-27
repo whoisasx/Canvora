@@ -130,6 +130,43 @@ wss.on("connection", (ws, req) => {
 				}
 			}
 		}
+
+		if (parsedData.type === "cursor") {
+			const username = parsedData.username;
+			const pos = parsedData.pos;
+			const roomId = parsedData.roomId;
+
+			for (let u of users) {
+				// don't echo back to sender
+				if (u.ws === ws) continue;
+				if (u.rooms.includes(roomId)) {
+					u.ws.send(
+						JSON.stringify({
+							type: "cursor",
+							username,
+							pos,
+						})
+					);
+				}
+			}
+		}
+
+		if (parsedData.type === "sync-all") {
+			const messages = parsedData.messages;
+			const roomId = parsedData.roomId;
+			for (let u of users) {
+				if (u.rooms.includes(roomId)) {
+					u.ws.send(
+						JSON.stringify({
+							type: "sync",
+							messages,
+							socket: parsedData.socket,
+							flag: parsedData.flag,
+						})
+					);
+				}
+			}
+		}
 	});
 
 	ws.on("close", () => {

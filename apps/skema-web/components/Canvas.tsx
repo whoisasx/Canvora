@@ -10,6 +10,8 @@ import ZoomBar from "./ZoomBar";
 import UndoRedo from "./UndoRedo";
 import { usePropsStore } from "@/utils/propsStore";
 import { useCanvasBgStore, useSelectedMessageStore } from "@/utils/canvasStore";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function Canvas({
 	roomId,
@@ -18,6 +20,7 @@ export default function Canvas({
 	roomId: string;
 	socket: WebSocket;
 }) {
+	const { data: session } = useSession();
 	const background = useCanvasBgStore((state) => state.background);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [game, setGame] = useState<Game>();
@@ -99,6 +102,17 @@ export default function Canvas({
 		}
 	}, [canvasRef]);
 
+	const router = useRouter();
+
+	useEffect(() => {
+		if (!session) {
+			router.push("/dashboard");
+			return;
+		}
+		if (!game) return;
+		game.setUser(session!.user);
+	}, [session, game, router]);
+
 	return (
 		<div className="min-h-screen min-w-screen relative">
 			<canvas
@@ -131,7 +145,7 @@ export default function Canvas({
 					<ZoomBar />
 				</div>
 				<div className="pointer-events-auto">
-					<UndoRedo />
+					<UndoRedo game={game} />
 				</div>
 			</div>
 			{propsSize > 0 && (

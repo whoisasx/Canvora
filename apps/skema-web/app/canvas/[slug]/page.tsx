@@ -22,16 +22,13 @@ export default async function ({ params }: { params: { slug: string } }) {
 		if (!isRoomExist) {
 			console.log("room not exist");
 			redirect("/dashboard");
-			return;
 		}
 		if (!isRoomExist.isActive && isRoomExist.adminId !== user.id) {
 			redirect("/dashboard");
-			return;
 		}
 		roomId = isRoomExist.id;
 	} catch (error) {
 		redirect("/dashboard");
-		return;
 	} finally {
 	}
 

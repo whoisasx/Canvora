@@ -674,7 +674,7 @@ export default function CanvasOpt() {
 												<ButtonProps
 													key={i}
 													children={layersIcon[val]}
-													color={`${val === layers ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
+													// color={`${val === layers ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 													className={`bg-oc-gray-1 dark:bg-[#2e2d29] `}
 													onClick={() => {
 														setLayers(
