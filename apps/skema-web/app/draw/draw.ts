@@ -143,6 +143,8 @@ export class Game {
 	private props: CommonPropsGame = usePropsStore.getState();
 
 	private messages: Message[];
+	private previewMessage: Message[];
+	private previewId = uuidv4();
 	private rc: RoughCanvas | null = null;
 	private generator: RoughGenerator | null = null;
 	private previewSeed: number | null = null;
@@ -199,8 +201,10 @@ export class Game {
 		this.canvas = canvas;
 		this.roomId = roomId;
 		this.ctx = canvas.getContext("2d")!;
+		this.roomId = roomId;
 
 		this.messages = [];
+		this.previewMessage = [];
 		this.layerManager = new LayerManager(this.messages);
 		this.rc = rough.canvas(this.canvas);
 		this.generator = rough.generator();
@@ -399,6 +403,20 @@ export class Game {
 			}
 
 			switch (parsedData.type) {
+				case "draw": {
+					const message = parsedData.message;
+					const isPresent = false;
+					this.previewMessage = this.previewMessage.map((msg) => {
+						if (msg.id === message.id) {
+							return { ...message };
+						}
+						return msg;
+					});
+					if (!isPresent)
+						this.previewMessage.push(message as Message);
+					this.renderCanvas();
+					break;
+				}
 				case "create": {
 					const msg = parsedData.message;
 					if (
@@ -430,6 +448,9 @@ export class Game {
 					}
 					this.messages.push(msg as Message);
 					this.layerManager.setMessages(this.messages);
+					this.previewMessage = this.previewMessage.filter(
+						(msg) => msg.id !== parsedData.previewId
+					);
 					this.renderCanvas();
 					break;
 				}
@@ -587,6 +608,7 @@ export class Game {
 			else if (message.shape === "text") this.drawText(message);
 			else if (message.shape === "image") this.drawImage(message);
 		}
+		if (this.previewMessage.length > 0) this.renderCanvasPreview();
 		if (this.selectedMessage) {
 			this.setProps(this.selectedMessage.shape as Tool);
 			this.setSelectedProps(this.selectedMessage);
@@ -595,6 +617,20 @@ export class Game {
 		}
 		if (this.tool == "laser") this.drawMovingLaser();
 		this.usersCursor();
+	}
+	renderCanvasPreview() {
+		for (const message of this.previewMessage) {
+			if (!message) return;
+
+			if (message.shape === "rectangle") this.drawRect(message);
+			else if (message.shape === "rhombus") this.drawRhombus(message);
+			else if (message.shape === "arc") this.drawEllipse(message);
+			else if (message.shape === "line") this.drawLine(message);
+			else if (message.shape === "arrow") this.drawArrow(message);
+			else if (message.shape === "pencil") this.drawPencil(message);
+			else if (message.shape === "text") this.drawText(message);
+			else if (message.shape === "image") this.drawImage(message);
+		}
 	}
 
 	// --------------------------------------------------------- Events
@@ -805,6 +841,7 @@ export class Game {
 			JSON.stringify({
 				type: "create-message",
 				message,
+				previewId: this.previewId,
 				roomId: this.roomId,
 				clientId: this.user!.id,
 			})
@@ -1012,27 +1049,51 @@ export class Game {
 		this.ctx.restore();
 	}
 	drawMovingRect(w: number, h: number, options: Options) {
+		let shapeData: Drawable | null = null;
 		this.ctx.save();
 
 		this.ctx.globalAlpha = this.props.opacity ?? 1;
 		this.ctx.lineJoin = "round";
 		this.ctx.lineCap = "round";
+		const rect = normalizeCoords(this.startX, this.startY, w, h);
 		if (this.props.edges === "round") {
-			const rect = normalizeCoords(this.startX, this.startY, w, h);
 			const path = createRoundedRectPath(rect.x, rect.y, rect.w, rect.h);
-			const drawable = this.generator!.path(path, {
+			shapeData = this.generator!.path(path, {
 				...options,
 				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
 			});
-			this.rc!.draw(drawable);
 		} else {
-			this.rc!.rectangle(this.startX, this.startY, w, h, {
-				...options,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
+			shapeData = this.generator!.rectangle(
+				this.startX,
+				this.startY,
+				w,
+				h,
+				{
+					...options,
+					seed:
+						this.previewSeed ?? Math.floor(Math.random() * 1000000),
+				}
+			);
 		}
+		this.rc!.draw(shapeData);
 
 		this.ctx.restore();
+		const message: Message = {
+			id: this.previewId,
+			shape: "rectangle" as Tool,
+			opacity: this.props.opacity,
+			edges: this.props.edges,
+			shapeData,
+			boundingBox: rect,
+		};
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
 	}
 	// !rhombus
 	messageRhombus(w: number, h: number): Message {

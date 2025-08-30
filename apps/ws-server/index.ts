@@ -15,10 +15,7 @@ interface User {
 }
 const users: User[] = [];
 
-// server-side persistent state per room
 const messagesByRoom = new Map<string, any[]>();
-
-// operation log entries for undo/redo per room (chronological)
 type Op =
 	| { type: "create"; userId: string; message: any }
 	| { type: "delete"; userId: string; message: any }
@@ -29,11 +26,8 @@ type Op =
 			prevMessage: any;
 			newMessage: any;
 	  };
-// allow storing optional index for create/delete
 type OpWithIndex = Op & { index?: number };
-
 const historyByRoom = new Map<string, Op[]>();
-// redo stacks per room per user: roomId -> (userId -> Op[])
 const redoByRoomUser = new Map<string, Map<string, Op[]>>();
 
 wss.on("connection", (ws, req) => {
@@ -113,6 +107,38 @@ wss.on("connection", (ws, req) => {
 			}
 		}
 
+		if (parsedData.type === "draw-message") {
+			const roomId = parsedData.roomId;
+			const message = parsedData.message;
+			const userId = parsedData.clientId;
+			if (!userId) {
+				try {
+					ws.send(
+						JSON.stringify({
+							type: "error",
+							message: "missing clientId",
+						})
+					);
+				} catch (err) {}
+				return;
+			}
+
+			for (let user of users) {
+				if (user.rooms.includes(roomId)) {
+					try {
+						user.ws.send(
+							JSON.stringify({
+								type: "draw",
+								message,
+							})
+						);
+					} catch (err) {
+						// ignore send errors
+					}
+				}
+			}
+		}
+
 		if (parsedData.type === "create-message") {
 			const message = parsedData.message;
 			const roomId = parsedData.roomId;
@@ -158,6 +184,7 @@ wss.on("connection", (ws, req) => {
 							JSON.stringify({
 								type: "create",
 								message,
+								previewId: parsedData.previewId,
 							})
 						);
 					} catch (err) {
