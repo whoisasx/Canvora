@@ -190,8 +190,6 @@ export class Game {
 
 	socket: WebSocket;
 	//-----------------------
-	private history: Message[][] = [];
-	private redoStack: Message[][] = [];
 	private unsubscribeLayer: () => void;
 	private setLayers: (val: layers) => void;
 	private layerManager: LayerManager;
@@ -275,8 +273,7 @@ export class Game {
 								type: "sync-all",
 								messages: this.layerManager.getMessages(),
 								roomId: this.roomId,
-								flag: "layers",
-								socket: this.socket,
+								clientId: this.user!.id,
 							})
 						);
 					}
@@ -318,6 +315,7 @@ export class Game {
 						username: this.user.username,
 						pos: this.currentPos,
 						roomId: this.roomId,
+						clientId: this.user!.id,
 					})
 				);
 				this.currentPos = null;
@@ -325,41 +323,21 @@ export class Game {
 		}, 2000);
 	}
 
-	private pushHistory() {
-		const snapshot = this.messages.map((m) => ({ ...m }));
-		this.history.push(snapshot);
-		this.redoStack = [];
-	}
 	undo() {
-		if (this.history.length === 0) return;
-		this.redoStack.push(this.messages.map((msg) => ({ ...msg })));
-		const prev = this.history.pop()!;
-		this.messages = prev.map((msg) => ({ ...msg }));
-
 		this.socket.send(
 			JSON.stringify({
-				type: "sync-all",
-				messages: this.messages,
+				type: "undo",
 				roomId: this.roomId,
-				flag: "undo",
-				socket: this.socket,
+				clientId: this.user?.id,
 			})
 		);
 	}
 	redo() {
-		if (this.redoStack.length === 0) return;
-		this.history.push(this.messages.map((m) => ({ ...m })));
-		const next = this.redoStack.pop()!;
-		this.messages = next.map((m) => ({ ...m }));
-		this.renderCanvas();
-
 		this.socket.send(
 			JSON.stringify({
-				type: "sync-all",
-				messages: this.messages,
+				type: "redo",
 				roomId: this.roomId,
-				flag: "redo",
-				socket: this.socket,
+				clientId: this.user?.id,
 			})
 		);
 	}
@@ -378,6 +356,7 @@ export class Game {
 							type: "delete-message",
 							id: this.selectedMessage.id,
 							roomId: this.roomId,
+							clientId: this.user!.id,
 						})
 					);
 				}
@@ -420,7 +399,7 @@ export class Game {
 			}
 
 			switch (parsedData.type) {
-				case "shape": {
+				case "create": {
 					const msg = parsedData.message;
 					if (
 						!msg ||
@@ -793,6 +772,7 @@ export class Game {
 						id: this.selectedMessage!.id,
 						newMessage: this.selectedMessage,
 						roomId: this.roomId,
+						clientId: this.user!.id,
 					})
 				);
 			}
@@ -823,9 +803,10 @@ export class Game {
 		if (!message) return;
 		this.socket.send(
 			JSON.stringify({
-				type: "shape",
+				type: "create-message",
 				message,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 
@@ -1586,9 +1567,10 @@ export class Game {
 
 			this.socket.send(
 				JSON.stringify({
-					type: "shape",
+					type: "create-message",
 					message,
 					roomId: this.roomId,
+					clientId: this.user!.id,
 				})
 			);
 
@@ -1773,7 +1755,7 @@ export class Game {
 
 			this.socket.send(
 				JSON.stringify({
-					type: "shape",
+					type: "create-message",
 					message,
 					roomId,
 				})
@@ -1843,6 +1825,7 @@ export class Game {
 							type: "delete-message",
 							id: message.id,
 							roomId: this.roomId,
+							clientId: this.user!.id,
 						})
 					);
 				}
@@ -1867,6 +1850,7 @@ export class Game {
 								type: "delete-message",
 								id: message.id,
 								roomId: this.roomId,
+								clientId: this.user!.id,
 							})
 						);
 					}
@@ -1885,6 +1869,7 @@ export class Game {
 							type: "delete-message",
 							id: message.id,
 							roomId: this.roomId,
+							clientId: this.user!.id,
 						})
 					);
 					foundMessage = true;
@@ -1933,6 +1918,7 @@ export class Game {
 							type: "delete-message",
 							id: message.id,
 							roomId: this.roomId,
+							clientId: this.user!.id,
 						})
 					);
 					foundMessage = true;
@@ -1981,6 +1967,7 @@ export class Game {
 							type: "delete-message",
 							id: message.id,
 							roomId: this.roomId,
+							clientId: this.user!.id,
 						})
 					);
 					foundMessage = true;
@@ -2003,6 +1990,7 @@ export class Game {
 							type: "delete-message",
 							id: message.id,
 							roomId: this.roomId,
+							clientId: this.user!.id,
 						})
 					);
 					foundMessage = true;
@@ -2871,6 +2859,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -3091,6 +3080,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -3286,6 +3276,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -3511,6 +3502,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -3647,6 +3639,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -3830,6 +3823,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -4027,6 +4021,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
@@ -4173,6 +4168,7 @@ export class Game {
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
+				clientId: this.user!.id,
 			})
 		);
 	}
