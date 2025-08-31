@@ -143,13 +143,22 @@ export class Game {
 	private props: CommonPropsGame = usePropsStore.getState();
 
 	private messages: Message[];
-	private previewMessage: Message[];
-	private previewId = uuidv4();
 	private rc: RoughCanvas | null = null;
 	private generator: RoughGenerator | null = null;
 	private previewSeed: number | null = null;
 	private imageSrc: string | null = null;
 	private imageCache = new Map<string, HTMLImageElement>();
+
+	// add small fields for throttling preview sends
+	private previewMessage: Message[];
+	private previewId: string = "";
+	private lastPreviewSend: number = 0;
+	private lastPreviewRect: {
+		x: number;
+		y: number;
+		w: number;
+		h: number;
+	} | null = null;
 
 	private preSelectedMessage: Message | null = null;
 	private selectedMessage =
@@ -185,6 +194,8 @@ export class Game {
 
 	private cursorInterval: NodeJS.Timeout | null = null;
 	private currentPos: { x: number; y: number } | null = null;
+	private lastCursorPos: { x: number; y: number } | null = null;
+	private lastMoveTs: number = 0;
 	private otherUsers = new Map<
 		string,
 		{ pos: { x: number; y: number }; lastSeen: Number }
@@ -311,20 +322,30 @@ export class Game {
 			useFrontArrowStore.getState().setFrontArrowType;
 		this.setBackArrowHead = useBackArrowStore.getState().setBackArrowType;
 
+		const CURSOR_SEND_MS = 500; // send interval (tune as needed)
+		const IDLE_TIMEOUT_MS = 5000;
+
 		this.cursorInterval = setInterval(() => {
-			if (this.user && this.currentPos) {
+			if (!this.user) return;
+
+			const now = Date.now();
+			if (
+				this.lastCursorPos &&
+				now - this.lastMoveTs <= IDLE_TIMEOUT_MS
+			) {
 				this.socket.send(
 					JSON.stringify({
 						type: "cursor",
 						username: this.user.username,
-						pos: this.currentPos,
+						pos: this.lastCursorPos,
 						roomId: this.roomId,
 						clientId: this.user!.id,
+						ts: now,
 					})
 				);
-				this.currentPos = null;
+				return;
 			}
-		}, 2000);
+		}, CURSOR_SEND_MS);
 	}
 
 	undo() {
@@ -404,21 +425,39 @@ export class Game {
 
 			switch (parsedData.type) {
 				case "draw": {
-					const message = parsedData.message;
-					const isPresent = false;
+					const message = parsedData.message as Message;
+					const senderId = parsedData.clientId as string | undefined;
+
+					if (this.user && senderId && this.user.id === senderId) {
+						return;
+					}
+
+					let updated = false;
 					this.previewMessage = this.previewMessage.map((msg) => {
 						if (msg.id === message.id) {
+							updated = true;
 							return { ...message };
 						}
 						return msg;
 					});
-					if (!isPresent)
-						this.previewMessage.push(message as Message);
+					if (!updated) {
+						this.previewMessage.push(message);
+					}
+
+					this.previewMessage = this.previewMessage.filter(
+						(m, i, arr) => arr.findIndex((x) => x.id === m.id) === i
+					);
+
 					this.renderCanvas();
 					break;
 				}
+
 				case "create": {
-					const msg = parsedData.message;
+					const msg = parsedData.message as Message;
+					const previewId = parsedData.previewId as
+						| string
+						| undefined;
+
 					if (
 						!msg ||
 						typeof msg.id !== "string" ||
@@ -430,7 +469,7 @@ export class Game {
 						);
 						return;
 					}
-					// basic bounding box sanity check if present
+
 					if (msg.boundingBox) {
 						const bb = msg.boundingBox;
 						if (
@@ -446,14 +485,58 @@ export class Game {
 							return;
 						}
 					}
-					this.messages.push(msg as Message);
-					this.layerManager.setMessages(this.messages);
+
+					// avoid duplicates
+					if (!this.messages.find((m) => m.id === msg.id)) {
+						this.messages.push(msg as Message);
+						this.layerManager.setMessages(this.messages);
+					}
+
+					// 1) preferred: clear preview by previewId (if server forwarded it)
+					if (previewId && typeof previewId === "string") {
+						this.previewMessage = this.previewMessage.filter(
+							(pm) => pm.id !== previewId
+						);
+					}
+
+					// 2) defensive: always remove any preview with the same final id (edge cases)
 					this.previewMessage = this.previewMessage.filter(
-						(msg) => msg.id !== parsedData.previewId
+						(pm) => pm.id !== msg.id
 					);
+
+					// 3) fallback: for text shapes, remove previews that match by text content + approx position
+					if (msg.shape === "text" && msg.textData) {
+						this.previewMessage = this.previewMessage.filter(
+							(pm) => {
+								if (pm.shape !== "text" || !pm.textData)
+									return true;
+								const sameText =
+									pm.textData.text === msg.textData!.text;
+								const sameX =
+									Math.abs(
+										pm.textData.pos.x - msg.textData!.pos.x
+									) < 0.0001;
+								const sameY =
+									Math.abs(
+										pm.textData.pos.y - msg.textData!.pos.y
+									) < 0.0001;
+								return !(sameText && sameX && sameY);
+							}
+						);
+					}
+
+					// keep selection in sync
+					if (
+						this.selectedMessage &&
+						this.selectedMessage.id === msg.id
+					) {
+						this.selectedMessage = msg as Message;
+						this.setSelectedMessage(this.selectedMessage);
+					}
 					this.renderCanvas();
 					break;
 				}
+
 				case "delete": {
 					const id = parsedData.id;
 					if (typeof id !== "string") {
@@ -490,6 +573,13 @@ export class Game {
 						}
 						return message;
 					});
+					if (
+						this.selectedMessage &&
+						this.selectedMessage.id === id
+					) {
+						this.selectedMessage = { ...newMessage } as Message;
+						this.setSelectedMessage(this.selectedMessage);
+					}
 					this.layerManager.setMessages(this.messages);
 					this.renderCanvas();
 					break;
@@ -509,6 +599,19 @@ export class Game {
 				case "sync": {
 					this.messages = parsedData.messages;
 					this.layerManager.setMessages(this.messages);
+					// keep selectedMessage in sync with server state (or clear if removed)
+					if (this.selectedMessage) {
+						const found = this.messages.find(
+							(m: Message) => m.id === this.selectedMessage!.id
+						);
+						if (found) {
+							this.selectedMessage = found;
+							+this.setSelectedMessage(found);
+						} else {
+							this.selectedMessage = null;
+							this.setSelectedMessage(null);
+						}
+					}
 					this.renderCanvas();
 					break;
 				}
@@ -673,10 +776,16 @@ export class Game {
 
 			const idleMs = Date.now() - Number(lastSeen);
 			let alpha = 1;
-			if (idleMs > 10000) {
-				const fadeMs = Math.min((idleMs - 10000) / 2000, 1); // fade out in 2s
+			// start fading after 5s idle; full fade over next 2s, clamp minimum alpha
+			const START_FADE_MS = 5000;
+			const FADE_DURATION_MS = 2000;
+			if (idleMs > START_FADE_MS) {
+				const fadeMs = Math.min(
+					(idleMs - START_FADE_MS) / FADE_DURATION_MS,
+					1
+				);
 				alpha = 1 - fadeMs;
-				if (alpha <= 0.4) alpha = 0.4; // fully invisible
+				if (alpha <= 0.2) alpha = 0.2; // keep a small visible hint if desired
 			}
 
 			const screenX = pos.x * this.scale + this.offsetX;
@@ -720,6 +829,10 @@ export class Game {
 		const pos = this.getMousePos(e);
 		this.startX = pos.x;
 		this.startY = pos.y;
+
+		this.previewId = uuidv4();
+		this.lastPreviewSend = 0;
+		this.lastPreviewRect = null;
 
 		if (this.tool === "mouse") {
 			if (this.selectedMessage) {
@@ -867,6 +980,9 @@ export class Game {
 		this.currentPos = pos;
 		const w = pos.x - this.startX;
 		const h = pos.y - this.startY;
+
+		this.lastCursorPos = pos;
+		this.lastMoveTs = Date.now();
 
 		if (this.tool === "mouse" && !this.clicked) {
 			this.selectShapeHover(pos);
@@ -1048,6 +1164,7 @@ export class Game {
 
 		this.ctx.restore();
 	}
+	// ...existing code...
 	drawMovingRect(w: number, h: number, options: Options) {
 		let shapeData: Drawable | null = null;
 		this.ctx.save();
@@ -1078,6 +1195,23 @@ export class Game {
 		this.rc!.draw(shapeData);
 
 		this.ctx.restore();
+
+		// --- throttle & skip identical rects to avoid flooding ---
+		const now = Date.now();
+		const THROTTLE_MS = 100; // tune as needed (100ms is reasonable)
+		if (
+			this.lastPreviewRect &&
+			this.lastPreviewRect.x === rect.x &&
+			this.lastPreviewRect.y === rect.y &&
+			this.lastPreviewRect.w === rect.w &&
+			this.lastPreviewRect.h === rect.h &&
+			now - this.lastPreviewSend < THROTTLE_MS
+		) {
+			return;
+		}
+		this.lastPreviewSend = now;
+		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+
 		const message: Message = {
 			id: this.previewId,
 			shape: "rectangle" as Tool,
@@ -1163,6 +1297,40 @@ export class Game {
 		this.rc!.draw(drawable);
 
 		this.ctx.restore();
+
+		// --- throttle & skip identical rhombus to avoid flooding ---
+		const now = Date.now();
+		const THROTTLE_MS = 100;
+		if (
+			this.lastPreviewRect &&
+			this.lastPreviewRect.x === rect.x &&
+			this.lastPreviewRect.y === rect.y &&
+			this.lastPreviewRect.w === rect.w &&
+			this.lastPreviewRect.h === rect.h &&
+			now - this.lastPreviewSend < THROTTLE_MS
+		) {
+			return;
+		}
+		this.lastPreviewSend = now;
+		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+
+		const message: Message = {
+			id: this.previewId,
+			shape: "rhombus" as Tool,
+			opacity: this.props.opacity,
+			edges: this.props.edges,
+			shapeData: drawable,
+			boundingBox: rect,
+		};
+
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
 	}
 	// !ellipse
 	messageEllipse(w: number, h: number): Message {
@@ -1212,6 +1380,39 @@ export class Game {
 		this.rc!.draw(drawable);
 
 		this.ctx.restore();
+
+		// --- throttle & skip identical ellipses to avoid flooding ---
+		const now = Date.now();
+		const THROTTLE_MS = 100;
+		if (
+			this.lastPreviewRect &&
+			this.lastPreviewRect.x === rect.x &&
+			this.lastPreviewRect.y === rect.y &&
+			this.lastPreviewRect.w === rect.w &&
+			this.lastPreviewRect.h === rect.h &&
+			now - this.lastPreviewSend < THROTTLE_MS
+		) {
+			return;
+		}
+		this.lastPreviewSend = now;
+		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+
+		const message: Message = {
+			id: this.previewId,
+			shape: "arc" as Tool,
+			opacity: this.props.opacity,
+			shapeData: drawable,
+			boundingBox: rect,
+		};
+
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
 	}
 	// !line
 	messageLine(w: number, h: number): Message {
@@ -1260,9 +1461,10 @@ export class Game {
 		this.ctx.save();
 
 		this.ctx.globalAlpha = this.props.opacity ?? 1;
-		// const rect = normalizeCoords(this.startX, this.startY, w, h);
 		const x2 = this.startX + w;
 		const y2 = this.startY + h;
+
+		// draw locally
 		const path = createLinePath(this.startX, this.startY, x2, y2);
 		const drawable = this.generator!.path(path, {
 			...options,
@@ -1271,6 +1473,49 @@ export class Game {
 		this.rc!.draw(drawable);
 
 		this.ctx.restore();
+
+		// bounding box for throttling / preview
+		const rect = normalizeCoords(this.startX, this.startY, w, h);
+
+		// --- throttle & skip identical lines to avoid flooding ---
+		const now = Date.now();
+		const THROTTLE_MS = 100;
+		if (
+			this.lastPreviewRect &&
+			this.lastPreviewRect.x === rect.x &&
+			this.lastPreviewRect.y === rect.y &&
+			this.lastPreviewRect.w === rect.w &&
+			this.lastPreviewRect.h === rect.h &&
+			now - this.lastPreviewSend < THROTTLE_MS
+		) {
+			return;
+		}
+		this.lastPreviewSend = now;
+		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+
+		const message: Message = {
+			id: this.previewId,
+			shape: "line" as Tool,
+			opacity: this.props.opacity,
+			edges: this.props.edges,
+			shapeData: drawable,
+			boundingBox: {
+				x: rect.x,
+				y: rect.y,
+				w: rect.w,
+				h: rect.h,
+			},
+			lineData: { x1: this.startX, y1: this.startY, x2, y2 },
+		};
+
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
 	}
 	// !arrow
 	messageArrow(w: number, h: number): Message {
@@ -1375,12 +1620,16 @@ export class Game {
 			arrow_type!
 		);
 
+		// build drawables (and collect them for preview message)
+		const drawables: Drawable[] = [];
+
 		if (linePath) {
 			const lineDrawable = this.generator!.path(linePath, {
 				...options,
 				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
 			});
 			this.rc!.draw(lineDrawable);
+			drawables.push(lineDrawable);
 		}
 		if (frontHeadPath) {
 			const headDrawable = this.generator!.path(frontHeadPath, {
@@ -1390,6 +1639,7 @@ export class Game {
 				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
 			});
 			this.rc!.draw(headDrawable);
+			drawables.push(headDrawable);
 		}
 		if (backHeadPath) {
 			const headDrawable = this.generator!.path(backHeadPath, {
@@ -1399,9 +1649,54 @@ export class Game {
 				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
 			});
 			this.rc!.draw(headDrawable);
+			drawables.push(headDrawable);
 		}
 
 		this.ctx.restore();
+
+		// bounding box for throttling / preview
+		const rect = normalizeCoords(
+			this.startX,
+			this.startY,
+			x2 - this.startX,
+			y2 - this.startY
+		);
+
+		// --- throttle & skip identical arrows to avoid flooding ---
+		const now = Date.now();
+		const THROTTLE_MS = 100;
+		if (
+			this.lastPreviewRect &&
+			this.lastPreviewRect.x === rect.x &&
+			this.lastPreviewRect.y === rect.y &&
+			this.lastPreviewRect.w === rect.w &&
+			this.lastPreviewRect.h === rect.h &&
+			now - this.lastPreviewSend < THROTTLE_MS
+		) {
+			return;
+		}
+		this.lastPreviewSend = now;
+		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+
+		const message: Message = {
+			id: this.previewId,
+			shape: "arrow" as Tool,
+			opacity: this.props.opacity,
+			arrowHead: this.props.arrowHead,
+			arrowType: this.props.arrowType,
+			shapeData: drawables,
+			boundingBox: rect,
+			lineData: { x1: this.startX, y1: this.startY, x2, y2 },
+		};
+
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
 	}
 	// !pencil
 	messagePencil(): Message {
@@ -1462,7 +1757,10 @@ export class Game {
 	drawMovingPencil(options: Options) {
 		this.ctx.save();
 
-		if (this.pencilPoints.length < 1) return;
+		if (this.pencilPoints.length < 1) {
+			this.ctx.restore();
+			return;
+		}
 		const path = createPencilPath(this.pencilPoints);
 		const drawable = this.generator!.path(path, {
 			...options,
@@ -1474,8 +1772,62 @@ export class Game {
 		this.rc!.draw(drawable);
 
 		this.ctx.restore();
+
+		// compute bounding box for the current pencil points
+		let minx = Number.MAX_VALUE,
+			miny = Number.MAX_VALUE;
+		let maxx = Number.MIN_VALUE,
+			maxy = Number.MIN_VALUE;
+		for (const p of this.pencilPoints) {
+			minx = Math.min(minx, p.x);
+			miny = Math.min(miny, p.y);
+			maxx = Math.max(maxx, p.x);
+			maxy = Math.max(maxy, p.y);
+		}
+		const rect = {
+			x: minx,
+			y: miny,
+			w: Math.max(0, maxx - minx),
+			h: Math.max(0, maxy - miny),
+		};
+
+		// --- throttle & skip identical pencil previews to avoid flooding ---
+		const now = Date.now();
+		const THROTTLE_MS = 100;
+		if (
+			this.lastPreviewRect &&
+			this.lastPreviewRect.x === rect.x &&
+			this.lastPreviewRect.y === rect.y &&
+			this.lastPreviewRect.w === rect.w &&
+			this.lastPreviewRect.h === rect.h &&
+			now - this.lastPreviewSend < THROTTLE_MS
+		) {
+			return;
+		}
+		this.lastPreviewSend = now;
+		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+
+		const message: Message = {
+			id: this.previewId,
+			shape: "pencil" as Tool,
+			opacity: this.props.opacity,
+			shapeData: drawable,
+			boundingBox: rect,
+			pencilPoints: this.pencilPoints.slice(),
+		};
+
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
 	}
 	// !text
+	// ...existing code...
+	// ...existing code...
 	handleTextInput(e: PointerEvent) {
 		e.preventDefault();
 		const pos = this.getMousePos(e);
@@ -1497,7 +1849,7 @@ export class Game {
 			textarea.style.fontFamily = monospace.style.fontFamily;
 		if (this.props.fontFamily === "nunito")
 			textarea.style.fontFamily = nunito.style.fontFamily;
-		textarea.style.fontSize = `${this.props.fontSize! * this.scale}px`; //16,24,32,48
+		textarea.style.fontSize = `${this.props.fontSize! * this.scale}px`;
 		textarea.style.color = this.props.stroke!;
 		const fontWeightMap: Record<number, string> = {
 			16: "400",
@@ -1539,6 +1891,8 @@ export class Game {
 		let span: HTMLSpanElement | null = null;
 		let width = 0;
 		let height = 0;
+		const THROTTLE_MS = 100;
+
 		const resize = () => {
 			if (this.tool === "mouse") return;
 			const lineHeight = Math.round(this.props.fontSize! * 1.2);
@@ -1560,10 +1914,9 @@ export class Game {
 				padding: textarea.style.padding,
 				fontWeight: textarea.style.fontWeight,
 			});
-			span.textContent = textarea.value || " "; // avoid zero width
+			span.textContent = textarea.value || " ";
 			document.body.appendChild(span);
 
-			// width adjust
 			textarea.style.width = "auto";
 			const newWidth = Math.max(span.offsetWidth + 2, 20);
 			width = newWidth;
@@ -1575,6 +1928,78 @@ export class Game {
 			height = newHeight;
 
 			document.body.removeChild(span);
+		};
+
+		const sendPreview = () => {
+			// do not render this client's preview locally; only send to server so other clients see it
+			const tempValue = textarea.value;
+			const totalLines = (tempValue || "").split("\n").length;
+
+			// convert measured dimensions back to world coords
+			const bboxWidthWorld = width / this.scale;
+			const bboxHeightWorld = Math.max(
+				(height || totalLines * this.props.fontSize! * this.scale) /
+					this.scale,
+				this.props.fontSize!
+			);
+
+			const rect = {
+				x: pos.x,
+				y: pos.y,
+				w: bboxWidthWorld,
+				h: bboxHeightWorld,
+			};
+
+			// throttle & skip identical rects
+			const now = Date.now();
+			if (
+				this.lastPreviewRect &&
+				this.lastPreviewRect.x === rect.x &&
+				this.lastPreviewRect.y === rect.y &&
+				this.lastPreviewRect.w === rect.w &&
+				this.lastPreviewRect.h === rect.h &&
+				now - this.lastPreviewSend < THROTTLE_MS
+			) {
+				return;
+			}
+			this.lastPreviewSend = now;
+			this.lastPreviewRect = {
+				x: rect.x,
+				y: rect.y,
+				w: rect.w,
+				h: rect.h,
+			};
+
+			// lightweight dummy for shapeData
+			const dummyShapeData = { options: {} } as unknown as Drawable;
+
+			const message: Message = {
+				id: this.previewId,
+				shape: "text" as Tool,
+				shapeData: dummyShapeData,
+				opacity: this.props.opacity,
+				textData: {
+					text: textarea.value,
+					fontFamily: this.props.fontFamily!,
+					fontSize: `${this.props.fontSize}px`,
+					textColor: this.props.stroke!,
+					textAlign: this.props.textAlign!,
+					pos,
+				},
+				boundingBox: rect,
+			};
+
+			// NOTE: do NOT push this preview into this.previewMessage for the local user.
+			// Other clients will receive the preview via the socket and render it.
+			this.socket.send(
+				JSON.stringify({
+					type: "draw-message",
+					flag: "text-preview",
+					message,
+					roomId: this.roomId,
+					clientId: this.user!.id,
+				})
+			);
 		};
 
 		let messageSend: boolean = false;
@@ -1589,20 +2014,17 @@ export class Game {
 				return;
 			}
 
-			const dummyPath = `M${pos.x},${pos.y} L${pos.x + 1},${pos.y}`;
-			const dummyShapeData = this.generator!.path(dummyPath, {});
-
 			const tempValue = textarea.value.trim();
 			const totalLines = tempValue.split("\n").length;
 			// Convert measurements taken in screen pixels back to world coordinates
-			// width and height were measured from a hidden span at scaled font size
-			// convert measured dimensions (screen pixels) back to world coordinates
 			const bboxWidthWorld = width / this.scale;
 			const bboxHeightWorld = Math.max(
 				(height || totalLines * this.props.fontSize! * this.scale) /
 					this.scale,
 				this.props.fontSize!
 			);
+
+			const dummyShapeData = { options: {} } as unknown as Drawable;
 
 			const message: Message = {
 				id: uuidv4(),
@@ -1617,7 +2039,6 @@ export class Game {
 					textAlign: this.props.textAlign!,
 					pos,
 				},
-				// store bounding box in world coordinates so hit testing and rendering align
 				boundingBox: {
 					x: pos.x,
 					y: pos.y,
@@ -1626,15 +2047,18 @@ export class Game {
 				},
 			};
 
+			// include previewId so server can clear previews for other clients
 			this.socket.send(
 				JSON.stringify({
 					type: "create-message",
 					message,
+					previewId: this.previewId,
 					roomId: this.roomId,
 					clientId: this.user!.id,
 				})
 			);
 
+			// local preview wasn't added, so just clean up UI
 			if (textarea.parentNode) textarea.remove();
 			this.setTool("mouse" as Tool);
 			this.setProps("mouse" as Tool);
@@ -1642,10 +2066,15 @@ export class Game {
 			return;
 		};
 
+		// initial sizing + initial preview
+		resize();
+		sendPreview();
+
 		textarea.addEventListener("blur", () => {
 			if (textarea.value.trim() !== "") messageText();
 			else {
 				if (textarea.parentNode) textarea.remove();
+				// no local preview to clear; server/other clients will handle any remote preview cleanup when a create arrives
 				this.setTool("mouse" as Tool);
 				this.setProps("mouse" as Tool);
 			}
@@ -1656,9 +2085,14 @@ export class Game {
 				messageText();
 				return;
 			}
+			// on other keys, update size and send preview
 			resize();
+			sendPreview();
 		});
-		textarea.addEventListener("input", resize);
+		textarea.addEventListener("input", () => {
+			resize();
+			sendPreview();
+		});
 
 		textarea.focus();
 	}
@@ -2730,16 +3164,25 @@ export class Game {
 			boundingBox: newBB,
 		};
 
-		this.messages = this.messages.map((msg) => {
-			if (msg.id === message.id) {
-				return {
-					...newMessage,
-				};
-			}
-			return msg;
-		});
+		// this.messages = this.messages.map((msg) => {
+		// 	if (msg.id === message.id) {
+		// 		return {
+		// 			...newMessage,
+		// 		};
+		// 	}
+		// 	return msg;
+		// });
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleRectangleResize(message: Message, pos: { x: number; y: number }) {
 		if (Array.isArray(message.shapeData)) return;
@@ -2869,16 +3312,25 @@ export class Game {
 			boundingBox: newBB,
 		};
 
-		this.messages = this.messages.map((msg) => {
-			if (msg.id === message.id) {
-				return {
-					...newMessage,
-				};
-			}
-			return msg;
-		});
+		// this.messages = this.messages.map((msg) => {
+		// 	if (msg.id === message.id) {
+		// 		return {
+		// 			...newMessage,
+		// 		};
+		// 	}
+		// 	return msg;
+		// });
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleRectanglePropsChange(message: Message) {
 		const rect = message.boundingBox;

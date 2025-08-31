@@ -126,10 +126,17 @@ wss.on("connection", (ws, req) => {
 			for (let user of users) {
 				if (user.rooms.includes(roomId)) {
 					try {
+						if (
+							(parsedData.flag === "text-preview" ||
+								parsedData.flag === "cursor-preview") &&
+							user.ws === ws
+						)
+							continue;
 						user.ws.send(
 							JSON.stringify({
 								type: "draw",
 								message,
+								username: parsedData.username ?? undefined,
 							})
 						);
 					} catch (err) {
@@ -329,18 +336,6 @@ wss.on("connection", (ws, req) => {
 		if (parsedData.type === "sync-all") {
 			const messages = parsedData.messages;
 			const roomId = parsedData.roomId;
-			// // persist incoming authoritative state and snapshot for undo
-			// if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			// const roomMsgs = messagesByRoom.get(roomId)!;
-			// const hist = historyByRoom.get(roomId) || [];
-			// hist.push(JSON.parse(JSON.stringify(roomMsgs)));
-			// historyByRoom.set(roomId, hist);
-			// // clear redo stack on new operation
-			// redoByRoom.set(roomId, []);
-			// messagesByRoom.set(
-			// 	roomId,
-			// 	JSON.parse(JSON.stringify(messages || []))
-			// );
 
 			for (let u of users) {
 				if (u.rooms.includes(roomId)) {
