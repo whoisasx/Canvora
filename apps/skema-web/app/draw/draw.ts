@@ -719,6 +719,7 @@ export class Game {
 			this.preSelectedMessage = null;
 		}
 		if (this.tool == "laser") this.drawMovingLaser();
+
 		this.usersCursor();
 	}
 	renderCanvasPreview() {

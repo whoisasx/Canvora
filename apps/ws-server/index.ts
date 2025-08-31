@@ -127,8 +127,7 @@ wss.on("connection", (ws, req) => {
 				if (user.rooms.includes(roomId)) {
 					try {
 						if (
-							(parsedData.flag === "text-preview" ||
-								parsedData.flag === "cursor-preview") &&
+							parsedData.flag === "text-preview" &&
 							user.ws === ws
 						)
 							continue;
@@ -136,7 +135,6 @@ wss.on("connection", (ws, req) => {
 							JSON.stringify({
 								type: "draw",
 								message,
-								username: parsedData.username ?? undefined,
 							})
 						);
 					} catch (err) {
