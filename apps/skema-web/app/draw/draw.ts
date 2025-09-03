@@ -407,6 +407,74 @@ export class Game {
 				e.preventDefault();
 				this.redo();
 			}
+			if (
+				this.tool !== "text" &&
+				!(
+					document.activeElement instanceof HTMLTextAreaElement ||
+					document.activeElement instanceof HTMLInputElement ||
+					(document.activeElement instanceof HTMLElement &&
+						document.activeElement.isContentEditable)
+				)
+			) {
+				if (e.key === "1") {
+					this.setTool("mouse" as Tool);
+					this.setProps("mouse" as Tool);
+				}
+				if (e.key === "2") {
+					this.setTool("rectangle" as Tool);
+					this.setProps("rectangle" as Tool);
+				}
+				//3.rhombus
+				if (e.key === "3") {
+					this.setTool("rhombus" as Tool);
+					this.setProps("rhombus" as Tool);
+				}
+				//4.arc
+				if (e.key === "4") {
+					this.setTool("arc" as Tool);
+					this.setProps("arc" as Tool);
+				}
+				//5.arrow
+				if (e.key === "5") {
+					this.setTool("arrow" as Tool);
+					this.setProps("arrow" as Tool);
+				}
+				//6.line
+				if (e.key === "6") {
+					this.setTool("line" as Tool);
+					this.setProps("line" as Tool);
+				}
+				//7.pencil
+				if (e.key === "7") {
+					this.setTool("pencil" as Tool);
+					this.setProps("pencil" as Tool);
+				}
+				//8.text
+				if (e.key === "8") {
+					this.setTool("text" as Tool);
+					this.setProps("text" as Tool);
+				}
+				//9.image
+				if (e.key === "9") {
+					this.setTool("image" as Tool);
+					this.setProps("image" as Tool);
+				}
+				//0.eraser
+				if (e.key === "0") {
+					this.setTool("eraser" as Tool);
+					this.setProps("eraser" as Tool);
+				}
+				//W.web (map to hand/pan)
+				if (e.key.toLowerCase() === "w") {
+					this.setTool("web" as Tool);
+					this.setProps("web" as Tool);
+				}
+				//L.laser
+				if (e.key.toLowerCase() === "l") {
+					this.setTool("laser" as Tool);
+					this.setProps("laser" as Tool);
+				}
+			}
 		});
 	}
 	initSocketHandler() {
@@ -549,6 +617,12 @@ export class Game {
 					this.messages = this.messages.filter(
 						(message) => id !== message.id
 					);
+					if (
+						this.selectedMessage &&
+						this.selectedMessage.id === id
+					) {
+						this.selectedMessage = null;
+					}
 					this.layerManager.setMessages(this.messages);
 					this.renderCanvas();
 					break;
@@ -1165,7 +1239,6 @@ export class Game {
 
 		this.ctx.restore();
 	}
-	// ...existing code...
 	drawMovingRect(w: number, h: number, options: Options) {
 		let shapeData: Drawable | null = null;
 		this.ctx.save();
@@ -1827,8 +1900,6 @@ export class Game {
 		);
 	}
 	// !text
-	// ...existing code...
-	// ...existing code...
 	handleTextInput(e: PointerEvent) {
 		e.preventDefault();
 		const pos = this.getMousePos(e);
@@ -2254,6 +2325,8 @@ export class Game {
 					type: "create-message",
 					message,
 					roomId,
+					clientId: this.user!.id,
+					previewId: this.previewId,
 				})
 			);
 
@@ -3177,6 +3250,7 @@ export class Game {
 		this.socket.send(
 			JSON.stringify({
 				type: "update-message",
+				flag: "update-preview",
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
@@ -3325,6 +3399,7 @@ export class Game {
 		this.socket.send(
 			JSON.stringify({
 				type: "update-message",
+				flag: "update-preview",
 				id: newMessage.id,
 				newMessage,
 				roomId: this.roomId,
@@ -3425,7 +3500,17 @@ export class Game {
 		);
 
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleRhombusResize(message: Message, pos: { x: number; y: number }) {
 		if (Array.isArray(message.shapeData)) return;
@@ -3544,11 +3629,21 @@ export class Game {
 			boundingBox: newBB,
 		};
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? { ...newMessage } : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleRhombusPropsChange(message: Message) {
 		if (Array.isArray(message.shapeData)) return;
@@ -3580,12 +3675,12 @@ export class Game {
 		};
 
 		// update in messages list
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? { ...newMessage } : msg
+		// );
 
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		// this.renderCanvas();
 
 		// optionally send to server if you want live prop updates
 		this.socket.send(
@@ -3638,11 +3733,21 @@ export class Game {
 			boundingBox: newRect,
 		};
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? { ...newMessage } : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleEllipseResize(message: Message, pos: { x: number; y: number }) {
 		if (Array.isArray(message.shapeData)) return;
@@ -3751,11 +3856,21 @@ export class Game {
 			boundingBox: normalRect,
 		};
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? { ...newMessage } : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleEllipsePropsChange(message: Message) {
 		if (Array.isArray(message.shapeData)) return;
@@ -3777,11 +3892,11 @@ export class Game {
 			boundingBox: rect,
 		};
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? { ...newMessage } : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		// this.renderCanvas();
 
 		// send to server if you want real-time sync
 		this.socket.send(
@@ -3862,11 +3977,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleArrowResize(message: Message, pos: { x: number; y: number }) {
 		if (!message.lineData) return;
@@ -3935,11 +4060,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleArrowPropsChange(message: Message) {
 		if (!message.lineData) return;
@@ -4066,11 +4201,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleLineResize(message: Message, pos: { x: number; y: number }) {
 		if (!message.lineData) return;
@@ -4116,11 +4261,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleLinePropsChange(message: Message) {
 		if (!message.lineData) return;
@@ -4210,11 +4365,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handlePencilResize(message: Message, pos: { x: number; y: number }) {
 		if (!message.pencilPoints) return;
@@ -4224,24 +4389,57 @@ export class Game {
 		const rect = message.boundingBox!;
 		const { x, y, w, h } = rect;
 
-		// scale factors
-		let scaleX = 1,
-			scaleY = 1;
+		let anchorX = x;
+		let anchorY = y;
+		let newWidth = w;
+		let newHeight = h;
 
-		if (this.resizeHandler === "se") {
-			scaleX = (pos.x - x) / w;
-			scaleY = (pos.y - y) / h;
-		} else if (this.resizeHandler === "nw") {
-			scaleX = (rect.x + rect.w - pos.x) / w;
-			scaleY = (rect.y + rect.h - pos.y) / h;
+		switch (this.resizeHandler) {
+			case "se": // dragging bottom-right
+				anchorX = x; // anchor = top-left
+				anchorY = y;
+				newWidth = Math.max(1, pos.x - x);
+				newHeight = Math.max(1, pos.y - y);
+				break;
+
+			case "nw": // dragging top-left
+				anchorX = x + w; // anchor = bottom-right
+				anchorY = y + h;
+				newWidth = Math.max(1, anchorX - pos.x);
+				newHeight = Math.max(1, anchorY - pos.y);
+				break;
+
+			case "ne": // dragging top-right
+				anchorX = x; // anchor = bottom-left
+				anchorY = y + h;
+				newWidth = Math.max(1, pos.x - x);
+				newHeight = Math.max(1, anchorY - pos.y);
+				break;
+
+			case "sw": // dragging bottom-left
+				anchorX = x + w; // anchor = top-right
+				anchorY = y;
+				newWidth = Math.max(1, anchorX - pos.x);
+				newHeight = Math.max(1, pos.y - y);
+				break;
+
+			default:
+				return;
 		}
 
-		// scale points relative to top-left
+		// avoid divide-by-zero
+		if (w === 0 || h === 0) return;
+
+		const scaleX = newWidth / w;
+		const scaleY = newHeight / h;
+
+		// scale all pencil points relative to anchor
 		const newPoints = message.pencilPoints.map((p) => ({
-			x: x + (p.x - x) * scaleX,
-			y: y + (p.y - y) * scaleY,
+			x: anchorX + (p.x - anchorX) * scaleX,
+			y: anchorY + (p.y - anchorY) * scaleY,
 		}));
 
+		// re-generate shape path
 		const path = createPencilPath(newPoints);
 		const options = roughOptions(this.props);
 
@@ -4253,18 +4451,17 @@ export class Game {
 			seed: message.shapeData.options.seed,
 		});
 
+		// recalc bounding box
 		let minx = Number.MAX_VALUE,
 			miny = Number.MAX_VALUE;
-		let maxx = Number.MIN_VALUE, // ✅ fix
-			maxy = Number.MIN_VALUE; // ✅ fix
+		let maxx = Number.MIN_VALUE,
+			maxy = Number.MIN_VALUE;
 
 		for (let point of newPoints) {
-			let x = point.x,
-				y = point.y;
-			minx = Math.min(minx, x);
-			maxx = Math.max(maxx, x);
-			miny = Math.min(miny, y);
-			maxy = Math.max(maxy, y);
+			minx = Math.min(minx, point.x);
+			maxx = Math.max(maxx, point.x);
+			miny = Math.min(miny, point.y);
+			maxy = Math.max(maxy, point.y);
 		}
 
 		const newMessage: Message = {
@@ -4282,11 +4479,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handlePencilPropsChange(message: Message) {
 		if (!message.pencilPoints) return;
@@ -4368,11 +4575,21 @@ export class Game {
 		};
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleTextResize(message: Message, pos: { x: number; y: number }) {
 		if (!message.boundingBox || !message.textData) return;
@@ -4442,11 +4659,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleTextPropsChange(message: Message) {
 		if (!message.boundingBox || !message.textData) return;
@@ -4522,12 +4749,12 @@ export class Game {
 		};
 
 		// update in messages list so render/diffs use the new value
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? { ...newMessage } : msg
+		// );
 
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		// this.renderCanvas();
 
 		this.socket.send(
 			JSON.stringify({
@@ -4560,11 +4787,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleImageResize(message: Message, pos: { x: number; y: number }) {
 		if (!message.boundingBox) return;
@@ -4659,11 +4896,21 @@ export class Game {
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? newMessage : msg
-		);
+		// this.messages = this.messages.map((msg) =>
+		// 	msg.id === message.id ? newMessage : msg
+		// );
 		this.setSelectedMessage(newMessage);
-		this.renderCanvas();
+		this.socket.send(
+			JSON.stringify({
+				type: "update-message",
+				flag: "update-preview",
+				id: newMessage.id,
+				newMessage,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+		// this.renderCanvas();
 	}
 	handleImagePropsChange(message: Message) {
 		if (!message.boundingBox) return;

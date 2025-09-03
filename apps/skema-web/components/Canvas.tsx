@@ -126,13 +126,13 @@ export default function Canvas({
 			/>
 
 			<div
-				className={`w-full px-3 absolute top-4 flex items-center justify-between pointer-events-none z-60`}
+				className={`w-full px-4 absolute top-3 flex items-center justify-between pointer-events-none z-60`}
 			>
 				<div className="pointer-events-auto rounded-lg z-50">
 					<ActionCard />
 				</div>
 				<div className="pointer-events-auto">
-					<div className="w-xl h-12 border border-gray-300 rounded-lg shadow-md z-40 bg-white dark:bg-[#232329]">
+					<div className="w-xl h-12 border border-gray-200 dark:border-0 rounded-lg shadow-md z-40 bg-white dark:bg-[#232329]">
 						<CanvasTool />
 					</div>
 				</div>
@@ -149,7 +149,7 @@ export default function Canvas({
 				</div>
 			</div>
 			{propsSize > 0 && (
-				<div className="w-60 max-h-[70vh] overflow-auto border border-gray-300 fixed top-20 left-3 rounded-lg shadow-xl z-40 flex flex-col custom-scrollbar dark:custom-scrollbar bg-oc-white dark:bg-[#232329]">
+				<div className="w-50 max-h-[70vh] overflow-auto border border-gray-200 dark:border-0 fixed top-20 left-3 rounded-lg shadow-xl z-40 flex flex-col custom-scrollbar dark:custom-scrollbar bg-oc-white dark:bg-[#232329]">
 					<CanvasOpt />
 				</div>
 			)}

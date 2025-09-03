@@ -50,7 +50,7 @@ export default function CanvasTool() {
 	return (
 		<div
 			ref={containerRef}
-			className="w-full h-full flex items-center justify-between py-1.5 px-2 gap-2 relative"
+			className="w-full h-full flex items-center justify-between py-2 px-1 gap-1 relative"
 		>
 			<ButtonTool
 				children={toolsIcon["lock"]}
@@ -61,7 +61,7 @@ export default function CanvasTool() {
 					else setLock(theme === "light" ? "b197fc" : "7950f2");
 				}}
 			/>
-			<div className="h-[70%] border-r-1 border-r-gray-300 dark:border-gray-600"></div>
+			<div className="h-[70%] border-r-1 border-r-gray-200 dark:border-gray-600"></div>
 			{[
 				"hand",
 				"mouse",
@@ -87,7 +87,7 @@ export default function CanvasTool() {
 					}}
 				/>
 			))}
-			<div className="h-[70%] border-r-1 border-r-gray-300 dark:border-gray-600"></div>
+			<div className="h-[70%] border-r-1 border-r-gray-200 dark:border-gray-600"></div>
 			<ButtonTool
 				children={toolsIcon["options"]}
 				color={`${tool === "web" || tool === "laser" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
@@ -98,11 +98,11 @@ export default function CanvasTool() {
 			/>
 			{optionsClicked && (
 				<div
-					className="w-50 h-fit py-2 px-2 border-1 border-gray-300 rounded-lg shadow-lg absolute top-[115%] right-0 z-40 flex flex-col gap-2 justify-center items-start bg-white dark:bg-[#232329]"
+					className="w-50 h-fit py-2 px-2 border-1 border-gray-200 dark:border-0 rounded-lg shadow-lg absolute top-[115%] right-0 z-40 flex flex-col gap-1 justify-center items-start bg-white dark:bg-[#232329]"
 					aria-expanded={optionsClicked}
 				>
 					<ButtonAction
-						children={"W"}
+						children={toolsIcon["web"]}
 						color={`${tool === "web" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 						onClick={() => {
 							setTool("web");
@@ -111,7 +111,7 @@ export default function CanvasTool() {
 						}}
 					/>
 					<ButtonAction
-						children={"Ls"}
+						children={toolsIcon["laser"]}
 						color={`${tool === "laser" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 						onClick={() => {
 							setTool("laser");

@@ -77,7 +77,7 @@ export function createRhombusPath(
 	w: number,
 	h: number,
 	round: boolean,
-	ratio = 0.18
+	ratio = 0.1
 ) {
 	if (!round) {
 		return `

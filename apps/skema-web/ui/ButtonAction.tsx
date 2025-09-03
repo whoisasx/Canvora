@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 interface IButtonAction {
 	children: ReactNode;
-	onClick: () => void;
+	onClick?: () => void;
 	color?: string;
 }
 
@@ -13,7 +13,7 @@ export default function ButtonAction({
 }: IButtonAction) {
 	return (
 		<button
-			className="w-full h-10 rounded-lg hover:bg-oc-violet-1 cursor-pointer dark:hover:bg-oc-gray-8"
+			className="w-full h-8 rounded-lg hover:bg-oc-violet-1 cursor-pointer dark:hover:bg-oc-gray-8"
 			onClick={onClick}
 			style={{
 				backgroundColor: color

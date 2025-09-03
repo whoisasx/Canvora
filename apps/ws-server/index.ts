@@ -268,26 +268,28 @@ wss.on("connection", (ws, req) => {
 				} catch (err) {}
 				return;
 			}
-			if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			const roomMsgs = messagesByRoom.get(roomId)!;
-			const idx = roomMsgs.findIndex((m: any) => m.id === id);
-			if (idx !== -1) {
-				const prev = JSON.parse(JSON.stringify(roomMsgs[idx]));
-				roomMsgs[idx] = newMessage;
-				const hist = historyByRoom.get(roomId)!;
-				const op: OpWithIndex = {
-					type: "update",
-					userId,
-					id,
-					prevMessage: prev,
-					newMessage,
-				} as OpWithIndex;
-				hist.push(op);
-				historyByRoom.set(roomId, hist);
+			if (!parsedData.flag || parsedData.flag !== "update-preview") {
+				if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
+				const roomMsgs = messagesByRoom.get(roomId)!;
+				const idx = roomMsgs.findIndex((m: any) => m.id === id);
+				if (idx !== -1) {
+					const prev = JSON.parse(JSON.stringify(roomMsgs[idx]));
+					roomMsgs[idx] = newMessage;
+					const hist = historyByRoom.get(roomId)!;
+					const op: OpWithIndex = {
+						type: "update",
+						userId,
+						id,
+						prevMessage: prev,
+						newMessage,
+					} as OpWithIndex;
+					hist.push(op);
+					historyByRoom.set(roomId, hist);
 
-				// clear redo for this user
-				const roomRedo = redoByRoomUser.get(roomId)!;
-				roomRedo.set(userId, []);
+					// clear redo for this user
+					const roomRedo = redoByRoomUser.get(roomId)!;
+					roomRedo.set(userId, []);
+				}
 			}
 
 			for (let user of users) {

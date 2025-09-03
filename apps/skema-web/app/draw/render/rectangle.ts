@@ -43,7 +43,7 @@ export function createRoundedRectPath(
 	h: number
 ) {
 	const r = Math.min(
-		Math.abs(Math.min(w, h) / 10),
+		Math.abs(Math.min(w, h) / 5),
 		Math.abs(w) / 2,
 		Math.abs(h) / 2
 	);

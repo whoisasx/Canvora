@@ -39,7 +39,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={`font-mononoki ${mononoki.variable}`}>
+			<body>
+				{" "}
+				{/* className={`font-mononoki ${mononoki.variable}`} */}
 				<ThemeWrapper>{children}</ThemeWrapper>
 			</body>
 		</html>

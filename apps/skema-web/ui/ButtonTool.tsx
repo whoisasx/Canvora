@@ -16,7 +16,7 @@ const ButtonTool = ({ children, onClick, color, className }: ButtonProps) => {
 						: `#${color}`
 					: "",
 			}}
-			className={`max-w-auto w-10 h-full rounded-lg hover:scale-105 hover:bg-oc-gray-3 dark:hover:bg-oc-gray-8 transition-all delay-100 ease-in-out cursor-pointer ${className}`}
+			className={` w-9 h-9 rounded-lg hover:scale-105 hover:bg-oc-gray-3 dark:hover:bg-oc-gray-8 transition-all delay-100 ease-in-out cursor-pointer flex items-center justify-center ${className}`}
 			onClick={onClick}
 		>
 			{children}
