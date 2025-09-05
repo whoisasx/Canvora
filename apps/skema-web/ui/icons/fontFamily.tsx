@@ -60,7 +60,7 @@ function Code() {
 				strokeLinejoin="round"
 			>
 				<g
-					clip-path="url(#a)"
+					clipPath="url(#a)"
 					stroke="currentColor"
 					strokeWidth="1.25"
 					strokeLinecap="round"

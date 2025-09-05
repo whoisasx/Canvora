@@ -4,6 +4,14 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
+	--background-image-page-gradient-green:
+		linear-gradient(138.59deg, #d3ffd226 4.71%, #d3ffd200 32.89%),
+		radial-gradient(
+			52.08% 32.07% at 97.32% 50.03%,
+			#d3ffd226 0%,
+			#d3ffd200 100%
+		);
+
 	--font-excali: var(--font-excali);
 	--font-mononoki: var(--font-mononoki);
 	--font-firacode: var(--font-firacode);
@@ -20,6 +28,53 @@
 	--font-virgil: var(--font-virgil);
 	--font-mononoki: var(--font-mononoki);
 	--font-caveat: var(--font-caveat);
+
+	--color-vivid-violet-50: #faf6fd;
+	--color-vivid-violet-100: #f4edfa;
+	--color-vivid-violet-200: #e8d9f5;
+	--color-vivid-violet-300: #d8bceb;
+	--color-vivid-violet-400: #c293df;
+	--color-vivid-violet-500: #a669cc;
+	--color-vivid-violet-600: #8a49b0;
+	--color-vivid-violet-700: #793d98;
+	--color-vivid-violet-800: #5f3177;
+	--color-vivid-violet-900: #522d62;
+	--color-vivid-violet-950: #31133f;
+
+	--color-canvora-50: #e9e9fa;
+	--color-canvora-100: #d2d2f5;
+	--color-canvora-200: #babaf0;
+	--color-canvora-300: #a2a2ea;
+	--color-canvora-400: #8b8be5;
+	--color-canvora-500: #6965db;
+	--color-canvora-600: #5954c5;
+	--color-canvora-700: #4945a9;
+	--color-canvora-800: #38368c;
+	--color-canvora-900: #26276f;
+
+	--color-purple-heart-50: #eff0fe;
+	--color-purple-heart-100: #e2e3fd;
+	--color-purple-heart-200: #cacbfb;
+	--color-purple-heart-300: #acaaf7;
+	--color-purple-heart-400: #9288f1;
+	--color-purple-heart-500: #806be9;
+	--color-purple-heart-600: #6741d9;
+	--color-purple-heart-700: #6340c2;
+	--color-purple-heart-800: #51379c;
+	--color-purple-heart-900: #43337c;
+	--color-purple-heart-950: #281e48;
+
+	--color-blue-marguerite-50: #f0f2fd;
+	--color-blue-marguerite-100: #e4e8fb;
+	--color-blue-marguerite-200: #ced4f7;
+	--color-blue-marguerite-300: #b0b7f1;
+	--color-blue-marguerite-400: #9093e9;
+	--color-blue-marguerite-500: #6965db;
+	--color-blue-marguerite-600: #685ad1;
+	--color-blue-marguerite-700: #594bb7;
+	--color-blue-marguerite-800: #493f94;
+	--color-blue-marguerite-900: #3e3976;
+	--color-blue-marguerite-950: #252145;
 
 	/* Red */
 	--color-oc-red-0: var(--oc-red-0); /* #fff5f5 */
@@ -179,6 +234,24 @@
 }
 
 @layer utilities {
+	/* Page background gradients */
+	.bg-page-gradient-green {
+		background-image:
+			linear-gradient(138.59deg, #d3ffd225 4.71%, #d3ffd200 32.89%),
+			radial-gradient(
+				52.08% 32.07% at 97.32% 50.03%,
+				#d3ffd240 0%,
+				#d3ffd220 100%
+			);
+	}
+	.bg-browser-radial-gradient {
+		background-image: radial-gradient(
+			50% 50% at 50% 50%,
+			#685ad15c 0%,
+			#0000 100%
+		);
+	}
+
 	.custom-scrollbar::-webkit-scrollbar {
 		width: 4px;
 		height: 50px;

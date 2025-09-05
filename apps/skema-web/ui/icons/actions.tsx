@@ -271,7 +271,7 @@ function Logout() {
 	);
 }
 function Github() {
-	const [stars, setStars] = useState<number | undefined>(undefined);
+	const [stars, setStars] = useState<string>("");
 	useEffect(() => {
 		async function fetchRepo() {
 			const response = await axios.get(

@@ -42,13 +42,14 @@ import { createLinePath } from "./render/line";
 import { createArrowPath } from "./render/arrow";
 import { createPencilPath } from "./render/pencil";
 import {
-	caveat,
+	chilanka,
 	excali,
 	firaCode,
-	jakarta,
+	ibm,
 	monospace,
 	nunito,
-	sourceCode,
+	comic,
+	mononoki,
 } from "../font";
 import useToolStore, { useLockStore } from "@/utils/toolStore";
 import {
@@ -1907,16 +1908,16 @@ export class Game {
 		const textarea = document.createElement("textarea");
 
 		textarea.style.fontFamily = excali.style.fontFamily;
-		if (this.props.fontFamily === "caveat")
-			textarea.style.fontFamily = caveat.style.fontFamily;
+		if (this.props.fontFamily === "mononoki")
+			textarea.style.fontFamily = chilanka.style.fontFamily;
 		if (this.props.fontFamily === "excali")
 			textarea.style.fontFamily = excali.style.fontFamily;
 		if (this.props.fontFamily === "firaCode")
 			textarea.style.fontFamily = firaCode.style.fontFamily;
-		if (this.props.fontFamily === "jakarta")
-			textarea.style.fontFamily = jakarta.style.fontFamily;
-		if (this.props.fontFamily === "sourceCode")
-			textarea.style.fontFamily = sourceCode.style.fontFamily;
+		if (this.props.fontFamily === "ibm")
+			textarea.style.fontFamily = ibm.style.fontFamily;
+		if (this.props.fontFamily === "comic")
+			textarea.style.fontFamily = comic.style.fontFamily;
 		if (this.props.fontFamily === "monospace")
 			textarea.style.fontFamily = monospace.style.fontFamily;
 		if (this.props.fontFamily === "nunito")
@@ -2179,16 +2180,16 @@ export class Game {
 		}
 
 		let fontFamily: string = "";
-		if (message.textData.fontFamily === "caveat")
-			fontFamily = caveat.style.fontFamily;
+		if (message.textData.fontFamily === "mononoki")
+			fontFamily = mononoki.style.fontFamily;
 		if (message.textData.fontFamily === "excali")
 			fontFamily = excali.style.fontFamily;
 		if (message.textData.fontFamily === "firaCode")
 			fontFamily = firaCode.style.fontFamily;
-		if (message.textData.fontFamily === "jakarta")
-			fontFamily = jakarta.style.fontFamily;
-		if (message.textData.fontFamily === "sourceCode")
-			fontFamily = sourceCode.style.fontFamily;
+		if (message.textData.fontFamily === "ibm")
+			fontFamily = ibm.style.fontFamily;
+		if (message.textData.fontFamily === "comic")
+			fontFamily = comic.style.fontFamily;
 		if (message.textData.fontFamily === "monospace")
 			fontFamily = monospace.style.fontFamily;
 		if (message.textData.fontFamily === "nunito")
@@ -4694,16 +4695,15 @@ export class Game {
 
 		// compute width using canvas measureText so we can update bbox.w
 		let fontFamily = "";
-		if (this.props.fontFamily === "caveat")
-			fontFamily = caveat.style.fontFamily;
+		if (this.props.fontFamily === "mononoki")
+			fontFamily = mononoki.style.fontFamily;
 		if (this.props.fontFamily === "excali")
 			fontFamily = excali.style.fontFamily;
 		if (this.props.fontFamily === "firaCode")
 			fontFamily = firaCode.style.fontFamily;
-		if (this.props.fontFamily === "jakarta")
-			fontFamily = jakarta.style.fontFamily;
-		if (this.props.fontFamily === "sourceCode")
-			fontFamily = sourceCode.style.fontFamily;
+		if (this.props.fontFamily === "ibm") fontFamily = ibm.style.fontFamily;
+		if (this.props.fontFamily === "comic")
+			fontFamily = comic.style.fontFamily;
 		if (this.props.fontFamily === "monospace")
 			fontFamily = monospace.style.fontFamily;
 		if (this.props.fontFamily === "nunito")

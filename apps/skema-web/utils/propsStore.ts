@@ -20,7 +20,6 @@ import { create } from "zustand";
 import { useSelectedMessageStore, useThemeStore } from "./canvasStore";
 import useToolStore from "./toolStore";
 import { subscribeWithSelector } from "zustand/middleware";
-import { shallow } from "zustand/shallow";
 
 const shallowEqual = (a: any, b: any) => {
 	if (a === b) return true;
@@ -331,11 +330,11 @@ export interface CommonPropsGame {
 	fontSize?: 16 | 24 | 32 | 40;
 	textAlign?: textAlign;
 	fontFamily?:
-		| "caveat"
+		| "mononoki" //1
 		| "excali"
 		| "firaCode"
-		| "jakarta"
-		| "sourceCode"
+		| "ibm" //2
+		| "comic" //3
 		| "monospace"
 		| "nunito";
 }
@@ -385,11 +384,11 @@ const computeProps = (): any => {
 	// text
 	const font_famliy = useFontFamilyStore.getState().fontFamily;
 	let fontFamily = "excali";
-	if (font_famliy === "caveat") fontFamily = "caveat";
+	if (font_famliy === "caveat") fontFamily = "mononoki";
 	else if (font_famliy === "draw") fontFamily = "excali";
 	else if (font_famliy === "code") fontFamily = "firaCode";
-	else if (font_famliy === "normal") fontFamily = "jakarta";
-	else if (font_famliy === "little") fontFamily = "sourceCode";
+	else if (font_famliy === "normal") fontFamily = "ibm";
+	else if (font_famliy === "little") fontFamily = "comic";
 	else if (font_famliy === "mono") fontFamily = "monospace";
 	else if (font_famliy === "nunito") fontFamily = "nunito";
 
