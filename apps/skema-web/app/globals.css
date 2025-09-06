@@ -4,14 +4,6 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-	--background-image-page-gradient-green:
-		linear-gradient(138.59deg, #d3ffd226 4.71%, #d3ffd200 32.89%),
-		radial-gradient(
-			52.08% 32.07% at 97.32% 50.03%,
-			#d3ffd226 0%,
-			#d3ffd200 100%
-		);
-
 	--font-excali: var(--font-excali);
 	--font-mononoki: var(--font-mononoki);
 	--font-firacode: var(--font-firacode);
@@ -28,6 +20,188 @@
 	--font-virgil: var(--font-virgil);
 	--font-mononoki: var(--font-mononoki);
 	--font-caveat: var(--font-caveat);
+
+	/* === Backgrounds === */
+	--color-dark-bg: #232329;
+	--color-dark-bg-alt: #121212;
+	--color-dark-bg-alt-darker: #1e1e1e;
+	--color-dark-bg-popup: #121212;
+	--color-dark-bg-editor: #121212;
+	--color-dark-bg-dashboard: #232329;
+
+	/* === Inputs & Sidebar === */
+	--color-dark-bg-input: #121212;
+	--color-dark-bg-input-hover: #141414;
+	--color-dark-bg-sidebar-toggle: #aaa;
+	--color-dark-bg-sidebar-toggle-hover: #bbb;
+	--color-dark-bg-sidebar-toggle-active: #888;
+
+	/* === Grays (hover, active, selected) === */
+	--color-dark-bg-gray-hover: #292929;
+	--color-dark-bg-gray-selected: #3d3d3d;
+	--color-dark-bg-gray-active: #363636;
+
+	/* === Buttons === */
+	--color-dark-bg-button: #ccc;
+	--color-dark-bg-button-hover: #bbb;
+	--color-dark-bg-button-active: #aaa;
+	--color-dark-button-gray-1: #363636;
+	--color-dark-button-gray-2: #3d3d3d;
+	--color-dark-button-gray-3: #212121;
+	--color-dark-button-hover: #131313;
+	--color-dark-button-active: #0e0e0e;
+	--color-dark-button-disabled-color: #868e96;
+	--color-dark-button-disabled-bg-color: #343a40;
+
+	/* === States === */
+	--color-dark-light: #121212;
+	--color-dark-light-alt: #1e1e1e;
+	--color-dark-hover: #131313;
+	--color-dark-active: #0e0e0e;
+
+	/* === Borders === */
+	--color-dark-border: #151515;
+	--color-dark-border-light: #191919;
+	--color-dark-border-input: #212121;
+	--color-dark-border-outline: #8e8d9c;
+	--color-dark-border-outline-variant: #46464f;
+
+	/* === Shadows === */
+	--color-dark-shadow-border: #ffffff3d;
+
+	/* === Text === */
+	--color-dark-text: #ced4da;
+	--color-dark-text-subtitle: #868e96;
+	--color-dark-text-error: #ff6b6b;
+
+	/* === Links === */
+	--color-dark-link: #74c0fc;
+	--color-dark-link-active: #d0ebff;
+	--color-dark-link-onBg: #e7f5ff;
+	--color-dark-link-onBg-active: #fff;
+
+	/* === Icons === */
+	--color-dark-icon: #ddd;
+	--color-dark-icon-secondary: #868e96;
+	--color-dark-icon-spinner: #ced4da;
+	--color-dark-icon-green: #8ce99a;
+
+	/* === Scrollbar === */
+	--color-dark-scrollbar-thumb: #3d3d3d;
+	--color-dark-scrollbar-thumb-hover: #383838;
+	--color-dark-scrollbar-thumb-active: #333;
+
+	/*LIGHT*/
+	/* === Brand / Primary === */
+	--color-light-primary: #6965db;
+	--color-light-primary-darker: #5b57d1;
+	--color-light-primary-darkest: #4a47b1;
+	--color-light-primary-light: #e2e1fc;
+	--color-light-brand-active: #4440bf;
+	--color-light-brand-hover: #5753d0;
+
+	/* === Status Colors === */
+	--color-light-success: #65db69;
+	--color-light-success-dark: #268029;
+	--color-light-danger: #db6965;
+	--color-light-danger-light: #fcccca;
+	--color-light-danger-dark: #802926;
+	--color-light-warn: #ffce50;
+	--color-light-warn-dark: #cf9911;
+
+	/* === Grays === */
+	--color-light-gray-0: #ffffff;
+	--color-light-gray-10: #f5f5f5;
+	--color-light-gray-20: #ebebeb;
+	--color-light-gray-30: #d6d6d6;
+	--color-light-gray-40: #b8b8b8;
+	--color-light-gray-60: #7a7a7a;
+	--color-light-gray-70: #5c5c5c;
+	--color-light-gray-80: #3d3d3d;
+	--color-light-gray-90: #242424;
+
+	/* === Surfaces === */
+	--color-light-surface-high: #f0efff;
+	--color-light-surface-low: #f5f5f9;
+	--color-light-surface-low-for-dropdown: #ffffff;
+	--color-light-surface-low-hover: #f5f5fc;
+	--color-light-surface-lowest: #ffffff;
+	--color-light-surface-primary-container: #e0dfff;
+	--color-light-surface-text: #1b1b1f;
+	--color-light-surface-text-variant: #46464f;
+	--color-light-on-surface: #1b1b1f;
+	--color-light-blue-surface-container: #99e4fd;
+	--color-light-on-primary-container: #190064;
+
+	/* === Backgrounds === */
+	--color-light-bg: #ffffff;
+	--color-light-bg-popup: #ffffff;
+	--color-light-bg-input: #ffffff;
+	--color-light-bg-input-hover: #f8f9fa;
+
+	/* === Buttons === */
+	--color-light-button-gray-2: #ced4da;
+	--color-light-button-hover: #343a40;
+	--color-light-button-active: #343a40;
+
+	/* === Borders === */
+	--color-light-border: #dddddd;
+	--color-light-border-input: #aaaaaa;
+	--color-light-border-outline: #767680;
+	--color-light-border-outline-variant: #c5c5d0;
+	--color-light-outline-focus: var(--color-light-primary);
+	--color-light-shadow-border: #0000003d;
+	--color-light-shadow-island: 0 0 0 1px #e2e2e2;
+
+	/* === Text === */
+	--color-light-text: #343a40;
+	--color-light-color-text: var(--color-light-text);
+	--color-light-text-subtitle: #868e96;
+	--color-light-text-error: #c92a2a;
+	--color-light-red: #ff6b6b;
+
+	/* === Links === */
+	--color-light-link: #228be6;
+	--color-light-link-active: #74c0fc;
+
+	/* === Semantic Colors === */
+	--color-light-red-based: #ff9494;
+	--color-light-red-highest: #700000;
+	--color-light-red-light: #ffdad6;
+	--color-light-red-lighter: #fff0f0;
+	--color-light-green-based: #a2f1a6;
+	--color-light-green-low: #d3ffd2;
+	--color-light-green-lowest: #f6fff1;
+	--color-light-green-highest: #0b6513;
+	--color-light-yellow-light: #fff0c9;
+	--color-light-yellow-lighter: #fffbf0;
+	--color-light-yellow-darker: #705400;
+	--color-light-blue-light: #d1ecff;
+	--color-light-blue-lighter: #f0fbff;
+	--color-light-orange-lowest: #fff4eb;
+
+	/* === Icons === */
+	--color-light-icon: #000000;
+
+	/* === Scrollbar === */
+	--color-light-scrollbar-thumb: #cccccc;
+	--color-light-scrollbar-thumb-hover: #bbbbbb;
+	--color-light-scrollbar-thumb-active: #aaaaaa;
+
+	/* === Misc === */
+	--color-light: #ffffff;
+	--color-light-default: #ffffff;
+	--color-light-island: #ffffff;
+	--color-light-max-width-container: 1440px;
+	--color-light-zIndex-modal-high: 910;
+	--color-light-zIndex-modal: 900;
+	--color-light-bg-modalBackdrop: #00000080;
+	--color-light-width-scrollbar: 17px;
+	--color-light-space-factor: 0.25rem;
+
+	/* === Animations === */
+	--color-light-animate-float: float 2s ease-in-out infinite alternate both;
+	--color-light-animate-none: none;
 
 	--color-vivid-violet-50: #faf6fd;
 	--color-vivid-violet-100: #f4edfa;

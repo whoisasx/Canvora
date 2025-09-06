@@ -11,8 +11,8 @@ const authConfig = {
 		strategy: "jwt",
 	},
 	pages: {
-		// signIn: "api/auth/signin",
-		// signOut: "api/auth/signin",
+		signIn: "api/auth/signin",
+		signOut: "api/auth/signin",
 		verifyRequest: "/api/auth/signin",
 		error: "api/auth/signin",
 		newUser: "/",

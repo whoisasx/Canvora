@@ -13,12 +13,12 @@ interface IButton {
 
 const sizeProps: Record<Size, string> = {
 	small: "h-12 w-24 border-t-[0.5px] border-x-[1px] border-b-[2px] hover:scale-105 rounded-full text-sm",
-	medium: "h-12 w-36 rounded-full text-sm hover:text-base hover:scale-105 outline-1 outline-offset-1",
-	large: "h-12 w-72 rounded-full text-base hover:scale-95 border-t-[0.5px] border-x-[1px] border-b-[2px]",
+	medium: "h-12 w-36 rounded-full text-sm hover:text-base hover:scale-105 outline-1 outline-offset-1 outline-oc-gray-4 dark:outline-oc-gray-1",
+	large: "h-12 w-72 rounded-full text-base hover:scale-95 border-t-[0.5px] border-x-[1px] border-b-[2px] border-oc-gray-4 dark:border-oc-gray-7",
 };
 const levelProps: Record<Level, string> = {
 	primary:
-		"bg-canvora-500 text-white outline-oc-gray-4 hover:text-black hover:bg-canvora-50 hover:text-canvora-600",
+		"bg-canvora-500 text-white outline-oc-gray-4 dark:outline-oc-gray-1 hover:text-black dark:hover:bg-canvora-900 hover:bg-canvora-50 hover:text-canvora-600 dark:bg-canvora-800",
 	secondary: "",
 	tertiary:
 		"bg-white border-oc-gray-3 hover:border-oc-gray-6 hover:bg-oc-gray-1 hover:text-canvora-300",

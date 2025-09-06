@@ -140,10 +140,10 @@ export default function CanvasOpt() {
 										<p className="text-xs font-semibold">
 											Stroke
 										</p>
-										<div className="flex gap-1.5 items-center">
+										<div className="flex gap-1 items-center">
 											<ButtonProps
 												children={""}
-												className={`${theme === "light" ? "bg-[#1e1e1e]" : "bg-white"} ${currentStroke == 0 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`${theme === "light" ? "bg-[#1e1e1e]" : "bg-white"} ${currentStroke == 0 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setStroke(
 														theme === "light"
@@ -155,7 +155,7 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-red-8 ${currentStroke == 1 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-red-8 ${currentStroke == 1 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setStroke("e03131");
 													setCurrentStroke(1);
@@ -163,7 +163,7 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-green-8 ${currentStroke == 2 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-green-8 ${currentStroke == 2 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setStroke("2f9e44");
 													setCurrentStroke(2);
@@ -171,7 +171,7 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-blue-8 ${currentStroke == 3 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-blue-8 ${currentStroke == 3 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setStroke("1971c2");
 													setCurrentStroke(3);
@@ -179,18 +179,18 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-yellow-8 ${currentStroke == 4 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-yellow-8 ${currentStroke == 4 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setStroke("f08c00");
 													setCurrentStroke(4);
 												}}
 											/>
-											<div className="h-7 mx-0.5">
-												<div className="h-4 border-r-1 border-r-gray-200 dark:border-r-gray-600 my-1"></div>
+											<div className="h-7 mx-0.5 flex items-center justify-center">
+												<div className="h-4 border-r-1 border-r-gray-200 dark:border-r-gray-600"></div>
 											</div>
 											<ButtonProps
 												children={""}
-												className={`w-7 h-7 outline-1 outline-offset-[0.5px] outline-oc-gray-7 dark:outline-oc-gray-6`}
+												className={`w-7.5 h-7.5 !outline-oc-gray-7 dark:outline-oc-gray-6`}
 												color={`${stroke}`}
 												onClick={() => {
 													if (
@@ -221,10 +221,10 @@ export default function CanvasOpt() {
 										<p className="text-xs font-semibold">
 											background
 										</p>
-										<div className="flex gap-1.5 items-center">
+										<div className="flex gap-1 items-center">
 											<ButtonProps
 												children={""}
-												className={`bg-transparent ${currentBg === 0 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-transparent ${currentBg === 0 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setBg("transparent"); // transparent
 													setCurrentBg(0);
@@ -232,7 +232,7 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-red-2 ${currentBg === 1 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-red-2 ${currentBg === 1 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setBg("ffc9c9");
 													setCurrentBg(1);
@@ -240,7 +240,7 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-green-2 ${currentBg === 2 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-green-2 ${currentBg === 2 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setBg("b2f2bb");
 													setCurrentBg(2);
@@ -248,7 +248,7 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-blue-2 ${currentBg === 3 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-blue-2 ${currentBg === 3 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setBg("a5d8ff");
 													setCurrentBg(3);
@@ -256,18 +256,18 @@ export default function CanvasOpt() {
 											/>
 											<ButtonProps
 												children={""}
-												className={`bg-oc-yellow-2 ${currentBg === 4 ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-yellow-2 ${currentBg === 4 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												onClick={() => {
 													setBg("ffec99");
 													setCurrentBg(4);
 												}}
 											/>
-											<div className="h-7 mx-0.5">
-												<div className="h-4 border-r-1 border-r-gray-200 dark:border-r-gray-600 my-1"></div>
+											<div className="h-7 mx-0.5 flex items-center justify-center">
+												<div className="h-4 border-r-1 border-r-gray-200 dark:border-r-gray-600"></div>
 											</div>
 											<ButtonProps
 												children={""}
-												className={`w-7 h-7 outline-1 outline-offset-[0.5px] outline-oc-gray-7 dark:outline-oc-gray-6`}
+												className={`w-7.5 h-7.5 !outline-oc-gray-7 dark:outline-oc-gray-6`}
 												color={bg}
 												onClick={() => {
 													if (
@@ -293,7 +293,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "fill" && bg !== "transparent" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											fill
 										</p>
@@ -306,7 +306,7 @@ export default function CanvasOpt() {
 															fillIcons[val]
 														}
 														color={`${val === fill ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === fill ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === fill ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 														onClick={() => {
 															setFill(
 																val as fill
@@ -319,7 +319,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "strokeWidth" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											stroke width
 										</p>
@@ -332,7 +332,7 @@ export default function CanvasOpt() {
 															strokeWidthIcon[val]
 														}
 														color={`${val === strokeWidth ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === strokeWidth ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === strokeWidth ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 														onClick={() => {
 															setStrokeWidth(
 																val as strokeWidth
@@ -349,7 +349,7 @@ export default function CanvasOpt() {
 										<p className="text-xs font-semibold">
 											stroke style
 										</p>
-										<div className="flex gap-1.5">
+										<div className="flex gap-1">
 											{["solid", "dashed", "dotted"].map(
 												(val, i) => (
 													<ButtonProps
@@ -358,7 +358,7 @@ export default function CanvasOpt() {
 															strokeStyleIcon[val]
 														}
 														color={`${val === strokeStyle ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === strokeStyle ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === strokeStyle ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 														onClick={() => {
 															setStrokeStyle(
 																val as strokeStyle
@@ -371,7 +371,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "slopiness" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											slopiness
 										</p>
@@ -387,7 +387,7 @@ export default function CanvasOpt() {
 														slopinessIcon[val]
 													}
 													color={`${val === slopiness ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-													className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === slopiness ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === slopiness ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 													onClick={() => {
 														setSlopiness(
 															val as slopiness
@@ -399,7 +399,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "edge" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											edges
 										</p>
@@ -412,7 +412,7 @@ export default function CanvasOpt() {
 															edgesIcon[val]
 														}
 														color={`${val === edges ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === edges ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === edges ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 														onClick={() => {
 															setEdges(
 																val as edges
@@ -425,7 +425,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "arrowType" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											arrow type
 										</p>
@@ -438,7 +438,7 @@ export default function CanvasOpt() {
 															arrowTypeIcon[val]
 														}
 														color={`${val === arrowType ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === arrowType ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === arrowType ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 														onClick={() => {
 															setArrowType(
 																val as arrowType
@@ -451,7 +451,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "fontFamily" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-sm">font family</p>
 										<div className="flex flex-wrap gap-2">
 											{[
@@ -469,7 +469,7 @@ export default function CanvasOpt() {
 														fontFamilyIcon[val]
 													}
 													color={`${val === fontFamily ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-													className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === fontFamily ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === fontFamily ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 													onClick={() => {
 														setFontFamily(
 															val as fontFamily
@@ -481,7 +481,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "fontSize" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											font size
 										</p>
@@ -496,7 +496,7 @@ export default function CanvasOpt() {
 													key={i}
 													children={fontSizeIcon[val]}
 													color={`${val === fontSize ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-													className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === fontSize ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+													className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === fontSize ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 													onClick={() => {
 														setFontSize(
 															val as fontSize
@@ -508,7 +508,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "textAlign" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											text align
 										</p>
@@ -521,7 +521,7 @@ export default function CanvasOpt() {
 															textAlignIcon[val]
 														}
 														color={`${val === textAlign ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === textAlign ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+														className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${val === textAlign ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 														onClick={() => {
 															setTextAlign(
 																val as textAlign
@@ -534,7 +534,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "arrowHead" && (
-									<div className="flex flex-col gap-1.5 justify-center relative">
+									<div className="flex flex-col gap-1 justify-center relative">
 										<p className="text-xs font-semibold">
 											arrow heads
 										</p>
@@ -545,7 +545,7 @@ export default function CanvasOpt() {
 														arrowHead.back
 													]
 												}
-												className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${backArrow !== "none" ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${backArrow !== "none" ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												color={`${activeSubOption === "right-arrow" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 												onClick={() => {
 													if (
@@ -568,7 +568,7 @@ export default function CanvasOpt() {
 														arrowHead.front
 													]
 												}
-												className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${frontArrow !== "none" ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+												className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${frontArrow !== "none" ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 												color={`${activeSubOption === "left-arrow" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 												onClick={() => {
 													if (
@@ -588,7 +588,7 @@ export default function CanvasOpt() {
 										</div>
 										{activeSubOption === "left-arrow" && (
 											<div className=" max-h-[70] py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg  z-20 absolute top-[108%] bg-white dark:bg-[#2e2d29]">
-												<div className="flex gap-1.5 px-1 ">
+												<div className="flex gap-1 px-1 ">
 													{[
 														"none",
 														"arrow",
@@ -602,7 +602,7 @@ export default function CanvasOpt() {
 																	val
 																]
 															}
-															className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${frontArrow === val ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+															className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${frontArrow === val ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 															color={`${val === frontArrow ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 															onClick={() =>
 																setFrontArrow(
@@ -616,7 +616,7 @@ export default function CanvasOpt() {
 										)}
 										{activeSubOption === "right-arrow" && (
 											<div className=" max-h-[70] py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg z-20 bg-white dark:bg-[#2e2d29] absolute top-[108%]">
-												<div className="flex gap-1.5 px-1 ">
+												<div className="flex gap-1 px-1 ">
 													{[
 														"none",
 														"arrow",
@@ -630,7 +630,7 @@ export default function CanvasOpt() {
 																	val
 																]
 															}
-															className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${backArrow === val ? "outline-1 outline-offset-1 outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
+															className={`bg-oc-gray-1 dark:bg-[#2e2d29] ${backArrow === val ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 															color={`${val === backArrow ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
 															onClick={() =>
 																setBackArrow(
@@ -645,7 +645,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "opacity" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-sm">opacity</p>
 										<div>
 											<div className="w-full rounded-lg flex items-center justify-center">
@@ -684,7 +684,7 @@ export default function CanvasOpt() {
 									</div>
 								)}
 								{prop === "layers" && (
-									<div className="flex flex-col gap-1.5 justify-center">
+									<div className="flex flex-col gap-1 justify-center">
 										<p className="text-xs font-semibold">
 											layers
 										</p>

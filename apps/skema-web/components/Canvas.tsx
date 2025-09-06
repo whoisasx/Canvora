@@ -149,7 +149,7 @@ export default function Canvas({
 				</div>
 			</div>
 			{propsSize > 0 && (
-				<div className="w-50 max-h-[70vh] overflow-auto border border-gray-200 dark:border-0 fixed top-20 left-3 rounded-lg shadow-xl z-40 flex flex-col custom-scrollbar dark:custom-scrollbar bg-oc-white dark:bg-[#232329]">
+				<div className="w-55 max-h-[70vh] overflow-auto border border-gray-200 dark:border-0 fixed top-20 left-3 rounded-lg shadow-xl z-40 flex flex-col custom-scrollbar dark:custom-scrollbar bg-oc-white dark:bg-[#232329]">
 					<CanvasOpt />
 				</div>
 			)}

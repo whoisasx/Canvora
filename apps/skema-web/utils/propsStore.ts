@@ -126,9 +126,18 @@ const findActiveStroke = () => {
 		["1e1e1e", 0],
 		["ffffff", 0],
 		["e03131", 1],
-		["2f9e44", 2],
+		["2f994e", 2],
 		["1971c2", 3],
 		["f08c00", 4],
+		["transparent", 5],
+		["343a40", 7],
+		["846358", 8],
+		["0c8599", 9],
+		["6741d9", 10],
+		["9c36b5", 11],
+		["c2255c", 12],
+		["099268", 13],
+		["e8590c", 14],
 	]);
 	useActiveStroke.setState({
 		current: currentStroke.get(stroke),
@@ -142,6 +151,16 @@ const findActiveBg = () => {
 		["b2f2bb", 2],
 		["a5d8ff", 3],
 		["ffec99", 4],
+		["1e1e1e", 5],
+		["ffffff", 6],
+		["e9ecef", 7],
+		["eaddd7", 8],
+		["99e9f2", 9],
+		["d0bfff", 10],
+		["eebefa", 11],
+		["fcc2d7", 12],
+		["96f2d7", 13],
+		["ffd8a8", 14],
 	]);
 	useActiveBg.setState({
 		current: currentBg.get(bg),
@@ -327,7 +346,7 @@ export interface CommonPropsGame {
 	edges?: edges;
 	arrowType?: arrowType;
 	arrowHead?: arrowHead;
-	fontSize?: 16 | 24 | 32 | 40;
+	fontSize?: 16 | 24 | 32 | 48;
 	textAlign?: textAlign;
 	fontFamily?:
 		| "mononoki" //1
@@ -346,7 +365,7 @@ const computeProps = (): any => {
 		tool = selectedMessage.shape;
 	}
 
-	let stroke = `#${useStrokeStore.getState().currentColor}`;
+	let stroke = `${useStrokeStore.getState().currentColor === "transparent" ? "transparent" : `#${useStrokeStore.getState().currentColor}`}`;
 	let opacity = useOpacityStore.getState().opacity / 100;
 	const actions: actions = "none";
 

@@ -5,10 +5,12 @@ import {
 	useStrokeShades,
 	useStrokeStore,
 } from "@/utils/propsStore";
+import { useTheme } from "next-themes";
 import { ChangeEvent, useState } from "react";
 
 export default function OptionalStroke() {
 	const theme = useThemeStore((state) => state.theme);
+	// const { theme, setTheme, resolvedTheme } = useTheme();
 
 	const stroke = useStrokeStore((state) => state.currentColor);
 	const setStroke = useStrokeStore((state) => state.setCurrentColor);
@@ -32,8 +34,8 @@ export default function OptionalStroke() {
 				<p className="text-xs">Colors</p>
 				<div className="w-full h-full grid grid-cols-5 gap-x-1 gap-y-2">
 					<ButtonProps
-						children={"t"}
-						className={`bg-transparent ${currentStroke == 5 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						children={"-"}
+						className={`bg-transparent ${currentStroke == 5 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("transparent");
 							setCurrentStroke(5);
@@ -42,7 +44,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-white ${currentStroke == (theme === "light" ? 6 : 0) ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-white ${currentStroke == (theme === "light" ? 6 : 0) ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("ffffff");
 							setCurrentStroke(theme === "light" ? 6 : 0);
@@ -51,7 +53,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#343a40] ${currentStroke == 7 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#343a40] ${currentStroke == 7 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("343a40");
 							setCurrentStroke(7);
@@ -67,7 +69,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#1e1e1e] ${currentStroke == (theme === "light" ? 0 : 6) ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#1e1e1e] ${currentStroke == (theme === "light" ? 0 : 6) ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("1e1e1e");
 							setCurrentStroke(theme === "light" ? 0 : 6);
@@ -76,7 +78,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#846358] ${currentStroke == 8 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#846358] ${currentStroke == 8 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("846358");
 							setCurrentStroke(8);
@@ -92,7 +94,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#0c8599] ${currentStroke == 9 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#0c8599] ${currentStroke == 9 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("0c8599");
 							setCurrentStroke(9);
@@ -108,7 +110,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#1971c2] ${currentStroke == 3 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#1971c2] ${currentStroke == 3 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("1971c2");
 							setCurrentStroke(3);
@@ -124,7 +126,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#6741d9] ${currentStroke == 10 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#6741d9] ${currentStroke == 10 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("6741d9");
 							setCurrentStroke(10);
@@ -140,7 +142,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#9c36b5] ${currentStroke == 11 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#9c36b5] ${currentStroke == 11 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("9c36b5");
 							setCurrentStroke(11);
@@ -156,7 +158,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#c2255c] ${currentStroke == 12 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#c2255c] ${currentStroke == 12 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("c2255c");
 							setCurrentStroke(12);
@@ -172,7 +174,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#2f994e] ${currentStroke == 2 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#2f994e] ${currentStroke == 2 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("2f994e");
 							setCurrentStroke(2);
@@ -188,7 +190,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#099268] ${currentStroke == 13 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#099268] ${currentStroke == 13 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("099268");
 							setCurrentStroke(13);
@@ -204,7 +206,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#f08c00] ${currentStroke == 4 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#f08c00] ${currentStroke == 4 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("f08c00");
 							setCurrentStroke(4);
@@ -220,7 +222,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#e8590c] ${currentStroke == 14 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#e8590c] ${currentStroke == 14 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("e8590c");
 							setCurrentStroke(14);
@@ -236,7 +238,7 @@ export default function OptionalStroke() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#e03131] ${currentStroke == 1 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#e03131] ${currentStroke == 1 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setStroke("e03131");
 							setCurrentStroke(1);
@@ -261,7 +263,7 @@ export default function OptionalStroke() {
 								<ButtonProps
 									key={i}
 									children={""}
-									className={` ${activeShade == i ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+									className={` ${activeShade == i ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 									color={`${shade}`}
 									onClick={() => {
 										setActiveShade(i);
@@ -285,7 +287,7 @@ export default function OptionalStroke() {
 					<input
 						className="appearance-none outline-none border-none px-1 w-full flex items-center text-sm"
 						type="text"
-						value={stroke}
+						value={stroke ?? ""}
 						onChange={handleOnChange}
 					/>
 				</div>

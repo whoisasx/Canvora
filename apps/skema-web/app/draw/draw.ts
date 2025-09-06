@@ -3033,7 +3033,11 @@ export class Game {
 			const textColor = message.textData?.textColor;
 
 			if (message.shape === "rectangle" || message.shape === "rhombus") {
-				this.setStroke(stroke.split("#")[1]!);
+				this.setStroke(
+					stroke === "transparent"
+						? "transparent"
+						: stroke.split("#")[1]!
+				);
 				this.setBg(!fill ? "transparent" : fill.split("#")[1]!);
 				this.setFill(
 					fillStyle === "cross-hatch"

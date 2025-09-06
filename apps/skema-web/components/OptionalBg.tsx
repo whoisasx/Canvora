@@ -26,8 +26,8 @@ export default function OptionalBg() {
 				<p className="text-xs">Colors</p>
 				<div className="w-full h-full grid grid-cols-5 gap-x-1 gap-y-2">
 					<ButtonProps
-						children={"t"}
-						className={`bg-transparent  ${currentBg == 0 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						children={"-"}
+						className={`bg-transparent  ${currentBg == 0 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("transparent");
 							setCurrentBg(0);
@@ -36,7 +36,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-white  ${currentBg == 6 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-white  ${currentBg == 6 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("ffffff");
 							setCurrentBg(6);
@@ -45,7 +45,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#e9ecef]  ${currentBg == 7 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#e9ecef]  ${currentBg == 7 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("e9ecef");
 							setCurrentBg(7);
@@ -61,7 +61,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#1e1e1e]  ${currentBg == 5 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#1e1e1e]  ${currentBg == 5 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("1e1e1e");
 							setCurrentBg(5);
@@ -70,7 +70,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#eaddd7]  ${currentBg == 8 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#eaddd7]  ${currentBg == 8 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("eaddd7");
 							setCurrentBg(8);
@@ -86,7 +86,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#99e9f2]  ${currentBg == 9 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#99e9f2]  ${currentBg == 9 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("99e9f2");
 							setCurrentBg(9);
@@ -102,7 +102,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#a5d8ff]  ${currentBg == 3 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#a5d8ff]  ${currentBg == 3 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("a5d8ff");
 							setCurrentBg(3);
@@ -118,7 +118,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#d0bfff]  ${currentBg == 10 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#d0bfff]  ${currentBg == 10 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("d0bfff");
 							setCurrentBg(10);
@@ -134,7 +134,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#eebefa]  ${currentBg == 11 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#eebefa]  ${currentBg == 11 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("eebefa");
 							setCurrentBg(11);
@@ -150,7 +150,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#fcc2d7]  ${currentBg == 12 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#fcc2d7]  ${currentBg == 12 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("fcc2d7");
 							setCurrentBg(12);
@@ -166,7 +166,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#b2f2bb]  ${currentBg == 2 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#b2f2bb]  ${currentBg == 2 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("b2f2bb");
 							setCurrentBg(2);
@@ -182,7 +182,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#96f2d7]  ${currentBg == 13 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#96f2d7]  ${currentBg == 13 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("96f2d7");
 							setCurrentBg(13);
@@ -198,7 +198,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#ffec99]  ${currentBg == 4 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#ffec99]  ${currentBg == 4 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("ffec99");
 							setCurrentBg(4);
@@ -214,7 +214,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#ffd8a8]  ${currentBg == 14 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#ffd8a8]  ${currentBg == 14 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("ffd8a8");
 							setCurrentBg(14);
@@ -230,7 +230,7 @@ export default function OptionalBg() {
 					/>
 					<ButtonProps
 						children={""}
-						className={`bg-[#ffc9c9]  ${currentBg == 1 ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+						className={`bg-[#ffc9c9]  ${currentBg == 1 ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 						onClick={() => {
 							setBg("ffc9c9");
 							setCurrentBg(1);
@@ -255,7 +255,7 @@ export default function OptionalBg() {
 								<ButtonProps
 									key={i}
 									children={""}
-									className={` ${activeShade == i ? "outline-1 outline-offset-1 outline-oc-grape-8" : ""}`}
+									className={` ${activeShade == i ? "!outline-oc-violet-9 dark:outline-oc-violet-6" : ""}`}
 									color={`${shade}`}
 									onClick={() => {
 										setActiveShade(i);

@@ -3,10 +3,11 @@ import ButtonAction from "@/ui/ButtonAction";
 import ButtonTool from "@/ui/ButtonTool";
 import actionIcon from "@/ui/icons/actions";
 import { useCanvasBgStore, useThemeStore } from "@/utils/canvasStore";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { useEffect } from "react";
+import { redirect } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { useState } from "react";
 import { ChangeEvent } from "react";
 
@@ -24,6 +25,8 @@ export default function ActionCard() {
 	const setThemeTool = useThemeStore((state) => state.setTheme);
 
 	const [clicked, setClicked] = useState<boolean>(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const actContainerRef = useRef<HTMLDivElement>(null);
 
 	const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const val = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
@@ -37,8 +40,29 @@ export default function ActionCard() {
 		setBackground(resolvedTheme === "dark" ? "121212" : "ffffff");
 	}, [resolvedTheme, theme]);
 
+	// useEffect(() => {
+	// 	function handleClickOutside(event: PointerEvent) {
+	// 		// if (!clicked) return;
+	// 		if (
+	// 			containerRef.current &&
+	// 			!containerRef.current.contains(event.target as Node)
+	// 		) {
+	// 			setClicked(false);
+	// 		}
+	// 	}
+
+	// 	document.addEventListener("pointerdown", handleClickOutside, true);
+	// 	return () => {
+	// 		document.removeEventListener(
+	// 			"pointerdown",
+	// 			handleClickOutside,
+	// 			true
+	// 		);
+	// 	};
+	// }, []);
+
 	return (
-		<div className="h-9 w-9 rounded-lg z-50 relative">
+		<div ref={actContainerRef} className="h-9 w-9 rounded-lg z-50 relative">
 			<ButtonTool
 				children={
 					<svg
@@ -70,7 +94,10 @@ export default function ActionCard() {
 				// color={`${clicked ? (theme === "light" ? "d0bfff" : "495057") : ""}`}
 			/>
 			{clicked && (
-				<div className="w-60 py-2 border border-gray-200 dark:bg-[#232329] dark:border-0 bg-white shadow-xl absolute top-[110%] flex flex-col gap-2 rounded-lg z-20 max-h-[80vh] overflow-auto custom-scrollbar dark:custom-scrollbar">
+				<div
+					ref={containerRef}
+					className="w-60 py-2 border border-gray-200 dark:bg-[#232329] dark:border-0 bg-white shadow-xl absolute top-[110%] flex flex-col gap-2 rounded-lg z-20 max-h-[80vh] overflow-auto custom-scrollbar dark:custom-scrollbar"
+				>
 					<div className="px-2 flex flex-col gap-1">
 						<ButtonAction
 							children={actionIcon.cp}
@@ -111,12 +138,12 @@ export default function ActionCard() {
 						{session && session.user ? (
 							<ButtonAction
 								children={actionIcon.lo}
-								onClick={() => console.log("hi")}
+								onClick={() => signOut(redirect("/"))}
 							/>
 						) : (
 							<ButtonAction
 								children={actionIcon.su}
-								onClick={() => console.log("hi")}
+								onClick={() => redirect("/signup")}
 							/>
 						)}
 					</div>
