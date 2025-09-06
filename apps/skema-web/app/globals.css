@@ -200,8 +200,18 @@
 	--color-light-space-factor: 0.25rem;
 
 	/* === Animations === */
-	--color-light-animate-float: float 2s ease-in-out infinite alternate both;
 	--color-light-animate-none: none;
+
+	--animate-float: float 2s ease-in-out infinite alternate both;
+
+	@keyframes float {
+		0% {
+			transform: translateY(-5px);
+		}
+		100% {
+			transform: translateY(5px);
+		}
+	}
 
 	--color-vivid-violet-50: #faf6fd;
 	--color-vivid-violet-100: #f4edfa;

@@ -176,10 +176,7 @@ export default function LeftSvg() {
 						</g>
 					</g>
 				</g>
-				<g
-					id="Group 113"
-					className="animate-float animation-delay-1 motion-reduce:animate-none"
-				>
+				<g id="Group 113" className="animate-float delay-300">
 					<g id="Group_25">
 						<path
 							id="Vector_17"

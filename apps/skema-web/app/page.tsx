@@ -4,11 +4,17 @@ import MainSection from "@/components/MainSection";
 import NavBar from "@/components/NavBar";
 import SideMenu from "@/components/SideMenu";
 import { useSideBarStore } from "@/utils/landingPageStore";
-import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useEffect } from "react";
 
 export default function Home() {
 	const isSideBarOpen = useSideBarStore((state) => state.isOpen);
-	const router = useRouter();
+
+	const { setTheme } = useTheme();
+
+	useEffect(() => {
+		setTheme("light"); // 👈 always force light when landing page mounts
+	}, [setTheme]);
 
 	return (
 		<div className="min-h-screen min-w-screen">

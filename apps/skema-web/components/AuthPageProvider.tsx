@@ -8,8 +8,10 @@ import { signIn } from "next-auth/react";
 export default function AuthPage({ type }: { type: "signup" | "signin" }) {
 	return (
 		<div className=" flex flex-col items-center justify-center gap-4">
-			<h2 className="text-2xl font-extrabold dark:invert">Hi there!</h2>
-			<div className="text-sm dark:invert">
+			<h2 className="text-2xl font-extrabold dark:text-white">
+				Hi there!
+			</h2>
+			<div className="text-sm dark:text-white">
 				Choose a provider to{" "}
 				{`${type === "signup" ? "sign up" : "sign in"}`}.
 			</div>
