@@ -10,9 +10,11 @@ import { SessionProvider } from "next-auth/react";
 export default function CanvasClient({
 	roomId,
 	user,
+	isActive,
 }: {
 	roomId: string;
 	user: { username: string; id: string };
+	isActive: boolean;
 }) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const router = useRouter();
@@ -80,7 +82,13 @@ export default function CanvasClient({
 
 	return (
 		<SessionProvider>
-			<Canvas roomId={roomId} socket={socket} user={user} />
+			<Canvas
+				roomId={roomId}
+				socket={socket}
+				user={user}
+				authenticated={false}
+				isActive={isActive}
+			/>
 		</SessionProvider>
 	);
 }

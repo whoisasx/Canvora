@@ -36,5 +36,5 @@ export default async function ({ params }: { params: { slug: string } }) {
 		redirect("/dashboard");
 	} finally {
 	}
-	return <FreeRoomCanvas roomId={roomId} user={user} />;
+	return <FreeRoomCanvas roomId={roomId} user={user} isActive={isActive} />;
 }

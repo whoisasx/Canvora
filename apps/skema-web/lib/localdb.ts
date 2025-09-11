@@ -5,16 +5,16 @@ export interface LocalUser {
 	id: string;
 	username: string;
 }
+export interface Chat {
+	id: string;
+	chat: object;
+}
 
 export interface LocalRoom {
 	id: string;
 	slug: string;
 	isActive: boolean;
 	chat: Chat;
-}
-export interface Chat {
-	id: string;
-	chat: object;
 }
 
 export class LocalDB extends Dexie {

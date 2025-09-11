@@ -17,10 +17,14 @@ export default function Canvas({
 	roomId,
 	socket,
 	user,
+	authenticated,
+	isActive,
 }: {
 	roomId: string;
 	socket: WebSocket;
 	user?: { username: string; id: string };
+	authenticated: boolean;
+	isActive?: boolean;
 }) {
 	const { data: session } = useSession();
 	const background = useCanvasBgStore((state) => state.background);
@@ -105,7 +109,13 @@ export default function Canvas({
 			canvasRef.current.width = dimensions.w;
 			canvasRef.current.height = dimensions.h;
 
-			const g = new Game(socket, canvasRef.current, roomId);
+			const g = new Game(
+				socket,
+				canvasRef.current,
+				roomId,
+				authenticated,
+				isActive
+			);
 			setGame(g);
 
 			return () => {
