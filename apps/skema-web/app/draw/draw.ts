@@ -371,7 +371,6 @@ export class Game {
 
 	/** ------------------------------------------------------------------- */
 	async initHandler() {
-		console.log("called init");
 		this.messages = await getExistingMessages(this.roomId);
 		this.renderCanvas();
 		window.addEventListener("keydown", (e) => {

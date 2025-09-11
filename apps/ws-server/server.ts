@@ -7,7 +7,7 @@ export async function createMessage(
 ) {
 	try {
 		const response = await axios.post(
-			`${process.env.NEXTAUTH_URL}/api/create-chat`,
+			`${process.env.BASE_URL}/api/create-chat`,
 			{
 				id: message.id,
 				message,
@@ -22,10 +22,9 @@ export async function createMessage(
 }
 
 export async function updateMessage(message: any, id: string) {
-	console.log("function");
 	try {
-		const response = await axios.post(
-			`${process.env.NEXTAUTH_URL}/api/update-chat`,
+		const response = await axios.patch(
+			`${process.env.BASE_URL}/api/update-chat`,
 			{
 				id: message.id,
 				message,
@@ -40,7 +39,7 @@ export async function updateMessage(message: any, id: string) {
 export async function deleteMessage(id: string) {
 	try {
 		const response = await axios.delete(
-			`${process.env.NEXTAUTH_URL}/api/create-chat`,
+			`${process.env.BASE_URL}/api/delete-chat`,
 			{
 				data: {
 					id,

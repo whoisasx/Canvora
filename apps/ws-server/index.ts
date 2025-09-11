@@ -294,6 +294,7 @@ wss.on("connection", (ws, req) => {
 					const roomRedo = redoByRoomUser.get(roomId)!;
 					roomRedo.set(userId, []);
 				}
+				updateMessage(newMessage, id);
 			}
 
 			for (let user of users) {
@@ -311,7 +312,6 @@ wss.on("connection", (ws, req) => {
 					}
 				}
 			}
-			updateMessage(newMessage, id);
 		}
 
 		if (parsedData.type === "cursor") {
