@@ -72,7 +72,6 @@ import {
 	useTextAlignStore,
 } from "@/utils/propsStore";
 import { makeCircleCursor } from "./render/eraser";
-import { User } from "next-auth";
 import { LayerManager } from "./render/layerManager";
 import { getExistingMessages } from "./server";
 
@@ -101,6 +100,10 @@ export interface IIMageData {
 	};
 	w: number;
 	h: number;
+}
+export interface User {
+	id: string;
+	username: string;
 }
 
 type BoundingBox = { x: number; y: number; w: number; h: number };

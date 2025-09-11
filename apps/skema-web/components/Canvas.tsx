@@ -16,9 +16,11 @@ import { useRouter } from "next/navigation";
 export default function Canvas({
 	roomId,
 	socket,
+	user,
 }: {
 	roomId: string;
 	socket: WebSocket;
+	user?: { username: string; id: string };
 }) {
 	const { data: session } = useSession();
 	const background = useCanvasBgStore((state) => state.background);
@@ -141,12 +143,16 @@ export default function Canvas({
 	const router = useRouter();
 
 	useEffect(() => {
+		if (!game) return;
+		if (user) {
+			game.setUser(user);
+			return;
+		}
 		if (!session) {
 			router.push("/dashboard");
 			return;
 		}
-		if (!game) return;
-		game.setUser(session!.user);
+		game.setUser({ username: session.user.username!, id: session.user.id });
 	}, [session, game, router]);
 
 	return (

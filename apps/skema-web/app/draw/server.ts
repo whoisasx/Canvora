@@ -1,3 +1,4 @@
+import { db } from "@/lib/localdb";
 import axios from "axios";
 
 export async function getExistingMessages(roomId: string) {

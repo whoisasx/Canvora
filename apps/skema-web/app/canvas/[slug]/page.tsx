@@ -6,10 +6,10 @@ import { redirect } from "next/navigation";
 
 export default async function ({ params }: { params: { slug: string } }) {
 	const session = await auth();
-	if (!session) {
-		redirect("/signin");
-	}
 	const slug = (await params).slug;
+	if (!session) {
+		redirect(`/free-canvas/${slug}`);
+	}
 	const user = session.user;
 	let roomId: string;
 
@@ -22,11 +22,44 @@ export default async function ({ params }: { params: { slug: string } }) {
 		if (!isRoomExist) {
 			console.log("room not exist");
 			redirect("/dashboard");
+		} else if (isRoomExist.isActive) {
+			roomId = isRoomExist.id;
+		} else if (isRoomExist.adminId !== user.id) {
+			const room_name = `${isRoomExist.name}-${Math.floor(Math.random() * 1000000).toString()}`;
+			const baseSlug = room_name
+				.toLowerCase()
+				.trim()
+				.replace(/[^a-z0-9\s-]/g, "")
+				.replace(/\s+/g, "-")
+				.replace(/-+/g, "-");
+			const timeStamp = Date.now();
+
+			const slug = `${baseSlug}-${timeStamp}`;
+
+			const newRoom = await prisma.room.create({
+				data: {
+					name: room_name,
+					slug,
+					adminId: user.id,
+				},
+			});
+
+			const chats = await prisma.chat.findMany({
+				where: { roomId: isRoomExist.id },
+				orderBy: { createdAt: "asc" },
+			});
+			for (let c of chats) {
+				await prisma.chat.create({
+					data: {
+						chat: c.chat!,
+						roomId: newRoom.id,
+					},
+				});
+			}
+			redirect(`/canvas/${newRoom.slug}`);
+		} else {
+			roomId = isRoomExist.id;
 		}
-		if (!isRoomExist.isActive && isRoomExist.adminId !== user.id) {
-			redirect("/dashboard");
-		}
-		roomId = isRoomExist.id;
 	} catch (error) {
 		redirect("/dashboard");
 	} finally {
