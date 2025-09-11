@@ -74,6 +74,7 @@ import {
 import { makeCircleCursor } from "./render/eraser";
 import { User } from "next-auth";
 import { LayerManager } from "./render/layerManager";
+import { getExistingMessages } from "./server";
 
 type Laser = {
 	x: number;
@@ -221,9 +222,9 @@ export class Game {
 		this.rc = rough.canvas(this.canvas);
 		this.generator = rough.generator();
 
-		this.initMouseEventHandler();
-		this.initSocketHandler();
 		this.initHandler();
+		this.initSocketHandler();
+		this.initMouseEventHandler();
 
 		this.unsubscribeZoom = useZoomStore.subscribe(
 			(state) => state.zoom,
@@ -369,8 +370,10 @@ export class Game {
 	}
 
 	/** ------------------------------------------------------------------- */
-	initHandler() {
-		//TODO: fetch the messages from the database, push it to the existing shapes and render the canvas.
+	async initHandler() {
+		console.log("called init");
+		this.messages = await getExistingMessages(this.roomId);
+		this.renderCanvas();
 		window.addEventListener("keydown", (e) => {
 			//delete
 			if ((e.ctrlKey || e.metaKey) && e.key === "Backspace") {

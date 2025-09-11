@@ -1,5 +1,6 @@
 import WebSocket, { WebSocketServer } from "ws";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import { createMessage, deleteMessage, updateMessage } from "./server";
 
 const wss = new WebSocketServer({
 	port: 8080,
@@ -197,6 +198,8 @@ wss.on("connection", (ws, req) => {
 					}
 				}
 			}
+
+			createMessage(message, userId, roomId);
 		}
 
 		if (parsedData.type === "delete-message") {
@@ -249,6 +252,7 @@ wss.on("connection", (ws, req) => {
 					}
 				}
 			}
+			deleteMessage(id);
 		}
 
 		if (parsedData.type === "update-message") {
@@ -307,6 +311,7 @@ wss.on("connection", (ws, req) => {
 					}
 				}
 			}
+			updateMessage(newMessage, id);
 		}
 
 		if (parsedData.type === "cursor") {

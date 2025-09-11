@@ -41,7 +41,7 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 				ws.onopen = () => {
 					setSocket(ws);
 					ws.send(JSON.stringify({ type: "join-room", roomId }));
-					toast.success("Connected to room 🎉");
+					// toast.success("Connected to room 🎉");
 				};
 
 				ws.onerror = () => {

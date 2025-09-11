@@ -1,26 +1,24 @@
 import axios from "axios";
 
 export async function getExistingMessages(roomId: string) {
+	console.log("roomId", roomId);
 	try {
 		const response = await axios.get(
-			`${process.env.NEXTAUTH_URL}/get-chats/${roomId}`
+			`${process.env.NEXTAUTH_URL}/api/get-chats/${roomId}`
 		);
 		if (response.status === 200) {
-			const chats = response.data.messages;
-			const shapes = chats.map((x: any) => {
-				const shape = JSON.parse(x.message);
-				return shape;
-			});
-			return shapes;
+			const messages = response.data.messages;
+			console.log("messages", messages);
+			return messages;
 		} else {
-			return "An error occured while getting shapes.";
+			return [];
 		}
 	} catch (err) {
 		if (axios.isAxiosError(err)) {
-			return err.response?.data?.message;
+			// return err.response?.data?.message;
+			console.log("get chat error");
+			return [];
 		}
-		return null;
-	} finally {
-		return "this is the final block , meaning request not handled.";
+		return [];
 	}
 }
