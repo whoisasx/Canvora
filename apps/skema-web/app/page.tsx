@@ -17,7 +17,7 @@ export default function Home() {
 	}, [setTheme]);
 
 	return (
-		<div className="min-h-screen min-w-screen">
+		<div className="min-h-screen min-w-screen scroll-none">
 			<div className="min-h-screen min-w-screen p-5 relative bg-page-gradient-green">
 				<NavBar />
 				<MainSection />

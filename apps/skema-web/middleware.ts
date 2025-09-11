@@ -14,7 +14,7 @@ export default auth(async (req: NextRequest) => {
 });
 
 export const config = {
-	matcher: ["/dashboard"],
+	matcher: ["/dashboard", "/canvas/:path*"],
 };
 
 // const nextAuth = NextAuth(authConfig);

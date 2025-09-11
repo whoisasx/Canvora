@@ -428,7 +428,17 @@
 				#d3ffd220 100%
 			);
 	}
-	.bg-browser-radial-gradient {
+	.bg-page-gradient-purple {
+		background-image:
+			linear-gradient(140deg, #d3ffd250 5%, #d3ffd200 90%),
+			radial-gradient(40% 60% at 97% 75%, #d3ffd250 0%, #d3ffd200 100%);
+	}
+	.bg-gradient-card {
+		background-image:
+			linear-gradient(140deg, #5954c550 5%, #5954c500 90%),
+			radial-gradient(40% 60% at 97% 75%, #5954c550 0%, #5954c500 100%);
+	}
+	.bg-page-radial-gradient {
 		background-image: radial-gradient(
 			50% 50% at 50% 50%,
 			#685ad15c 0%,
@@ -438,7 +448,7 @@
 
 	.custom-scrollbar::-webkit-scrollbar {
 		width: 4px;
-		height: 50px;
+		height: 4px;
 	}
 
 	.custom-scrollbar::-webkit-scrollbar-track {
@@ -510,4 +520,14 @@
 	.custom-slider:focus {
 		outline: none;
 	}
+}
+
+/* Chrome / Safari / Edge */
+.cus-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+/* Firefox */
+.cus-scrollbar {
+	scrollbar-width: none;
 }

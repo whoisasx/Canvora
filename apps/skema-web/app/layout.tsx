@@ -17,6 +17,7 @@ import {
 	sourceCode,
 	virgil,
 } from "./font";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = localFont({
 	src: "./fonts/GeistVF.woff",
@@ -41,7 +42,10 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`font-nunito ${nunito.variable}`}>
-				<ThemeWrapper>{children}</ThemeWrapper>
+				<ThemeWrapper>
+					{children}
+					<Toaster position="top-center" reverseOrder={false} />
+				</ThemeWrapper>
 			</body>
 		</html>
 	);

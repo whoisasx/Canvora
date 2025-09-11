@@ -37,7 +37,7 @@ export default function SideMenu() {
 							<div className="w-full h-15 border-b-1 border-canvora-200 rounded-b-2xl flex px-5 justify-between items-center bg-canvora-50 backdrop:blur-3xl">
 								<p className="text-xl font-semibold">Menu</p>
 								<button
-									className="p-2 rounded-2xl hover:bg-canvora-500 hover:border-oc-gray-6 border-[0.5px] border-transparent transition-all duration-300 ease-in-out hover:text-white"
+									className="p-2 rounded-2xl hover:bg-canvora-500 hover:border-oc-gray-6 border-[0.5px] border-transparent transition-all duration-300 ease-in-out hover:text-white cursor-pointer"
 									aria-label="Close"
 									onClick={setIsSideBarOpen}
 								>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Canvas from "./Canvas";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 export default function RoomCanvas({ roomId }: { roomId: string }) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -11,7 +12,7 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 	const { data: session, status } = useSession();
 
 	useEffect(() => {
-		if (status == "loading") return;
+		if (status === "loading") return;
 		if (!session) {
 			router.push("/signin");
 			return;
@@ -36,14 +37,20 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 				await getToken();
 
 				const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
-				ws.onopen = (e: Event) => {
+
+				ws.onopen = () => {
 					setSocket(ws);
 					ws.send(JSON.stringify({ type: "join-room", roomId }));
+					toast.success("Connected to room 🎉");
 				};
 
 				ws.onerror = () => {
-					console.log("server error");
+					toast.error("Server error 😢");
 					router.push("/dashboard");
+				};
+
+				ws.onclose = () => {
+					toast("Disconnected from server");
 				};
 
 				return () => {
@@ -51,23 +58,21 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 				};
 			} catch (error) {
 				console.log("error: ", error);
+				toast.error("Failed to connect ❌");
 				router.push("/dashboard");
 			}
 		};
+
 		if (session) getConnection();
 	}, [session, status, roomId, router]);
 
 	if (!socket || status === "loading" || !session) {
 		return (
-			<>
-				<div>loading...</div>
-			</>
+			<div className="flex h-screen w-screen items-center justify-center">
+				<p>loading...</p>
+			</div>
 		);
 	}
 
-	return (
-		<>
-			<Canvas roomId={roomId} socket={socket} />
-		</>
-	);
+	return <Canvas roomId={roomId} socket={socket} />;
 }
