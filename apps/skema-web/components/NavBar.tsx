@@ -41,6 +41,10 @@ export default function NavBar() {
 		getStarCount();
 	}, []);
 
+	const handleFreeBoard = async () => {
+		window.open("/free-board", "_blank");
+	};
+
 	return (
 		<div className="w-[80vw] xl:h-20 h-18 sticky top-10 border-t-[1px] border-x-[2px] border-canvora-100 rounded-3xl mx-auto flex items-center justify-between px-5 shadow-md shadow-canvora-100 bg-canvora-50/50 z-20">
 			<div className="flex items-center justify-between gap-2">
@@ -214,7 +218,7 @@ export default function NavBar() {
 						children={"Free whiteboard"}
 						size="medium"
 						level="primary"
-						onClick={() => console.log("hi")} //TODO: add the link to free canvas
+						onClick={handleFreeBoard}
 					/>
 				</div>
 			</div>

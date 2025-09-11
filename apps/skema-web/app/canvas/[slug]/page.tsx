@@ -8,7 +8,8 @@ export default async function ({ params }: { params: { slug: string } }) {
 	const session = await auth();
 	const slug = (await params).slug;
 	if (!session) {
-		redirect(`/free-canvas/${slug}`);
+		// redirect(`/free-canvas/${slug}`);
+		redirect("/signin");
 	}
 	const user = session.user;
 	let roomId: string;

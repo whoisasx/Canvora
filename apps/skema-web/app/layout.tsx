@@ -32,6 +32,9 @@ export const metadata: Metadata = {
 	title: "Canvora | Online whiteboard collaboration made easy",
 	description:
 		"Skema is a collaborative online whiteboard for sketching, brainstorming, and diagramming ideas in real time with a clean, minimal UI.",
+	icons: {
+		icon: "/canvora.svg",
+	},
 };
 
 export default function RootLayout({

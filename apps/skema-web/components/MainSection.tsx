@@ -153,7 +153,9 @@ export default function MainSection() {
 								<Button
 									size="large"
 									level="primary"
-									onClick={() => console.log("hi")}
+									onClick={() =>
+										window.open("/free-board", "_blank")
+									}
 								>
 									Start drawing
 								</Button>
@@ -251,7 +253,7 @@ export default function MainSection() {
 
 						<div className="flex flex-col gap-4 pt-8 sm:flex-row sm:gap-6">
 							<Link
-								href={"/"}
+								href={"/free-board"}
 								target="_blank"
 								rel="noopener noreferer"
 							>
@@ -323,7 +325,9 @@ export default function MainSection() {
 							<Button
 								size="large"
 								level="primary"
-								onClick={() => console.log("hi")}
+								onClick={() =>
+									window.open("/free-board", "_blank")
+								}
 							>
 								Draw now
 							</Button>

@@ -197,7 +197,9 @@ export default function SideMenu() {
 								children={"Free whiteboard"}
 								size="large"
 								level="primary"
-								onClick={() => console.log("hi")} //TODO: add the link to free canvas
+								onClick={() =>
+									window.open("/free-board", "_blank")
+								}
 							/>
 						</div>
 					</motion.div>

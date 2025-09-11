@@ -1,20 +1,17 @@
 // lib/db.ts
+import { Message } from "@/app/draw/draw";
 import Dexie, { Table } from "dexie";
 
 export interface LocalUser {
 	id: string;
 	username: string;
 }
-export interface Chat {
-	id: string;
-	chat: object;
-}
-
 export interface LocalRoom {
 	id: string;
+	roomname: string;
 	slug: string;
 	isActive: boolean;
-	chat: Chat;
+	chats: Message[];
 }
 
 export class LocalDB extends Dexie {
@@ -25,7 +22,7 @@ export class LocalDB extends Dexie {
 		super("SkemaLocalDB");
 		this.version(1).stores({
 			users: "id, username",
-			rooms: "id, slug, isActive",
+			rooms: "id, roomname, slug, isActive",
 		});
 	}
 }

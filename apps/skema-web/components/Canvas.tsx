@@ -12,6 +12,8 @@ import { usePropsStore } from "@/utils/propsStore";
 import { useCanvasBgStore, useSelectedMessageStore } from "@/utils/canvasStore";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/ui/Button";
+import Link from "next/link";
 
 export default function Canvas({
 	roomId,
@@ -167,6 +169,27 @@ export default function Canvas({
 
 	return (
 		<div className="min-h-screen min-w-screen relative">
+			{!authenticated && (
+				<div className="w-screen z-50 h-10 absolute bottom-10 pointer-events-none flex items-center justify-center gap-5">
+					<p className="pointer-events-auto text-oc-red-9 dark:text-oc-red-2">
+						Page is under progress. please sign in for better
+						experience.
+					</p>
+					<Link
+						href={"/signin"}
+						target="_blank"
+						className="pointer-events-auto"
+					>
+						<Button
+							size="small"
+							level="primary"
+							onClick={() => console.log("sign in")}
+						>
+							Sign in
+						</Button>
+					</Link>
+				</div>
+			)}
 			<canvas
 				ref={canvasRef}
 				height={window.innerHeight}
