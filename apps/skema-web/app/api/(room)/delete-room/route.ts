@@ -16,8 +16,8 @@ export const DELETE = auth(async function DELETE(req: NextAuthRequest) {
 		);
 	}
 	try {
-		const { slug } = await req.json();
-		if (!slug) {
+		const { id } = await req.json();
+		if (!id) {
 			return res.json(
 				{
 					message: "room name invalid.",
@@ -27,13 +27,14 @@ export const DELETE = auth(async function DELETE(req: NextAuthRequest) {
 			);
 		}
 
-		const result = await prisma.room.deleteMany({
+		const result = await prisma.room.delete({
 			where: {
-				slug,
+				id,
 				adminId: req.auth.user.id,
 			},
 		});
-		if (result.count === 0) {
+		console.log(result);
+		if (!result) {
 			return res.json(
 				{
 					message: "room not found",
@@ -55,6 +56,7 @@ export const DELETE = auth(async function DELETE(req: NextAuthRequest) {
 			}
 		);
 	} catch (error) {
+		console.log("error", error);
 		return res.json(
 			{
 				message:

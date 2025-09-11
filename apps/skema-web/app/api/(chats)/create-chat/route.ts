@@ -6,9 +6,9 @@ export async function POST(req: NextRequest) {
 		const body = await req.json();
 
 		// expected shape: { roomId: string, userId: string, message: any }
-		const { id, roomId, userId, message } = body ?? {};
+		const { id, roomId, message } = body ?? {};
 
-		if (!id || !roomId || !userId || message === undefined) {
+		if (!id || !roomId || message === undefined) {
 			return NextResponse.json(
 				{ error: "roomId, userId and message are required" },
 				{ status: 400 }
@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
 			data: {
 				id,
 				roomId,
-				userId,
 				chat: message,
 			},
 		});

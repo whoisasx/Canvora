@@ -19,7 +19,7 @@ export default function RoomCard({ room }: { room: IRoom }) {
 		try {
 			await toast.promise(
 				axios.delete("/api/delete-room", {
-					data: { slug: room.slug },
+					data: { id: room.id },
 				}),
 				{
 					loading: "Deleting room...",

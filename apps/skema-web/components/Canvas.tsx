@@ -25,6 +25,12 @@ export default function Canvas({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [game, setGame] = useState<Game>();
 
+	// track viewport size so we can re-create the Game on resize if requested
+	const [dimensions, setDimensions] = useState(() => ({
+		w: typeof window !== "undefined" ? window.innerWidth : 0,
+		h: typeof window !== "undefined" ? window.innerHeight : 0,
+	}));
+
 	const tool = useToolStore((state) => state.tool);
 	const props = usePropsStore();
 
@@ -93,6 +99,10 @@ export default function Canvas({
 
 	useEffect(() => {
 		if (canvasRef.current) {
+			// ensure canvas element has current dimensions before creating Game
+			canvasRef.current.width = dimensions.w;
+			canvasRef.current.height = dimensions.h;
+
 			const g = new Game(socket, canvasRef.current, roomId);
 			setGame(g);
 
@@ -100,7 +110,33 @@ export default function Canvas({
 				g.destructor();
 			};
 		}
-	}, [canvasRef]);
+	}, [canvasRef, dimensions.w, dimensions.h]);
+
+	// update dimensions on window resize (debounced) and resize the canvas element
+	useEffect(() => {
+		let timer: number | null = null;
+		const onResize = () => {
+			if (timer) window.clearTimeout(timer);
+			timer = window.setTimeout(() => {
+				const w = window.innerWidth;
+				const h = window.innerHeight;
+				setDimensions({ w, h });
+				if (canvasRef.current) {
+					canvasRef.current.width = w;
+					canvasRef.current.height = h;
+				}
+			}, 120);
+		};
+
+		window.addEventListener("resize", onResize);
+		// run once to sync
+		onResize();
+
+		return () => {
+			if (timer) window.clearTimeout(timer);
+			window.removeEventListener("resize", onResize);
+		};
+	}, []);
 
 	const router = useRouter();
 

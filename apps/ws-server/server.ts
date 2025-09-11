@@ -12,7 +12,6 @@ export async function createMessage(
 				id: message.id,
 				message,
 				roomId,
-				userId,
 			}
 		);
 		console.log("create");
