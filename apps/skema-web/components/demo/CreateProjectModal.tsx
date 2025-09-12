@@ -123,7 +123,7 @@ export function CreateProjectModal() {
 						{/* Header */}
 						<div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
 							<h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-								Create New Project
+								Create New Canvas
 							</h2>
 							<button
 								onClick={handleClose}
@@ -138,7 +138,7 @@ export function CreateProjectModal() {
 							{/* Project Name */}
 							<div>
 								<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-									Project Name
+									Canvas Name
 								</label>
 								<input
 									type="text"
@@ -278,7 +278,7 @@ export function CreateProjectModal() {
 									disabled={!formData.name.trim()}
 									className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
 								>
-									Create Project
+									Create Canvas
 								</button>
 							</div>
 						</form>

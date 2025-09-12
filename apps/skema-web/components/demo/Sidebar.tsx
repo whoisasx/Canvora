@@ -16,6 +16,7 @@ import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { redirect } from "next/navigation";
+import { CanvoraIcon } from "@/ui/Canvora";
 
 const navigation = [
 	{ name: "All Projects", icon: HomeIcon, filter: "all" as const },
@@ -90,11 +91,11 @@ export function Sidebar() {
 							>
 								<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
 									<span className="text-white font-bold text-sm">
-										D
+										<CanvoraIcon className="w-5 h-5" />
 									</span>
 								</div>
-								<span className="text-xl font-bold text-slate-900 dark:text-white">
-									DemoBoard
+								<span className="text-2xl font-extrabold text-slate-900 dark:text-white">
+									Canvora
 								</span>
 							</Link>
 							<button

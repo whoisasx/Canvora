@@ -392,7 +392,7 @@ export class Game {
 		this.renderCanvas();
 		window.addEventListener("keydown", (e) => {
 			//delete
-			if ((e.ctrlKey || e.metaKey) && e.key === "Backspace") {
+			if (e.key === "Backspace") {
 				e.preventDefault();
 
 				if (this.selectedMessage) {

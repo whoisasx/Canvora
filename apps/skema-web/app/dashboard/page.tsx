@@ -180,7 +180,7 @@ export default function DemoDashboard() {
 									Projects
 								</h1>
 								<p className="text-slate-500 dark:text-slate-400">
-									{filteredProjects.length} project
+									{filteredProjects.length} Project
 									{filteredProjects.length !== 1 ? "s" : ""}
 								</p>
 							</div>
@@ -215,7 +215,7 @@ export default function DemoDashboard() {
 							>
 								<PlusIcon className="w-4 h-4" />
 								<span className="hidden sm:inline">
-									New Project
+									New Canvas
 								</span>
 							</motion.button>
 						</div>

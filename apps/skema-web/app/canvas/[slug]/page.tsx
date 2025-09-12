@@ -42,6 +42,10 @@ export default async function ({ params }: { params: { slug: string } }) {
 					name: room_name,
 					slug,
 					adminId: user.id,
+					description: isRoomExist.description,
+					participants: isRoomExist.participants,
+					color: isRoomExist.color,
+					category: isRoomExist.category,
 				},
 			});
 

@@ -204,7 +204,7 @@ export default function Canvas({
 				className={`w-full px-4 absolute top-3 flex items-center justify-between pointer-events-none z-60`}
 			>
 				<div className="pointer-events-auto rounded-lg z-50">
-					<ActionCard />
+					<ActionCard roomId={roomId} />
 				</div>
 				<div className="pointer-events-auto">
 					<div className="w-xl h-12 border border-gray-200 dark:border-0 rounded-lg shadow-md z-40 bg-white dark:bg-[#232329]">
@@ -212,7 +212,7 @@ export default function Canvas({
 					</div>
 				</div>
 				<div className="pointer-events-auto z-40">
-					<ShareCard />
+					<ShareCard roomId={roomId} />
 				</div>
 			</div>
 			<div className="w-auto flex gap-2 pointer-events-none absolute bottom-4 px-3">

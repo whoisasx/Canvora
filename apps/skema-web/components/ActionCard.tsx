@@ -11,7 +11,7 @@ import { useEffect, useRef } from "react";
 import { useState } from "react";
 import { ChangeEvent } from "react";
 
-export default function ActionCard() {
+export default function ActionCard({ roomId }: { roomId: string }) {
 	const { data: session } = useSession();
 
 	const backgrounds = useCanvasBgStore((state) => state.backgrounds);
@@ -39,27 +39,6 @@ export default function ActionCard() {
 		setBackgrounds();
 		setBackground(resolvedTheme === "dark" ? "121212" : "ffffff");
 	}, [resolvedTheme, theme]);
-
-	// useEffect(() => {
-	// 	function handleClickOutside(event: PointerEvent) {
-	// 		// if (!clicked) return;
-	// 		if (
-	// 			containerRef.current &&
-	// 			!containerRef.current.contains(event.target as Node)
-	// 		) {
-	// 			setClicked(false);
-	// 		}
-	// 	}
-
-	// 	document.addEventListener("pointerdown", handleClickOutside, true);
-	// 	return () => {
-	// 		document.removeEventListener(
-	// 			"pointerdown",
-	// 			handleClickOutside,
-	// 			true
-	// 		);
-	// 	};
-	// }, []);
 
 	return (
 		<div ref={actContainerRef} className="h-9 w-9 rounded-lg z-50 relative">

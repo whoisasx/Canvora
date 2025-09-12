@@ -25,9 +25,9 @@ export function EmptyState({
 					),
 					title: "No projects yet",
 					description:
-						"Get started by creating your first project and collaborating with your team.",
+						"Get started by creating your first canvas and collaborating with your team.",
 					action: {
-						text: "Create Your First Project",
+						text: "Create Your First Canvas",
 						onClick: onCreateProject,
 					},
 				};
@@ -151,4 +151,3 @@ export function EmptyState({
 		</motion.div>
 	);
 }
-
