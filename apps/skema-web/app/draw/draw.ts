@@ -181,6 +181,9 @@ export class Game {
 	private unsubscribeSelectedMessage: () => void;
 	private setSelectedMessage: (val: Message | null) => void;
 
+	// Callback for when messages change (for intro overlay)
+	public onMessageChange?: () => void;
+
 	private setStroke: (val: string) => void;
 	private setBg: (val: string) => void;
 	private setOpacity: (val: number) => void;
@@ -622,6 +625,10 @@ export class Game {
 						this.setSelectedMessage(this.selectedMessage);
 					}
 					this.renderCanvas();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
 					break;
 				}
 
@@ -645,6 +652,10 @@ export class Game {
 					}
 					this.layerManager.setMessages(this.messages);
 					this.renderCanvas();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
 					break;
 				}
 				case "update": {
@@ -676,6 +687,10 @@ export class Game {
 					}
 					this.layerManager.setMessages(this.messages);
 					this.renderCanvas();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
 					break;
 				}
 				case "cursor": {
@@ -707,11 +722,19 @@ export class Game {
 						}
 					}
 					this.renderCanvas();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
 					break;
 				}
 				case "reload": {
 					console.log("reload");
 					this.renderCanvas();
+					// Notify about message changes (canvas was reset)
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
 					break;
 				}
 				default: {
@@ -774,6 +797,10 @@ export class Game {
 	}
 	setUser(user: User) {
 		this.user = user;
+	}
+
+	getMessages(): Message[] {
+		return this.messages;
 	}
 
 	getMousePos = (e: MouseEvent) => {
