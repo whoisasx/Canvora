@@ -1,4 +1,4 @@
-import { IRoom } from "@/app/dashboard/page";
+import { IRoom } from "@/app/temp-dashboard/page";
 import { useRoomStore } from "@/utils/dashBoardStore";
 import axios from "axios";
 import { useRouter } from "next/navigation";

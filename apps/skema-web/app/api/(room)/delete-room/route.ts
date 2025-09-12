@@ -33,7 +33,6 @@ export const DELETE = auth(async function DELETE(req: NextAuthRequest) {
 				adminId: req.auth.user.id,
 			},
 		});
-		console.log(result);
 		if (!result) {
 			return res.json(
 				{

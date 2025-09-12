@@ -1,0 +1,120 @@
+/* Custom scrollbar for demo dashboard */
+.demo-scrollbar::-webkit-scrollbar {
+	width: 6px;
+}
+
+.demo-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.demo-scrollbar::-webkit-scrollbar-thumb {
+	background: rgb(148 163 184 / 0.3);
+	border-radius: 3px;
+}
+
+.demo-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgb(148 163 184 / 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .demo-scrollbar::-webkit-scrollbar-thumb {
+	background: rgb(71 85 105 / 0.3);
+}
+
+.dark .demo-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgb(71 85 105 / 0.5);
+}
+
+/* Smooth transitions for theme changes */
+* {
+	transition:
+		background-color 0.2s ease,
+		border-color 0.2s ease,
+		color 0.2s ease;
+}
+
+/* Custom animations */
+@keyframes float {
+	0%,
+	100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-10px);
+	}
+}
+
+.float-animation {
+	animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+	background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+/* Glass morphism effect */
+.glass {
+	background: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass {
+	background: rgba(0, 0, 0, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Hover effects */
+.hover-lift {
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+	transform: translateY(-2px);
+	box-shadow:
+		0 10px 25px -5px rgba(0, 0, 0, 0.1),
+		0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.dark .hover-lift:hover {
+	box-shadow:
+		0 10px 25px -5px rgba(0, 0, 0, 0.3),
+		0 10px 10px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus styles */
+.focus-ring:focus {
+	outline: none;
+	/* emulate Tailwind's ring-offset: 2px and ring: 2px by using two box-shadow layers:
+	   first creates the offset (transparent), second creates the visible ring */
+	box-shadow:
+		0 0 0 2px transparent,
+		0 0 0 4px rgb(59 130 246);
+}
+
+/* Loading skeleton */
+.skeleton {
+	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background-size: 200% 100%;
+	animation: loading 1.5s infinite;
+}
+
+.dark .skeleton {
+	background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+	background-size: 200% 100%;
+}
+
+@keyframes loading {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}

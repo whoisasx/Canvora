@@ -1,0 +1,285 @@
+"use client";
+
+import { motion, AnimatePresence } from "motion/react";
+import { useDemoDashboardStore } from "@/utils/demoDashboardStore";
+import { ThemeToggle } from "./ThemeToggle";
+import {
+	HomeIcon,
+	StarIcon,
+	ClockIcon,
+	TrashIcon,
+	CogIcon,
+	PlusIcon,
+	MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
+import { signOut } from "next-auth/react";
+import Link from "next/link";
+import { useEffect } from "react";
+import { redirect } from "next/navigation";
+
+const navigation = [
+	{ name: "All Projects", icon: HomeIcon, filter: "all" as const },
+	{ name: "Recent", icon: ClockIcon, filter: "recent" as const },
+	{ name: "Favorites", icon: StarIcon, filter: "favorites" as const },
+	{ name: "Trash", icon: TrashIcon, filter: "trash" as const },
+];
+
+export function Sidebar() {
+	const {
+		sidebarOpen,
+		setSidebarOpen,
+		toggleSidebar,
+		selectedFilter,
+		setSelectedFilter,
+		viewMode,
+		setViewMode,
+		searchQuery,
+		setSearchQuery,
+		setCreateModalOpen,
+	} = useDemoDashboardStore();
+
+	useEffect(() => {
+		const handleWindowResize = () => {
+			if (window.innerWidth > 1024) {
+				setSidebarOpen(true);
+			}
+		};
+
+		handleWindowResize(); // run on mount
+		window.addEventListener("resize", handleWindowResize);
+
+		return () => {
+			window.removeEventListener("resize", handleWindowResize);
+		};
+	}, [setSidebarOpen]);
+
+	return (
+		<>
+			{/* Mobile overlay */}
+			<AnimatePresence>
+				{sidebarOpen && (
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+						onClick={toggleSidebar}
+					/>
+				)}
+			</AnimatePresence>
+
+			{/* Sidebar */}
+			<AnimatePresence>
+				{sidebarOpen && (
+					<motion.aside
+						initial={{ x: -320, opacity: 0 }}
+						animate={{ x: 0, opacity: 1 }}
+						exit={{ x: -320, opacity: 0 }}
+						transition={{
+							type: "spring",
+							damping: 30,
+							stiffness: 300,
+						}}
+						className="fixed lg:static inset-y-0 left-0 z-50 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex flex-col"
+					>
+						{/* Header */}
+						<div className="flex items-center justify-between p-7 border-b border-slate-200 dark:border-slate-700">
+							<Link
+								href="/"
+								className="flex items-center space-x-3"
+							>
+								<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+									<span className="text-white font-bold text-sm">
+										D
+									</span>
+								</div>
+								<span className="text-xl font-bold text-slate-900 dark:text-white">
+									DemoBoard
+								</span>
+							</Link>
+							<button
+								onClick={toggleSidebar}
+								className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+							>
+								<svg
+									className="w-5 h-5"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
+							</button>
+						</div>
+						{/* Search */}
+						<div className="p-6 border-b border-slate-200 dark:border-slate-700">
+							<div className="relative">
+								<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+								<input
+									type="text"
+									placeholder="Search projects..."
+									value={searchQuery}
+									onChange={(e) =>
+										setSearchQuery(e.target.value)
+									}
+									className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+								/>
+							</div>
+						</div>
+
+						{/* Navigation */}
+						<nav className="flex-1 p-6 space-y-2">
+							{navigation.map((item) => (
+								<motion.button
+									key={item.name}
+									onClick={() =>
+										setSelectedFilter(item.filter)
+									}
+									className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-all ${
+										selectedFilter === item.filter
+											? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+											: "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+									}`}
+									whileHover={{ x: 4 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<item.icon className="w-5 h-5" />
+									<span className="font-medium">
+										{item.name}
+									</span>
+								</motion.button>
+							))}
+						</nav>
+
+						{/* View Controls */}
+						<div className="p-6 border-t border-slate-200 dark:border-slate-700">
+							<div className="flex items-center justify-between mb-4">
+								<span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+									View Mode
+								</span>
+								<div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+									<button
+										onClick={() => setViewMode("grid")}
+										className={`p-1.5 rounded-md transition-all ${
+											viewMode === "grid"
+												? "bg-white dark:bg-slate-700 shadow-sm"
+												: "hover:bg-slate-200 dark:hover:bg-slate-700"
+										}`}
+									>
+										<svg
+											className="w-4 h-4"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<rect
+												x="3"
+												y="3"
+												width="8"
+												height="8"
+												rx="1"
+												strokeWidth={2}
+											/>
+											<rect
+												x="13"
+												y="3"
+												width="8"
+												height="8"
+												rx="1"
+												strokeWidth={2}
+											/>
+											<rect
+												x="3"
+												y="13"
+												width="8"
+												height="8"
+												rx="1"
+												strokeWidth={2}
+											/>
+											<rect
+												x="13"
+												y="13"
+												width="8"
+												height="8"
+												rx="1"
+												strokeWidth={2}
+											/>
+										</svg>
+									</button>
+									<button
+										onClick={() => setViewMode("list")}
+										className={`p-1.5 rounded-md transition-all ${
+											viewMode === "list"
+												? "bg-white dark:bg-slate-700 shadow-sm"
+												: "hover:bg-slate-200 dark:hover:bg-slate-700"
+										}`}
+									>
+										<svg
+											className="w-4 h-4"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M4 6h16M4 12h16M4 18h16"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							{/* Create Button */}
+							<motion.button
+								onClick={() => setCreateModalOpen(true)}
+								className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2.5 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all"
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
+							>
+								<PlusIcon className="w-4 h-4" />
+								<span>New Project</span>
+							</motion.button>
+						</div>
+
+						{/* Footer */}
+						<div className="p-6 border-t border-slate-200 dark:border-slate-700">
+							<div className="flex items-center justify-between">
+								<ThemeToggle />
+								<button
+									onClick={() => signOut(redirect("/"))}
+									className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+								>
+									<svg
+										className="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+										/>
+									</svg>
+									<span className="text-sm font-medium">
+										Sign Out
+									</span>
+								</button>
+							</div>
+						</div>
+					</motion.aside>
+				)}
+			</AnimatePresence>
+		</>
+	);
+}

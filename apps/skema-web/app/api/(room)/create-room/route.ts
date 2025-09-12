@@ -17,12 +17,12 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 		);
 	}
 	try {
-		const body = await req.json();
-		const parsed = roomNameSchem.safeParse(body);
-		if (!parsed.success) {
+		const { name, description, category, color, participants } =
+			await req.json();
+		if (!name || !category || !color) {
 			return res.json(
 				{
-					message: "room must have a valid name.",
+					message: "room data have a valid name.",
 					success: false,
 				},
 				{
@@ -31,24 +31,23 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 			);
 		}
 
-		const name = parsed.data.name;
-		const isRoomExist = await prisma.room.findFirst({
-			where: {
-				name,
-				adminId: req.auth.user.id,
-			},
-		});
-		if (isRoomExist) {
-			return res.json(
-				{
-					message: "room already exist with the same name.",
-					success: false,
-				},
-				{
-					status: 400,
-				}
-			);
-		}
+		// const isRoomExist = await prisma.room.findFirst({
+		// 	where: {
+		// 		name,
+		// 		adminId: req.auth.user.id,
+		// 	},
+		// });
+		// if (isRoomExist) {
+		// 	return res.json(
+		// 		{
+		// 			message: "room already exist with the same name.",
+		// 			success: false,
+		// 		},
+		// 		{
+		// 			status: 400,
+		// 		}
+		// 	);
+		// }
 
 		const baseSlug = name
 			.toLowerCase()
@@ -64,6 +63,10 @@ export const POST = auth(async function POST(req: NextAuthRequest) {
 			data: {
 				name,
 				slug,
+				description,
+				category,
+				color,
+				participants: participants ?? 1,
 				adminId: req.auth.user.id,
 			},
 		});

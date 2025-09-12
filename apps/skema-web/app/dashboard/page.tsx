@@ -1,58 +1,46 @@
 "use client";
 
-import axios from "axios";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useSession } from "next-auth/react";
-import { useTheme } from "next-themes";
-import { redirect, useRouter } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
-import { CanvoraIcon, CanvoraTitle } from "@/ui/Canvora";
-import { DashboardMenu, DashboardMenuMd } from "@/components/DashboardMenu";
+import { useDemoDashboardStore, DemoRoom } from "@/utils/demoDashboardStore";
+import { Sidebar } from "@/components/demo/Sidebar";
+import { ProjectCard } from "@/components/demo/ProjectCard";
+import { CreateProjectModal } from "@/components/demo/CreateProjectModal";
 import {
-	useCreateClickedStore,
-	useRoomStore,
-	useSideMenuStore,
-} from "@/utils/dashBoardStore";
-import { Button } from "@/ui/Button";
-import RoomCard from "@/components/RoomCard";
-import { User } from "next-auth";
+	Bars3Icon,
+	MagnifyingGlassIcon,
+	PlusIcon,
+	FunnelIcon,
+} from "@heroicons/react/24/outline";
+import { NotificationPanel } from "@/components/demo/NotificationPanel";
+import { EmptyState } from "@/components/demo/EmptyState";
 import toast from "react-hot-toast";
+import axios from "axios";
 
-export interface IRoom {
-	id: string;
-	slug: string;
-	name: string;
-	isActive: boolean;
-	createdAt: Date;
-}
-
-export default function () {
-	const [userdata, setUserdata] = useState<User | null>(null);
-	const [roomName, setRoomName] = useState("");
-
-	const rooms = useRoomStore((state) => state.rooms);
-	const setRooms = useRoomStore((state) => state.setRooms);
-
-	const [roomlink, setRoomlink] = useState("");
+export default function DemoDashboard() {
 	const { data: session, status } = useSession();
-	const router = useRouter();
+	const [mounted, setMounted] = useState(false);
 
-	const sideMenu = useSideMenuStore((state) => state.sideMenu);
-	const setSideMenu = useSideMenuStore((state) => state.setSideMenu);
-	const { setTheme, resolvedTheme } = useTheme();
-
-	const createClicked = useCreateClickedStore((state) => state.clicked);
-	const setCreateClicked = useCreateClickedStore((state) => state.setClicked);
+	const {
+		sidebarOpen,
+		toggleSidebar,
+		rooms,
+		setRooms,
+		updateRoom,
+		deleteRoom,
+		selectedFilter,
+		searchQuery,
+		viewMode,
+		createModalOpen,
+		setCreateModalOpen,
+		notifications,
+		addNotification,
+	} = useDemoDashboardStore();
 
 	useEffect(() => {
 		if (!session) {
-			return;
-		}
-		setUserdata(session.user ?? null);
-	}, [session]);
-
-	useEffect(() => {
-		if (!session) {
+			setMounted(true);
 			return;
 		}
 		const fetchRooms = async () => {
@@ -62,274 +50,405 @@ export default function () {
 				);
 				if (!response.data.success) return;
 				const allRooms = response.data.data;
-				const pulledRooms: IRoom[] = allRooms.map((room: IRoom) => ({
+				const pulledRooms = allRooms.map((room: any) => ({
 					id: room.id,
 					name: room.name,
 					slug: room.slug,
 					createdAt: room.createdAt,
 					isActive: room.isActive,
+					description: room.description,
+					category: room.category,
+					color: room.color,
+					participants: room.participants,
+					lastActivity: room.lastActivity,
 				}));
-				setRooms(pulledRooms);
+				setRooms(pulledRooms as DemoRoom[]);
 			} catch (error) {}
 		};
 		fetchRooms();
+		setMounted(true);
 	}, [session]);
 
-	const handleCreateRoom = async function () {
-		const room_name = roomName;
-		setRoomName("");
+	// Filter projects based on selected filter and search query
+	const filteredProjects = rooms.filter((project) => {
+		const matchesSearch =
+			project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			project.description
+				?.toLowerCase()
+				.includes(searchQuery.toLowerCase());
 
-		try {
-			await toast.promise(
-				axios.post("/api/create-room", { name: room_name }),
-				{
-					loading: "Creating room...",
-					success: (response) => {
-						if (response.status === 201) {
-							const roomData = response.data.data;
-							const newRoom: IRoom = {
-								id: roomData.id,
-								name: roomData.name,
-								slug: roomData.slug,
-								createdAt: roomData.createdAt,
-								isActive: roomData.isActive,
-							};
-							setRooms([...(rooms || []), newRoom]);
-							return "Room created successfully 🎉";
-						}
-						return "Something went wrong";
-					},
-					error: "Failed to create room 😢",
-				}
+		if (selectedFilter === "all") return matchesSearch;
+		if (selectedFilter === "recent") {
+			const recentDate = new Date();
+			recentDate.setDate(recentDate.getDate() - 7);
+			return matchesSearch && project.lastActivity > recentDate;
+		}
+		if (selectedFilter === "favorites") {
+			// For demo purposes, we'll consider projects with high participant count as favorites
+			return matchesSearch && project.participants > 5;
+		}
+		if (selectedFilter === "trash") {
+			// For demo purposes, we'll consider old projects as trash
+			const oldDate = new Date();
+			oldDate.setMonth(oldDate.getMonth() - 3);
+			return matchesSearch && project.createdAt < oldDate;
+		}
+		return matchesSearch;
+	});
+
+	const handleToggleActive = async (id: string) => {
+		const project = rooms.find((p) => p.id === id);
+		if (project) {
+			updateRoom(id, { isActive: !project.isActive });
+			addNotification({
+				title: "Project Updated",
+				message: `${project.name} session ${!project.isActive ? "started" : "stopped"}`,
+				type: "info",
+				read: false,
+			});
+			toast.success(
+				`Session ${!project.isActive ? "started" : "stopped"}`
 			);
-		} catch (error) {
-			toast.error("Something went wrong");
+			try {
+				await axios.post("api/toggle-roomstate", {
+					roomId: id,
+				});
+			} catch (err) {}
 		}
 	};
 
-	const handleEnterSession = async function () {
-		router.push(roomlink);
+	const handleDelete = async (id: string) => {
+		const project = rooms.find((p) => p.id === id);
+		if (project) {
+			deleteRoom(id);
+			addNotification({
+				title: "Project Deleted",
+				message: `${project.name} has been deleted`,
+				type: "warning",
+				read: false,
+			});
+			toast.success("Canvas deleted");
+			try {
+				await axios.delete("/api/delete-room", {
+					data: {
+						id,
+					},
+				});
+			} catch (error) {}
+		}
 	};
 
-	useEffect(() => {
-		setTheme("light"); // 👈 always force light when dashboard page mounts
-	}, [setTheme]);
+	const handleShare = (project: DemoRoom) => {
+		const url = `${window.location.origin}/canvas/${project.slug}`;
+		navigator.clipboard.writeText(url);
+		addNotification({
+			title: "Link Copied",
+			message: `Share link for ${project.name} copied to clipboard`,
+			type: "success",
+			read: false,
+		});
+		toast.success("Link copied to clipboard");
+	};
 
-	const contentRef = useRef<HTMLDivElement | null>(null);
-	const scrollRef = useRef<HTMLDivElement | null>(null);
-	useEffect(() => {
-		if (!contentRef.current || !scrollRef.current) return;
-
-		const content = contentRef.current;
-		const thumb = scrollRef.current;
-		const THUMB_HEIGHT = 65; // fixed height px
-
-		const handleScroll = () => {
-			const { scrollTop, scrollHeight, clientHeight } = content;
-
-			// Fixed thumb height
-			const thumbHeight = THUMB_HEIGHT;
-			const maxThumbOffset = clientHeight - thumbHeight;
-
-			// Proportional offset
-			const thumbOffset =
-				(scrollTop / (scrollHeight - clientHeight)) * maxThumbOffset;
-
-			thumb.style.height = `${thumbHeight}px`;
-			thumb.style.top = `${thumbOffset}px`;
-		};
-
-		content.addEventListener("scroll", handleScroll);
-		handleScroll();
-
-		return () => content.removeEventListener("scroll", handleScroll);
-	}, []);
+	if (!mounted || status === "loading") {
+		return (
+			<div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="h-screen w-screen bg-page-gradient-purple flex relative">
-			{createClicked && (
-				<div
-					className="w-screen h-screen absolute top-0 left-0 backdrop-blur-md z-50 flex items-center justify-center"
-					onClick={() => setCreateClicked(false)}
-				>
-					<div
-						className="w-80 h-80 border border-canvora-200 shadow-xl bg-canvora-50/50 rounded-2xl p-5 flex flex-col items-center justify-center gap-5"
-						onClick={(e) => e.stopPropagation()}
-					>
-						<input
-							type="text"
-							value={roomName}
-							onChange={(e) => {
-								setRoomName(e.target.value);
-							}}
-							placeholder="Enter name"
-							className="appearenc-none w-full h-10 border rounded-2xl px-3 border-canvora-600 outline-none"
-						/>
-						<Button
-							size="large"
-							level="primary"
-							onClick={() => {
-								setCreateClicked(false);
-								handleCreateRoom();
-							}}
-						>
-							Create canvas
-						</Button>
-					</div>
-				</div>
-			)}
-			<DashboardMenuMd />
-			{sideMenu && <DashboardMenu />}
-			<div className="flex-1 h-screen relative">
-				<div className="absolute top-0 left-0 h-full rounded-full">
-					{/* thumb */}
-					<div
-						ref={scrollRef}
-						id="fake-thumb"
-						className="absolute top-0 w-1 bg-canvora-300 rounded-full"
-						style={{ height: "65px" }}
-					></div>
-				</div>
-				<div
-					ref={contentRef}
-					className="h-full overflow-y-auto cus-scrollbar"
-				>
-					<div className="flex items-center justify-between py-3 px-3 md:px-5 sticky top-0  border-b-[0.5px] border-canvora-100">
-						<div className="flex items-center justify-center gap-2 md:gap-3 px-2 md:px-5">
+		<div className="h-screen w-screen bg-slate-50 dark:bg-slate-900 flex">
+			{/* Sidebar */}
+			<Sidebar />
+
+			{/* Main Content */}
+			<div className="flex-1 flex flex-col overflow-hidden">
+				{/* Header */}
+				<header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center space-x-4">
 							<button
-								className="w-fit h-fit cursor-pointer md:hidden"
-								onClick={setSideMenu}
+								onClick={toggleSidebar}
+								className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
 							>
-								<div className="w-8 h-8 rounded-xl bg-canvora-200 flex items-center justify-center hover:scale-95 transition-all duration-300 ease-in-out border-[0.5px] border-transparent hover:border-canvora-500">
-									<div className="flex h-4 w-4 cursor-pointer flex-col justify-around">
-										<div className="bg-canvora-500 h-0.5 rounded-md transition duration-500 ease-in-out"></div>
-										<div className="bg-canvora-500 h-0.5 rounded-md transition duration-500 ease-in-out opacity-100"></div>
-										<div className="bg-canvora-500 h-0.5 rounded-md transition duration-500 ease-in-out"></div>
-									</div>
-								</div>
+								<Bars3Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
 							</button>
-							<div className="group h-10 lg:w-96 md:w-60 w-auto flex gap-2 items-center rounded-xl border border-canvora-300 hover:scale-105 group-focus-within:scale-105 hover:border-canvora-500 group-focus-within:border-canvora-500 transition-all duration-300 ease-in-out">
-								<input
-									type="text"
-									value={roomlink}
-									onChange={(e) =>
-										setRoomlink(e.target.value)
-									}
-									placeholder={"Enter session link..."}
-									className="h-full w-full px-2 appearance-none outline-0 placeholder:text-sm text-canvora-600 placeholder:text-oc-gray-6/60"
-								></input>
-								<button
-									className="h-full w-15 px-1 text-sm rounded-r-xl bg-canvora-50 hover:bg-canvora-600 hover:text-white transition-all duration-300 ease-in-out cursor-pointer"
-									onClick={handleEnterSession}
-								>
-									Join
-								</button>
+							<div>
+								<h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+									Projects
+								</h1>
+								<p className="text-slate-500 dark:text-slate-400">
+									{filteredProjects.length} project
+									{filteredProjects.length !== 1 ? "s" : ""}
+								</p>
 							</div>
 						</div>
 
-						<div className="flex justify-center px-2 md:px-5">
-							<div className="w-8 h-8 sm:w-10 sm:h-10 hidden  md:flex items-center justify-center ">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									strokeWidth={1.5}
-									stroke="currentColor"
-									className="size-6"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-									/>
-								</svg>
+						<div className="flex items-center space-x-3">
+							{/* Search */}
+							<div className="hidden md:block relative">
+								<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+								<input
+									type="text"
+									placeholder="Search projects..."
+									value={searchQuery}
+									onChange={(e) =>
+										useDemoDashboardStore
+											.getState()
+											.setSearchQuery(e.target.value)
+									}
+									className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-64"
+								/>
 							</div>
-							<div className="h-8 sm:h-10 hidden min-[480]:flex items-center px-2 border-[0.5px] rounded-xl border-canvora-50">
-								<div className="h-6 w-6 sm:h-8 sm:w-8">
+
+							{/* Notifications */}
+							<NotificationPanel />
+
+							{/* Create Button */}
+							<motion.button
+								onClick={() => setCreateModalOpen(true)}
+								className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all font-medium"
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
+							>
+								<PlusIcon className="w-4 h-4" />
+								<span className="hidden sm:inline">
+									New Project
+								</span>
+							</motion.button>
+						</div>
+					</div>
+				</header>
+
+				{/* Content */}
+				<main className="flex-1 overflow-auto p-6 demo-scrollbar">
+					{/* Stats Cards */}
+					<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.1 }}
+							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+						>
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="text-sm text-slate-500 dark:text-slate-400">
+										Total Projects
+									</p>
+									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+										{rooms.length}
+									</p>
+								</div>
+								<div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
 									<svg
-										xmlns="http://www.w3.org/2000/svg"
+										className="w-6 h-6 text-blue-500"
 										fill="none"
-										viewBox="0 0 24 24"
-										strokeWidth={1.5}
 										stroke="currentColor"
-										className="sm:size-8 size-6 stroke-canvora-900"
+										viewBox="0 0 24 24"
 									>
 										<path
 											strokeLinecap="round"
 											strokeLinejoin="round"
-											d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+											strokeWidth={2}
+											d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
 										/>
 									</svg>
 								</div>
-								<div className="flex flex-col items-baseline sm:text-sm text-xs min-w-fit text-canvora-900">
-									<p className="leading-none">
-										{userdata?.username}
-									</p>
-									<p className="leading-none line-clamp-1 text-sm">
-										User role
-									</p>
-								</div>
 							</div>
-						</div>
-					</div>
-					<div className="p-5 min-h-screen flex flex-col gap-10">
-						<div className="w-full flex items-center justify-between px-2 md:px-5 gap-2">
-							<p className="text-2xl md:text-4xl sm:text-3xl font-semibold text-canvora-900">
-								Drawings
-							</p>
-							<button
-								className="w-30 min-[480]:w-40 h-10 flex items-center justify-center gap-2 rounded-xl bg-canvora-600 text-white cursor-pointer hover:text-black hover:scale-105 hover:border hover:border-canvora-600 transition-all duration-300 ease-in-out"
-								onClick={() => setCreateClicked(true)}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									strokeWidth={1.5}
-									stroke="currentColor"
-									className="size-4"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										d="M12 4.5v15m7.5-7.5h-15"
-									/>
-								</svg>
-								<p className="text-sm">New Canvas</p>
-							</button>
-						</div>
-						<Suspense
-							fallback={
-								<div className="@container w-full px-2 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-y-5">
-									{Array.from({ length: 6 }).map((_, i) => (
-										<div
-											key={i}
-											className="h-40 w-full rounded-xl bg-canvora-200 animate-pulse"
-										></div>
-									))}
-								</div>
-							}
+						</motion.div>
+
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.2 }}
+							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
 						>
-							<div className="@container w-full px-2 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-y-5">
-								{rooms.map((room, i) => (
-									<RoomCard key={i} room={room} />
-								))}
-								<button
-									className="w-75 h-75 rounded-2xl border border-canvora-200 shadow-lg shadow-canvora-100 cursor-pointer bg-canvora-100 flex flex-col items-center justify-center gap-2 border-dashed hover:scale-105 transition-all duration-300 ease-in-out"
-									onClick={() => setCreateClicked(true)}
-								>
-									<div className="w-10 h-10 bg-canvora-600 rounded-full text-3xl flex items-center justify-center text-canvora-50">
-										+
-									</div>
-									<p className="text-canvora-900 font-semibold">
-										Create new canvas
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="text-sm text-slate-500 dark:text-slate-400">
+										Active Sessions
 									</p>
-								</button>
+									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+										{rooms.filter((p) => p.isActive).length}
+									</p>
+								</div>
+								<div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+									<svg
+										className="w-6 h-6 text-green-500"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+										/>
+									</svg>
+								</div>
 							</div>
-						</Suspense>
+						</motion.div>
+
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.3 }}
+							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+						>
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="text-sm text-slate-500 dark:text-slate-400">
+										Total Participants
+									</p>
+									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+										{rooms.reduce(
+											(acc, p) => acc + p.participants,
+											0
+										)}
+									</p>
+								</div>
+								<div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+									<svg
+										className="w-6 h-6 text-purple-500"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+										/>
+									</svg>
+								</div>
+							</div>
+						</motion.div>
+
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.4 }}
+							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+						>
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="text-sm text-slate-500 dark:text-slate-400">
+										This Week
+									</p>
+									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+										{
+											rooms.filter((p) => {
+												const weekAgo = new Date();
+												weekAgo.setDate(
+													weekAgo.getDate() - 7
+												);
+												return p.lastActivity > weekAgo;
+											}).length
+										}
+									</p>
+								</div>
+								<div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+									<svg
+										className="w-6 h-6 text-orange-500"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+										/>
+									</svg>
+								</div>
+							</div>
+						</motion.div>
 					</div>
-				</div>
+
+					{/* Projects Grid/List */}
+					<div className="space-y-6">
+						<div className="flex items-center justify-between">
+							<h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+								{selectedFilter === "all"
+									? "All Projects"
+									: selectedFilter === "recent"
+										? "Recent Projects"
+										: selectedFilter === "favorites"
+											? "Favorite Projects"
+											: "Trash"}
+							</h2>
+							<div className="flex items-center space-x-2">
+								<FunnelIcon className="w-4 h-4 text-slate-400" />
+								<span className="text-sm text-slate-500 dark:text-slate-400">
+									{filteredProjects.length} project
+									{filteredProjects.length !== 1 ? "s" : ""}
+								</span>
+							</div>
+						</div>
+
+						{filteredProjects.length === 0 ? (
+							<EmptyState
+								type={
+									searchQuery
+										? "no-search-results"
+										: "no-projects"
+								}
+								onCreateProject={() => setCreateModalOpen(true)}
+								onClearSearch={
+									searchQuery
+										? () =>
+												useDemoDashboardStore
+													.getState()
+													.setSearchQuery("")
+										: undefined
+								}
+							/>
+						) : (
+							<div
+								className={
+									viewMode === "grid"
+										? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+										: "space-y-4"
+								}
+							>
+								<AnimatePresence>
+									{filteredProjects.map((project, index) => (
+										<motion.div
+											key={project.id}
+											initial={{ opacity: 0, y: 20 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{
+												opacity: 0,
+												y: -20,
+												scale: 0.95,
+											}}
+											transition={{ delay: index * 0.1 }}
+										>
+											<ProjectCard
+												project={project}
+												viewMode={viewMode}
+												onToggleActive={
+													handleToggleActive
+												}
+												onDelete={handleDelete}
+												onShare={handleShare}
+											/>
+										</motion.div>
+									))}
+								</AnimatePresence>
+							</div>
+						)}
+					</div>
+				</main>
 			</div>
+
+			{/* Create Project Modal */}
+			<CreateProjectModal />
 		</div>
 	);
 }

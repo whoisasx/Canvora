@@ -1,4 +1,4 @@
-import { IRoom } from "@/app/dashboard/page";
+import { IRoom } from "@/app/temp-dashboard/page";
 import { create } from "zustand";
 
 export type SelectedFilter = "all" | "recent" | "favourite" | "trash";

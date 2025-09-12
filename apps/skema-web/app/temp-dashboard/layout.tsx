@@ -1,6 +1,5 @@
-import { SessionProvider } from "next-auth/react";
-import "./globals.css";
 import { ThemeWrapper } from "@/components/ThemeWrapper";
+import { SessionProvider } from "next-auth/react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
 	return (

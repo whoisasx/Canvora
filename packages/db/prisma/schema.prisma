@@ -58,13 +58,18 @@ model VerificationToken {
 }
 
 model Room {
-    id        String   @id @default(uuid())
-    name      String
-    slug      String   @unique
-    isActive  Boolean  @default(false)
-    createdAt DateTime @default(now())
-    adminId   String
-    chats     Chat[]
+    id           String   @id @default(uuid())
+    name         String
+    slug         String   @unique
+    isActive     Boolean  @default(false)
+    createdAt    DateTime @default(now())
+    description  String?
+    category     String
+    color        String
+    participants Int      @default(1)
+    lastActivity DateTime @default(now())
+    adminId      String
+    chats        Chat[]
 
     admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }

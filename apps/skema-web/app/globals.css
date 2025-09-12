@@ -531,3 +531,20 @@
 .cus-scrollbar {
 	scrollbar-width: none;
 }
+
+/* Force landing page to ignore dark styles */
+/* .landing-force-light,
+.landing-force-light * {
+	--tw-bg-opacity: initial !important;
+	--tw-text-opacity: initial !important;
+	color: initial !important;
+	background-color: initial !important;
+} */
+/* 
+.dark .landing-force-light {
+	@apply bg-white text-black;
+}
+
+.dark .landing-force-light * {
+	@apply text-black bg-transparent;
+} */

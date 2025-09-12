@@ -1,28 +1,34 @@
 export default function Loading() {
 	return (
-		<div className="h-screen w-screen flex flex-col items-center justify-center bg-page-gradient-purple">
-			{/* Brand Icon */}
-			<div className="animate-bounce mb-6">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					strokeWidth={1.5}
-					stroke="currentColor"
-					className="w-16 h-16 text-canvora-600"
-				>
-					<path
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-					/>
-				</svg>
+		<div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+			{/* Animated Logo */}
+			<div className="relative mb-8">
+				<div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse shadow-2xl"></div>
+				<div className="absolute inset-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-400 to-purple-500 animate-ping opacity-20"></div>
 			</div>
 
-			{/* Brand Title */}
-			<p className="text-canvora-700 text-xl font-semibold animate-pulse">
-				Loading your canvas...
-			</p>
+			{/* Loading Text */}
+			<div className="text-center space-y-2">
+				<h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 animate-pulse">
+					Loading Workspace
+				</h2>
+				<p className="text-slate-600 dark:text-slate-400">
+					Preparing your canvas...
+				</p>
+			</div>
+
+			{/* Loading Dots */}
+			<div className="flex space-x-2 mt-6">
+				<div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+				<div
+					className="w-3 h-3 bg-purple-500 rounded-full animate-bounce"
+					style={{ animationDelay: "0.1s" }}
+				></div>
+				<div
+					className="w-3 h-3 bg-pink-500 rounded-full animate-bounce"
+					style={{ animationDelay: "0.2s" }}
+				></div>
+			</div>
 		</div>
 	);
 }

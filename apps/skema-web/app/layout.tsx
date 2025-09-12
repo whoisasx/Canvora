@@ -45,10 +45,8 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`font-nunito ${nunito.variable}`}>
-				<ThemeWrapper>
-					{children}
-					<Toaster position="top-center" reverseOrder={false} />
-				</ThemeWrapper>
+				{children}
+				<Toaster position="top-center" reverseOrder={false} />
 			</body>
 		</html>
 	);
