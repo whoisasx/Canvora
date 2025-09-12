@@ -291,10 +291,11 @@ export default function ActionCard({
 											console.log(game?.socket);
 											game?.socket.send(
 												JSON.stringify({
-													type: "reset-room",
+													type: "reset-canvas",
 													roomId: roomId,
 												})
 											);
+											window.location.reload();
 										}
 									} catch (err) {
 										toast.error("Failed to reset canvas.");
