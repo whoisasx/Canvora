@@ -11,12 +11,14 @@ import {
 	CogIcon,
 	PlusIcon,
 	MagnifyingGlassIcon,
+	LinkIcon,
 } from "@heroicons/react/24/outline";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { redirect } from "next/navigation";
 import { CanvoraIcon } from "@/ui/Canvora";
+import { JoinSessionModal } from "./JoinSessionModal";
 
 const navigation = [
 	{ name: "All Projects", icon: HomeIcon, filter: "all" as const },
@@ -38,6 +40,8 @@ export function Sidebar() {
 		setSearchQuery,
 		setCreateModalOpen,
 	} = useDemoDashboardStore();
+
+	const [joinModalOpen, setJoinModalOpen] = useState(false);
 
 	useEffect(() => {
 		const handleWindowResize = () => {
@@ -239,16 +243,28 @@ export function Sidebar() {
 								</div>
 							</div>
 
-							{/* Create Button */}
-							<motion.button
-								onClick={() => setCreateModalOpen(true)}
-								className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2.5 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all"
-								whileHover={{ scale: 1.02 }}
-								whileTap={{ scale: 0.98 }}
-							>
-								<PlusIcon className="w-4 h-4" />
-								<span>New Project</span>
-							</motion.button>
+							{/* Action Buttons */}
+							<div className="space-y-3">
+								<motion.button
+									onClick={() => setCreateModalOpen(true)}
+									className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2.5 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all"
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<PlusIcon className="w-4 h-4" />
+									<span>New Canvas</span>
+								</motion.button>
+
+								<motion.button
+									onClick={() => setJoinModalOpen(true)}
+									className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2.5 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all"
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<LinkIcon className="w-4 h-4" />
+									<span>Join Session</span>
+								</motion.button>
+							</div>
 						</div>
 
 						{/* Footer */}
@@ -281,6 +297,12 @@ export function Sidebar() {
 					</motion.aside>
 				)}
 			</AnimatePresence>
+
+			{/* Join Session Modal */}
+			<JoinSessionModal
+				isOpen={joinModalOpen}
+				onClose={() => setJoinModalOpen(false)}
+			/>
 		</>
 	);
 }

@@ -172,8 +172,7 @@ export default function Canvas({
 			{!authenticated && (
 				<div className="w-screen z-50 h-10 absolute bottom-10 pointer-events-none flex items-center justify-center gap-5">
 					<p className="pointer-events-auto text-oc-red-9 dark:text-oc-red-2">
-						Page is under progress. please sign in for better
-						experience.
+						Page is under progress. please sign in.
 					</p>
 					<Link
 						href={"/signin"}
@@ -204,7 +203,7 @@ export default function Canvas({
 				className={`w-full px-4 absolute top-3 flex items-center justify-between pointer-events-none z-60`}
 			>
 				<div className="pointer-events-auto rounded-lg z-50">
-					<ActionCard roomId={roomId} />
+					<ActionCard roomId={roomId} game={game} />
 				</div>
 				<div className="pointer-events-auto">
 					<div className="w-xl h-12 border border-gray-200 dark:border-0 rounded-lg shadow-md z-40 bg-white dark:bg-[#232329]">
@@ -212,7 +211,7 @@ export default function Canvas({
 					</div>
 				</div>
 				<div className="pointer-events-auto z-40">
-					<ShareCard roomId={roomId} />
+					<ShareCard />
 				</div>
 			</div>
 			<div className="w-auto flex gap-2 pointer-events-none absolute bottom-4 px-3">

@@ -500,6 +500,37 @@ wss.on("connection", (ws, req) => {
 				}
 			}
 		}
+
+		if (parsedData.type === "reset-canvas") {
+			console.log("reset-canvas");
+			const roomId = parsedData.roomId;
+			// Clear all messages for the room
+			messagesByRoom.set(roomId, []);
+			// Clear undo history for the room
+			historyByRoom.set(roomId, []);
+			// Clear redo stack for every user in the room
+			if (redoByRoomUser.has(roomId)) {
+				const roomRedo = redoByRoomUser.get(roomId)!;
+				for (const userId of roomRedo.keys()) {
+					roomRedo.set(userId, []);
+				}
+			}
+			// Notify all users in the room to reload the canvas
+			for (let user of users) {
+				if (user.rooms.includes(roomId)) {
+					try {
+						user.ws.send(
+							JSON.stringify({
+								type: "reload",
+								roomId,
+							})
+						);
+					} catch (err) {
+						// ignore send errors
+					}
+				}
+			}
+		}
 	});
 
 	ws.on("close", () => {

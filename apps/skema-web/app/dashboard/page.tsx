@@ -12,15 +12,18 @@ import {
 	MagnifyingGlassIcon,
 	PlusIcon,
 	FunnelIcon,
+	LinkIcon,
 } from "@heroicons/react/24/outline";
 import { NotificationPanel } from "@/components/demo/NotificationPanel";
 import { EmptyState } from "@/components/demo/EmptyState";
+import { JoinSessionModal } from "@/components/demo/JoinSessionModal";
 import toast from "react-hot-toast";
 import axios from "axios";
 
 export default function DemoDashboard() {
 	const { data: session, status } = useSession();
 	const [mounted, setMounted] = useState(false);
+	const [joinModalOpen, setJoinModalOpen] = useState(false);
 
 	const {
 		sidebarOpen,
@@ -205,6 +208,19 @@ export default function DemoDashboard() {
 
 							{/* Notifications */}
 							<NotificationPanel />
+
+							{/* Join Session Button */}
+							<motion.button
+								onClick={() => setJoinModalOpen(true)}
+								className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all font-medium"
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
+							>
+								<LinkIcon className="w-4 h-4" />
+								<span className="hidden sm:inline">
+									Join Session
+								</span>
+							</motion.button>
 
 							{/* Create Button */}
 							<motion.button
@@ -449,6 +465,12 @@ export default function DemoDashboard() {
 
 			{/* Create Project Modal */}
 			<CreateProjectModal />
+
+			{/* Join Session Modal */}
+			<JoinSessionModal
+				isOpen={joinModalOpen}
+				onClose={() => setJoinModalOpen(false)}
+			/>
 		</div>
 	);
 }

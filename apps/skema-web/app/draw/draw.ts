@@ -709,11 +709,16 @@ export class Game {
 					this.renderCanvas();
 					break;
 				}
+				case "reload": {
+					console.log("reload");
+					this.renderCanvas();
+					break;
+				}
 				default: {
-					console.warn(
-						"socket: unknown message type",
-						parsedData.type
-					);
+					// console.warn(
+					// 	"socket: unknown message type",
+					// 	parsedData.type
+					// );
 					return;
 				}
 			}

@@ -1,8 +1,10 @@
 "use client";
+import { Game } from "@/app/draw/draw";
 import ButtonAction from "@/ui/ButtonAction";
 import ButtonTool from "@/ui/ButtonTool";
 import actionIcon from "@/ui/icons/actions";
 import { useCanvasBgStore, useThemeStore } from "@/utils/canvasStore";
+import axios from "axios";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -10,8 +12,15 @@ import { redirect } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useState } from "react";
 import { ChangeEvent } from "react";
+import toast from "react-hot-toast";
 
-export default function ActionCard({ roomId }: { roomId: string }) {
+export default function ActionCard({
+	roomId,
+	game,
+}: {
+	roomId: string;
+	game: Game | undefined;
+}) {
 	const { data: session } = useSession();
 
 	const backgrounds = useCanvasBgStore((state) => state.backgrounds);
@@ -25,6 +34,7 @@ export default function ActionCard({ roomId }: { roomId: string }) {
 	const setThemeTool = useThemeStore((state) => state.setTheme);
 
 	const [clicked, setClicked] = useState<boolean>(false);
+	const [showConfirm, setShowConfirm] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const actContainerRef = useRef<HTMLDivElement>(null);
 
@@ -96,7 +106,9 @@ export default function ActionCard({ roomId }: { roomId: string }) {
 						/>
 						<ButtonAction
 							children={actionIcon.rc}
-							onClick={() => console.log("hi")}
+							onClick={() => {
+								setShowConfirm(true);
+							}}
 						/>
 						<div className="w-full border-t-[0.5px] border-t-gray-300 dark:border-t-gray-600 mx-auto"></div>
 						<Link
@@ -241,6 +253,64 @@ export default function ActionCard({ roomId }: { roomId: string }) {
 									onChange={handleOnChange}
 								/>
 							</div>
+						</div>
+					</div>
+				</div>
+			)}
+			{showConfirm && (
+				<div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+					<div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg text-center">
+						<p className="mb-4">
+							Are you sure you want to reset the canvas? This will
+							delete all messages in this room.
+						</p>
+						<div className="flex gap-4 justify-center">
+							<button
+								className="px-4 py-2 bg-red-600 text-white rounded"
+								onClick={async () => {
+									try {
+										const res = await axios.delete(
+											"/api/reset-room",
+											{ data: { roomId } }
+										);
+										if (res.status !== 200) {
+											if (res.status === 404) {
+												toast.error(
+													"Only admin is permitted."
+												);
+												return;
+											}
+											toast.error(
+												"Failed to reset canvas"
+											);
+										} else {
+											toast.success(
+												"Canvas reset successful!"
+											);
+											console.log("command");
+											console.log(game?.socket);
+											game?.socket.send(
+												JSON.stringify({
+													type: "reset-room",
+													roomId: roomId,
+												})
+											);
+										}
+									} catch (err) {
+										toast.error("Failed to reset canvas.");
+									} finally {
+										setShowConfirm(false);
+									}
+								}}
+							>
+								Confirm
+							</button>
+							<button
+								className="px-4 py-2 bg-gray-300 dark:bg-gray-600 rounded"
+								onClick={() => setShowConfirm(false)}
+							>
+								Cancel
+							</button>
 						</div>
 					</div>
 				</div>
