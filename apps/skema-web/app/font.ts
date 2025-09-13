@@ -14,16 +14,19 @@ export const firaCode = Fira_Code({
 	weight: "400",
 	variable: "--font-firacode",
 	style: ["normal"],
+	subsets: ["latin"],
 });
 export const sourceCode = Source_Code_Pro({
 	weight: ["400"],
 	variable: "--font-sourceCode",
 	style: ["normal"],
+	subsets: ["latin"],
 });
 export const nunito = Nunito({
 	weight: ["400"],
 	variable: "--font-nunito",
 	style: ["normal"],
+	subsets: ["latin"],
 });
 export const inter = Inter({
 	subsets: ["latin"],
@@ -40,10 +43,12 @@ export const ibm = IBM_Plex_Sans({
 export const cutive_mono = Cutive_Mono({
 	weight: ["400"],
 	variable: "--font-cutivemono",
+	subsets: ["latin"],
 });
 export const caveat = Caveat({
 	weight: ["400"],
 	variable: "--font-caveat",
+	subsets: ["latin"],
 });
 
 export const chilanka = localFont({

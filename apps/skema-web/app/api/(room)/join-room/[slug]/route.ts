@@ -4,7 +4,7 @@ import { NextRequest, NextResponse as res } from "next/server";
 
 export async function GET(
 	req: NextRequest,
-	{ params }: { params: { slug: string } }
+	{ params }: { params: Promise<{ slug: string }> }
 ) {
 	try {
 		const session = await auth();

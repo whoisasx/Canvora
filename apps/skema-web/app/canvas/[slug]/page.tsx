@@ -4,7 +4,11 @@ import { prisma } from "@repo/db/prisma";
 import { SessionProvider } from "next-auth/react";
 import { redirect } from "next/navigation";
 
-export default async function ({ params }: { params: { slug: string } }) {
+export default async function ({
+	params,
+}: {
+	params: Promise<{ slug: string }>;
+}) {
 	const session = await auth();
 	const slug = (await params).slug;
 	if (!session) {

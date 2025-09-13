@@ -4,7 +4,11 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"dev": "bun run --watch index.ts"
+		"dev": "bun run --watch index.ts",
+		"build": "bun build index.ts --outdir ./dist --target bun",
+		"start": "bun run dist/index.js",
+		"lint": "eslint . --ext .ts,.js",
+		"check-types": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@types/bun": "latest"

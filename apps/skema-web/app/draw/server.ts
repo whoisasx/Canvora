@@ -6,9 +6,7 @@ export async function getExistingMessages(
 	isActive: boolean | undefined
 ) {
 	try {
-		const response = await axios.get(
-			`http://localhost:3000/api/get-chats/${roomId}`
-		);
+		const response = await axios.get(`/api/get-chats/${roomId}`);
 		if (response.status === 200) {
 			const messages = response.data.messages;
 			return messages;

@@ -6,7 +6,11 @@ import { redirect } from "next/navigation";
 import { generateUsername } from "unique-username-generator";
 import { v4 as uuidv4, v4 } from "uuid";
 
-export default async function ({ params }: { params: { slug: string } }) {
+export default async function ({
+	params,
+}: {
+	params: Promise<{ slug: string }>;
+}) {
 	let roomId: string = v4();
 	let isActive: boolean = true;
 	const username = generateUsername("-");

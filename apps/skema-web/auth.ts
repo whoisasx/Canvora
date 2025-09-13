@@ -7,6 +7,7 @@ import Resend from "next-auth/providers/resend";
 const nextAuth = NextAuth({
 	...authConfig,
 	adapter: PrismaAdapter(prisma),
+	trustHost: true,
 	providers: [
 		...authConfig.providers,
 		Resend({
