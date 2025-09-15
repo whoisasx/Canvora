@@ -199,6 +199,14 @@ export class Game {
 		h: number;
 	} | null = null;
 
+	// Performance optimization fields
+	private lastRenderTime: number = 0;
+	private renderThrottleMs: number = 16; // ~60fps max
+	private pendingRender: boolean = false;
+	private lastPreviewSendTime: number = 0;
+	private previewThrottleMs: number = 16; // ~60fps max for preview messages
+	private socketSendThrottleMs: number = 33; // ~30fps for socket messages
+
 	private preSelectedMessage: Message | null = null;
 	private selectedMessage =
 		useSelectedMessageStore.getState().selectedMessage;
@@ -253,6 +261,45 @@ export class Game {
 	private socketHelper: SocketHelper;
 	private coordinateHelper: CoordinateHelper;
 	private shapeCreator: ShapeCreator;
+
+	// Throttled socket message sending for preview updates
+	private lastSocketSendTime: number = 0;
+	private sendDrawMessage = (message: Message) => {
+		const now = Date.now();
+		if (now - this.lastSocketSendTime < this.socketSendThrottleMs) {
+			return; // Skip this message
+		}
+
+		this.lastSocketSendTime = now;
+		this.socket.send(
+			JSON.stringify({
+				type: "draw-message",
+				message,
+				roomId: this.roomId,
+				clientId: this.user!.id,
+			})
+		);
+	};
+
+	// Debounced update for drag operations
+	private updateTimeout: NodeJS.Timeout | null = null;
+	private debouncedUpdateMessage = (message: Message) => {
+		if (this.updateTimeout) {
+			clearTimeout(this.updateTimeout);
+		}
+
+		this.updateTimeout = setTimeout(() => {
+			this.socket.send(
+				JSON.stringify({
+					type: "update-message",
+					id: message.id,
+					newMessage: message,
+					roomId: this.roomId,
+					clientId: this.user!.id,
+				})
+			);
+		}, 100);
+	};
 
 	constructor(
 		socket: WebSocket,
@@ -967,42 +1014,146 @@ export class Game {
 		return this.coordinateHelper.getMousePos(e);
 	};
 
+	// Throttled render method to prevent excessive rendering
+	private throttledRender = () => {
+		if (this.pendingRender) return;
+
+		const now = Date.now();
+		if (now - this.lastRenderTime < this.renderThrottleMs) {
+			this.pendingRender = true;
+			setTimeout(
+				() => {
+					this.pendingRender = false;
+					this.performRender();
+					this.lastRenderTime = Date.now();
+				},
+				this.renderThrottleMs - (now - this.lastRenderTime)
+			);
+			return;
+		}
+
+		this.performRender();
+		this.lastRenderTime = now;
+	};
+
+	// Optimized render method using requestAnimationFrame
+	private performRender = () => {
+		if (this.pendingRender) return;
+
+		requestAnimationFrame(() => {
+			this.renderCanvas();
+		});
+	};
+
+	// Smart render method that throttles mouse operations but allows immediate rendering for other events
+	private smartRender = (immediate: boolean = false) => {
+		if (immediate) {
+			this.renderCanvas();
+		} else {
+			this.throttledRender();
+		}
+	};
 	renderCanvas() {
-		this.ctx.clearRect(
-			-this.offsetX / this.scale,
-			-this.offsetY / this.scale,
-			this.canvas.width / this.scale,
-			this.canvas.height / this.scale
+		// Clear with proper bounds and transform
+		this.ctx.save();
+		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.ctx.restore();
+
+		// Apply transform once
+		this.ctx.setTransform(
+			this.scale,
+			0,
+			0,
+			this.scale,
+			this.offsetX,
+			this.offsetY
 		);
 
-		for (const message of this.messages) {
-			if (!message) return;
+		// Batch render operations
+		this.ctx.save();
 
-			if (message.shape === "rectangle") this.drawRect(message);
-			else if (message.shape === "rhombus") this.drawRhombus(message);
-			else if (message.shape === "arc") this.drawEllipse(message);
-			else if (message.shape === "line") {
-				if (this.lineManager) {
-					this.lineManager.render(message);
-				}
-			} else if (message.shape === "arrow") {
-				if (this.arrowManager) {
-					this.arrowManager.render(message);
-				}
-			} else if (message.shape === "pencil") this.drawPencil(message);
-			else if (message.shape === "text") this.drawText(message);
-			else if (message.shape === "image") this.drawImage(message);
+		// Group messages by type for batched rendering
+		const messagesByType = this.groupMessagesByType(this.messages);
+
+		// Render each type together to reduce context switches
+		for (const [type, messages] of messagesByType) {
+			this.renderMessageBatch(type, messages);
 		}
+
+		// Render preview messages
 		if (this.previewMessage.length > 0) this.renderCanvasPreview();
+
+		// Render UI elements
 		if (this.selectedMessage) {
 			this.setProps(this.selectedMessage.shape as Tool);
 			this.setSelectedProps(this.selectedMessage);
 			this.handleSelectedMessage(this.selectedMessage);
 			this.preSelectedMessage = null;
 		}
-		if (this.tool == "laser") this.drawMovingLaser();
 
+		if (this.tool == "laser") this.drawMovingLaser();
 		this.usersCursor();
+
+		this.ctx.restore();
+	}
+
+	// Group messages by type for batched rendering
+	private groupMessagesByType(messages: Message[]): Map<string, Message[]> {
+		const grouped = new Map<string, Message[]>();
+
+		for (const message of messages) {
+			if (!message) continue;
+
+			const type = message.shape;
+			if (!grouped.has(type)) {
+				grouped.set(type, []);
+			}
+			grouped.get(type)!.push(message);
+		}
+
+		return grouped;
+	}
+
+	// Render a batch of messages of the same type
+	private renderMessageBatch(type: string, messages: Message[]) {
+		// Set common properties for the batch
+		this.ctx.save();
+
+		for (const message of messages) {
+			switch (type) {
+				case "rectangle":
+					this.drawRect(message);
+					break;
+				case "rhombus":
+					this.drawRhombus(message);
+					break;
+				case "arc":
+					this.drawEllipse(message);
+					break;
+				case "line":
+					if (this.lineManager) {
+						this.lineManager.render(message);
+					}
+					break;
+				case "arrow":
+					if (this.arrowManager) {
+						this.arrowManager.render(message);
+					}
+					break;
+				case "pencil":
+					this.drawPencil(message);
+					break;
+				case "text":
+					this.drawText(message);
+					break;
+				case "image":
+					this.drawImage(message);
+					break;
+			}
+		}
+
+		this.ctx.restore();
 	}
 	renderCanvasPreview() {
 		for (const message of this.previewMessage) {
@@ -1206,15 +1357,7 @@ export class Game {
 		}
 		if (this.tool === "mouse") {
 			if (this.selectedMessage) {
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						id: this.selectedMessage!.id,
-						newMessage: this.selectedMessage,
-						roomId: this.roomId,
-						clientId: this.user!.id,
-					})
-				);
+				this.debouncedUpdateMessage(this.selectedMessage);
 			}
 			this.isDragging = false;
 			this.isResizing = false;
@@ -1300,7 +1443,7 @@ export class Game {
 			this.handleMouseDrag(pos);
 			return;
 		}
-		this.renderCanvas();
+		this.throttledRender();
 		if (this.tool === "eraser") {
 			this.eraseDrawing(pos);
 			return;
@@ -1392,6 +1535,11 @@ export class Game {
 
 		if (this.cursorInterval !== null) {
 			clearInterval(this.cursorInterval);
+		}
+
+		// Clean up timeout to prevent memory leaks
+		if (this.updateTimeout) {
+			clearTimeout(this.updateTimeout);
 		}
 	}
 
@@ -1879,36 +2027,46 @@ export class Game {
 		textarea.focus();
 	}
 
+	// Font family cache for better performance
+	private fontFamilyCache = new Map<string, string>([
+		["mononoki", mononoki.style.fontFamily],
+		["excali", excali.style.fontFamily],
+		["firaCode", firaCode.style.fontFamily],
+		["ibm", ibm.style.fontFamily],
+		["comic", comic.style.fontFamily],
+		["monospace", monospace.style.fontFamily],
+		["nunito", nunito.style.fontFamily],
+	]);
+
+	private getFontFamily(fontFamily: string): string {
+		return this.fontFamilyCache.get(fontFamily) || excali.style.fontFamily;
+	}
+
+	private calculateTextX(
+		x: number,
+		bboxW: number,
+		leftPaddingWorld: number,
+		textAlign: string
+	): number {
+		switch (textAlign) {
+			case "center":
+				return x + bboxW / 2;
+			case "right":
+				return x + bboxW;
+			default:
+				return x + leftPaddingWorld;
+		}
+	}
+
 	drawText(message: Message) {
 		if (!message.textData) return;
 
-		let lines: string[] = [];
-		if (message.textData.text.includes("\n")) {
-			lines = message.textData.text.split("\n");
-		} else {
-			lines.push(message.textData.text);
-		}
-
-		let fontFamily: string = "";
-		if (message.textData.fontFamily === "mononoki")
-			fontFamily = mononoki.style.fontFamily;
-		if (message.textData.fontFamily === "excali")
-			fontFamily = excali.style.fontFamily;
-		if (message.textData.fontFamily === "firaCode")
-			fontFamily = firaCode.style.fontFamily;
-		if (message.textData.fontFamily === "ibm")
-			fontFamily = ibm.style.fontFamily;
-		if (message.textData.fontFamily === "comic")
-			fontFamily = comic.style.fontFamily;
-		if (message.textData.fontFamily === "monospace")
-			fontFamily = monospace.style.fontFamily;
-		if (message.textData.fontFamily === "nunito")
-			fontFamily = nunito.style.fontFamily;
-
+		// Cache font setup to avoid repeated context changes
 		this.ctx.save();
-		this.ctx.globalAlpha = message.opacity ?? 1;
+
+		// Set all properties at once
+		const fontFamily = this.getFontFamily(message.textData.fontFamily);
 		this.ctx.font = `${message.textData.fontSize} ${fontFamily}`;
-		// use top baseline so y corresponds to top of text box
 		this.ctx.textBaseline = "top";
 		this.ctx.textAlign = (message.textData.textAlign ||
 			"left") as CanvasTextAlign;
@@ -1916,38 +2074,30 @@ export class Game {
 			this.theme,
 			message.textData.textColor
 		);
+		this.ctx.globalAlpha = message.opacity ?? 1;
+
+		// Calculate all positions before drawing
+		const lines = message.textData.text.includes("\n")
+			? message.textData.text.split("\n")
+			: [message.textData.text];
 
 		const x = message.textData.pos.x;
 		const y = message.textData.pos.y;
-		// textarea used `padding: "4px 8px"` in screen pixels.
-		// Convert that to world units so canvas rendering lines up with the textarea.
-		const topPaddingWorld = 8 / this.scale; // 8px top padding (increased per requirement)
-		const leftPaddingWorld = 8 / this.scale; // 8px horizontal padding
+		const topPaddingWorld = 8 / this.scale;
+		const leftPaddingWorld = 8 / this.scale;
 		const fontSizeNum = parseInt(message.textData.fontSize);
 		const lineHeight = fontSizeNum * 1.5;
-
-		// bounding box width is stored in world units
 		const bboxW = message.boundingBox.w;
 
+		// Draw all lines in one pass
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i] || "";
-			let drawX = x;
-
-			if (message.textData.textAlign === "center") {
-				// center within the bounding box
-				const textW = this.ctx.measureText(line).width;
-				drawX = x + bboxW / 2;
-				this.ctx.textAlign = "center";
-			} else if (message.textData.textAlign === "right") {
-				// right align to bounding box right edge
-				drawX = x + bboxW;
-				this.ctx.textAlign = "right";
-			} else {
-				// left align -> use same left padding as the textarea
-				drawX = x + leftPaddingWorld;
-				this.ctx.textAlign = "left";
-			}
-
+			let drawX = this.calculateTextX(
+				x,
+				bboxW,
+				leftPaddingWorld,
+				message.textData.textAlign
+			);
 			this.ctx.fillText(
 				line,
 				drawX,

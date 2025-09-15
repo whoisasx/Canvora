@@ -63,6 +63,10 @@ type OpWithIndex = Op & { index?: number };
 const historyByRoom = new Map<string, Op[]>();
 const redoByRoomUser = new Map<string, Map<string, Op[]>>();
 
+// Add throttling for draw messages
+const userThrottles = new Map<string, number>();
+const DRAW_MESSAGE_THROTTLE_MS = 16; // ~60fps
+
 wss.on("connection", (ws, req) => {
 	const newUrl = new URL(req.url!, `http://${req.headers.host}`);
 	const token = newUrl.searchParams.get("token");
@@ -141,9 +145,20 @@ wss.on("connection", (ws, req) => {
 		}
 
 		if (parsedData.type === "draw-message") {
+			const userId = parsedData.clientId;
+			const now = Date.now();
+			const lastSent = userThrottles.get(userId) || 0;
+
+			// Throttle draw messages per user
+			if (now - lastSent < DRAW_MESSAGE_THROTTLE_MS) {
+				return; // Skip this message
+			}
+
+			userThrottles.set(userId, now);
+
 			const roomId = parsedData.roomId;
 			const message = parsedData.message;
-			const userId = parsedData.clientId;
+
 			if (!userId) {
 				try {
 					ws.send(
@@ -156,6 +171,7 @@ wss.on("connection", (ws, req) => {
 				return;
 			}
 
+			// Only send to other users, not back to sender
 			for (let user of users) {
 				if (user.rooms.includes(roomId)) {
 					try {
