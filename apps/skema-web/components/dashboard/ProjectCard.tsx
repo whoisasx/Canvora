@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { DemoRoom } from "@/utils/demoDashboardStore";
+import { DemoRoom } from "@/utils/dashBoardStore";
 import {
 	StarIcon,
 	EyeIcon,

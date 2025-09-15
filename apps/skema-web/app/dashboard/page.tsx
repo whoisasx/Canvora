@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSession } from "next-auth/react";
-import { useDemoDashboardStore, DemoRoom } from "@/utils/demoDashboardStore";
+import { useDemoDashboardStore, DemoRoom } from "@/utils/dashBoardStore";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { ProjectCard } from "@/components/dashboard/ProjectCard";
 import { CreateProjectModal } from "@/components/dashboard/CreateProjectModal";

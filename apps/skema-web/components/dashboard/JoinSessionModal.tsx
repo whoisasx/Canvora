@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
-import { useDemoDashboardStore } from "@/utils/demoDashboardStore";
+import { useDemoDashboardStore } from "@/utils/dashBoardStore";
 import { XMarkIcon, LinkIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 

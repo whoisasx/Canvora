@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { useDemoDashboardStore } from "@/utils/demoDashboardStore";
+import { useDemoDashboardStore } from "@/utils/dashBoardStore";
 import { BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
@@ -192,4 +192,3 @@ export function NotificationPanel() {
 		</div>
 	);
 }
-

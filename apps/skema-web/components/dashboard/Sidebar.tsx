@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { useDemoDashboardStore } from "@/utils/demoDashboardStore";
+import { useDemoDashboardStore } from "@/utils/dashBoardStore";
 import { ThemeToggle } from "./ThemeToggle";
 import {
 	HomeIcon,
