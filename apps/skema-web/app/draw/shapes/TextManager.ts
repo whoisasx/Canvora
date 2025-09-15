@@ -20,7 +20,8 @@ type BoundingBox = { x: number; y: number; w: number; h: number };
 type Point = { x: number; y: number };
 
 // Constants
-const THROTTLE_MS = 100;
+// Performance optimization constants
+const THROTTLE_MS = 16; // Match main render throttle (~60fps)
 const LINE_HEIGHT_MULTIPLIER = 1.2;
 
 export class TextHelper {

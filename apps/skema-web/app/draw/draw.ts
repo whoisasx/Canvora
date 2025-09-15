@@ -199,6 +199,17 @@ export class Game {
 		h: number;
 	} | null = null;
 
+	// Local preview state for current user's drawing
+	private localPreview: {
+		tool: Tool;
+		startX: number;
+		startY: number;
+		w: number;
+		h: number;
+		props: CommonPropsGame;
+		seed: number;
+	} | null = null;
+
 	// Performance optimization fields
 	private lastRenderTime: number = 0;
 	private renderThrottleMs: number = 16; // ~60fps max
@@ -540,7 +551,7 @@ export class Game {
 		window.addEventListener("keydown", (e) => {
 			//delete
 			if (e.key === "Backspace") {
-				e.preventDefault();
+				// e.preventDefault();
 
 				if (this.selectedMessage) {
 					this.socketHelper.sendDeleteMessage(
@@ -1119,6 +1130,11 @@ export class Game {
 		// Render preview messages (always render during drawing)
 		if (this.previewMessage.length > 0) this.renderCanvasPreview();
 
+		// Render local preview for current user's drawing
+		if (this.clicked && this.localPreview) {
+			this.renderLocalPreview();
+		}
+
 		// Render UI elements
 		if (this.selectedMessage) {
 			// Only render selection UI if the selected message is visible
@@ -1212,6 +1228,76 @@ export class Game {
 			else if (message.shape === "text") this.drawText(message);
 			else if (message.shape === "image") this.drawImage(message);
 		}
+	}
+
+	renderLocalPreview() {
+		if (!this.localPreview || !this.rc || !this.generator) return;
+
+		const { tool, startX, startY, w, h, props, seed } = this.localPreview;
+		const options = roughOptions(props);
+
+		this.ctx.save();
+		this.ctx.globalAlpha = props.opacity ?? 1;
+
+		try {
+			if (tool === "line" && this.lineManager) {
+				// Create a temporary message for rendering
+				const tempMessage = this.lineManager.createMessage(
+					startX,
+					startY,
+					w,
+					h,
+					props,
+					seed
+				);
+				this.lineManager.render(tempMessage);
+			} else if (tool === "arrow" && this.arrowManager) {
+				// Create a temporary message for rendering
+				const tempMessage = this.arrowManager.createMessage(
+					startX,
+					startY,
+					w,
+					h,
+					props,
+					seed
+				);
+				this.arrowManager.render(tempMessage);
+			} else if (tool === "rectangle" && this.rectangleManager) {
+				const tempMessage = this.rectangleManager.createMessage(
+					startX,
+					startY,
+					w,
+					h,
+					props,
+					seed
+				);
+				this.rectangleManager.render(tempMessage);
+			} else if (tool === "rhombus" && this.rhombusManager) {
+				const tempMessage = this.rhombusManager.createMessage(
+					startX,
+					startY,
+					w,
+					h,
+					props,
+					seed
+				);
+				this.rhombusManager.render(tempMessage);
+			} else if (tool === "arc" && this.ellipseManager) {
+				const tempMessage = this.ellipseManager.createMessage(
+					startX,
+					startY,
+					w,
+					h,
+					props,
+					seed
+				);
+				this.ellipseManager.render(tempMessage);
+			}
+		} catch (error) {
+			console.error("Error rendering local preview:", error);
+		}
+
+		this.ctx.restore();
 	}
 
 	// --------------------------------------------------------- Events
@@ -1311,6 +1397,7 @@ export class Game {
 		this.previewId = uuidv4();
 		this.lastPreviewSend = 0;
 		this.lastPreviewRect = null;
+		this.localPreview = null; // Clear any existing local preview
 
 		if (this.tool === "mouse") {
 			if (this.selectedMessage) {
@@ -1421,6 +1508,7 @@ export class Game {
 		}
 
 		this.previewSeed = null;
+		this.localPreview = null; // Clear local preview when drawing is complete
 		if (!message) return;
 		this.socketHelper.sendCreateMessage(message, this.previewId);
 
@@ -1482,6 +1570,7 @@ export class Game {
 				this.canvas.style.cursor = this.resizeHandler + "-resize";
 			else if (this.isDragging) this.canvas.style.cursor = "move";
 			this.handleMouseDrag(pos);
+			this.throttledRender(); // Add throttled rendering for drag/resize operations
 			return;
 		}
 		this.throttledRender();
@@ -1616,15 +1705,42 @@ export class Game {
 			console.error("RectangleManager not initialized");
 			return;
 		}
-		this.rectangleManager.renderPreview(
-			this.startX,
-			this.startY,
+
+		// Update local preview state for immediate rendering
+		this.localPreview = {
+			tool: "rectangle",
+			startX: this.startX,
+			startY: this.startY,
 			w,
 			h,
-			this.props,
-			this.previewId,
-			this.previewSeed ?? Math.floor(Math.random() * 1000000)
-		);
+			props: this.props,
+			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
+		};
+
+		// Send preview to other clients (throttled)
+		const now = Date.now();
+		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
+			this.lastPreviewSendTime = now;
+
+			const previewMessage = this.rectangleManager.createMessage(
+				this.startX,
+				this.startY,
+				w,
+				h,
+				this.props,
+				this.previewSeed ?? Math.floor(Math.random() * 1000000)
+			);
+			previewMessage.id = this.previewId;
+
+			this.socket.send(
+				JSON.stringify({
+					type: "preview",
+					roomId: this.roomId,
+					clientId: this.user?.id,
+					message: previewMessage,
+				})
+			);
+		}
 	}
 	// !rhombus
 	messageRhombus(w: number, h: number): Message {
@@ -1652,15 +1768,42 @@ export class Game {
 			console.error("RhombusManager not initialized");
 			return;
 		}
-		this.rhombusManager.renderPreview(
-			this.startX,
-			this.startY,
+
+		// Update local preview state for immediate rendering
+		this.localPreview = {
+			tool: "rhombus",
+			startX: this.startX,
+			startY: this.startY,
 			w,
 			h,
-			this.props,
-			this.previewId,
-			this.previewSeed ?? Math.floor(Math.random() * 1000000)
-		);
+			props: this.props,
+			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
+		};
+
+		// Send preview to other clients (throttled)
+		const now = Date.now();
+		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
+			this.lastPreviewSendTime = now;
+
+			const previewMessage = this.rhombusManager.createMessage(
+				this.startX,
+				this.startY,
+				w,
+				h,
+				this.props,
+				this.previewSeed ?? Math.floor(Math.random() * 1000000)
+			);
+			previewMessage.id = this.previewId;
+
+			this.socket.send(
+				JSON.stringify({
+					type: "preview",
+					roomId: this.roomId,
+					clientId: this.user?.id,
+					message: previewMessage,
+				})
+			);
+		}
 	}
 	// !ellipse
 	messageEllipse(w: number, h: number): Message {
@@ -1690,15 +1833,41 @@ export class Game {
 			return;
 		}
 
-		this.ellipseManager.renderPreview(
-			this.startX,
-			this.startY,
+		// Update local preview state for immediate rendering
+		this.localPreview = {
+			tool: "arc",
+			startX: this.startX,
+			startY: this.startY,
 			w,
 			h,
-			this.props,
-			this.previewId,
-			this.previewSeed ?? Math.floor(Math.random() * 1000000)
-		);
+			props: this.props,
+			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
+		};
+
+		// Send preview to other clients (throttled)
+		const now = Date.now();
+		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
+			this.lastPreviewSendTime = now;
+
+			const previewMessage = this.ellipseManager.createMessage(
+				this.startX,
+				this.startY,
+				w,
+				h,
+				this.props,
+				this.previewSeed ?? Math.floor(Math.random() * 1000000)
+			);
+			previewMessage.id = this.previewId;
+
+			this.socket.send(
+				JSON.stringify({
+					type: "preview",
+					roomId: this.roomId,
+					clientId: this.user?.id,
+					message: previewMessage,
+				})
+			);
+		}
 	}
 	// !line
 	messageLine(w: number, h: number): Message {
@@ -1726,15 +1895,42 @@ export class Game {
 			console.error("LineManager not initialized");
 			return;
 		}
-		this.lineManager.renderPreview(
-			this.startX,
-			this.startY,
+
+		// Update local preview state for immediate rendering
+		this.localPreview = {
+			tool: "line",
+			startX: this.startX,
+			startY: this.startY,
 			w,
 			h,
-			this.props,
-			this.previewId,
-			this.previewSeed ?? Math.floor(Math.random() * 1000000)
-		);
+			props: this.props,
+			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
+		};
+
+		// Send preview to other clients (throttled)
+		const now = Date.now();
+		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
+			this.lastPreviewSendTime = now;
+
+			const previewMessage = this.lineManager.createMessage(
+				this.startX,
+				this.startY,
+				w,
+				h,
+				this.props,
+				this.previewSeed ?? Math.floor(Math.random() * 1000000)
+			);
+			previewMessage.id = this.previewId;
+
+			this.socket.send(
+				JSON.stringify({
+					type: "preview",
+					roomId: this.roomId,
+					clientId: this.user?.id,
+					message: previewMessage,
+				})
+			);
+		}
 	}
 	// !arrow
 	messageArrow(w: number, h: number): Message {
@@ -1762,15 +1958,42 @@ export class Game {
 			console.error("ArrowManager not initialized");
 			return;
 		}
-		this.arrowManager.renderPreview(
-			this.startX,
-			this.startY,
+
+		// Update local preview state for immediate rendering
+		this.localPreview = {
+			tool: "arrow",
+			startX: this.startX,
+			startY: this.startY,
 			w,
 			h,
-			this.props,
-			this.previewId,
-			this.previewSeed ?? Math.floor(Math.random() * 1000000)
-		);
+			props: this.props,
+			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
+		};
+
+		// Send preview to other clients (throttled)
+		const now = Date.now();
+		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
+			this.lastPreviewSendTime = now;
+
+			const previewMessage = this.arrowManager.createMessage(
+				this.startX,
+				this.startY,
+				w,
+				h,
+				this.props,
+				this.previewSeed ?? Math.floor(Math.random() * 1000000)
+			);
+			previewMessage.id = this.previewId;
+
+			this.socket.send(
+				JSON.stringify({
+					type: "preview",
+					roomId: this.roomId,
+					clientId: this.user?.id,
+					message: previewMessage,
+				})
+			);
+		}
 	}
 	// !pencil
 	messagePencil(): Message {

@@ -15,7 +15,8 @@ type Point = { x: number; y: number };
 // Constants
 const MIN_POINTS = 1;
 const MAX_POINTS = 10000;
-const THROTTLE_MS = 100;
+// Performance optimization constants
+const THROTTLE_MS = 16; // Match main render throttle (~60fps)
 
 export class PencilHelper {
 	/**

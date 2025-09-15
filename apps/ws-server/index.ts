@@ -1,8 +1,19 @@
 import WebSocket, { WebSocketServer } from "ws";
-import jwt, { type JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { createMessage, deleteMessage, updateMessage } from "./server";
+import { Logger } from "./logger";
 import http from "http";
 import url from "url";
+import type {
+	User,
+	MessageData,
+	JwtPayload,
+	Op,
+	OpWithIndex,
+	ServerConfig,
+} from "./types";
+import { validateMessage, validateRoomId, validateUserId } from "./types";
+import { MessageHandlers } from "./messageHandlers";
 
 // Create HTTP server for health checks
 const server = http.createServer((req, res) => {
@@ -36,36 +47,36 @@ server.listen(
 	process.env.PORT ? Number(process.env.PORT) : 8080,
 	"0.0.0.0",
 	() => {
-		console.log("WebSocket server running on port 8080");
+		Logger.info("WebSocket server running on port 8080");
 	}
 );
 
-interface User {
-	username: string;
-	userId: string;
-	ws: WebSocket;
-	rooms: string[];
-}
-const users: User[] = [];
+// Configuration
+const config: ServerConfig = {
+	port: process.env.PORT ? Number(process.env.PORT) : 8080,
+	jwtSecret: process.env.JWT_SECRET || "duplicate-secret",
+	baseUrl: process.env.BASE_URL || "http://localhost:3000",
+	drawThrottleMs: Number(process.env.DRAW_THROTTLE_MS) || 100,
+	maxHistorySize: Number(process.env.MAX_HISTORY_SIZE) || 1000,
+	roomCleanupInterval: 30 * 60 * 1000, // 30 minutes
+};
 
+const users: User[] = [];
 const messagesByRoom = new Map<string, any[]>();
-type Op =
-	| { type: "create"; userId: string; message: any }
-	| { type: "delete"; userId: string; message: any }
-	| {
-			type: "update";
-			userId: string;
-			id: string;
-			prevMessage: any;
-			newMessage: any;
-	  };
-type OpWithIndex = Op & { index?: number };
 const historyByRoom = new Map<string, Op[]>();
 const redoByRoomUser = new Map<string, Map<string, Op[]>>();
 
 // Add throttling for draw messages
 const userThrottles = new Map<string, number>();
-const DRAW_MESSAGE_THROTTLE_MS = 16; // ~60fps
+
+// Initialize message handlers
+const messageHandlers = new MessageHandlers(
+	users,
+	messagesByRoom,
+	historyByRoom,
+	redoByRoomUser,
+	{ maxHistorySize: config.maxHistorySize }
+);
 
 wss.on("connection", (ws, req) => {
 	const newUrl = new URL(req.url!, `http://${req.headers.host}`);
@@ -110,492 +121,167 @@ wss.on("connection", (ws, req) => {
 	}
 
 	ws.on("message", async (data) => {
-		const parsedData = JSON.parse(data.toString());
-
-		if (parsedData.type === "join-room") {
-			const roomId = parsedData.roomId;
-			for (let user of users) {
-				if (user.ws === ws) {
-					user.rooms.push(roomId);
-				}
+		let parsedData: MessageData;
+		try {
+			parsedData = JSON.parse(data.toString());
+			if (!validateMessage(parsedData)) {
+				ws.send(
+					JSON.stringify({
+						type: "error",
+						message: "Invalid message format",
+					})
+				);
+				return;
 			}
-			// ensure room structures exist
-			if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			if (!historyByRoom.has(roomId)) historyByRoom.set(roomId, []);
-			if (!redoByRoomUser.has(roomId))
-				redoByRoomUser.set(roomId, new Map());
+		} catch (error) {
+			ws.send(JSON.stringify({ type: "error", message: "Invalid JSON" }));
+			return;
+		}
 
-			// send current room state to the joining client
-			const current = messagesByRoom.get(roomId) || [];
+		// Get current user
+		const currentUser = users.find((u) => u.ws === ws);
+		if (!currentUser) {
+			ws.send(
+				JSON.stringify({ type: "error", message: "User not found" })
+			);
+			return;
+		}
+
+		// Route messages to appropriate handlers
+		try {
+			switch (parsedData.type) {
+				case "join-room":
+					await messageHandlers.handleJoinRoom(ws, parsedData);
+					break;
+				case "leave-room":
+					await messageHandlers.handleLeaveRoom(ws, parsedData);
+					break;
+				case "draw-message":
+					// Add throttling for draw messages
+					const userId = parsedData.clientId;
+					if (validateUserId(userId)) {
+						const now = Date.now();
+						const lastSent = userThrottles.get(userId) || 0;
+						if (now - lastSent < config.drawThrottleMs) {
+							return; // Skip this message
+						}
+						userThrottles.set(userId, now);
+					}
+					await messageHandlers.handleDrawMessage(ws, parsedData);
+					break;
+				case "create-message":
+					await messageHandlers.handleCreateMessage(ws, parsedData);
+					break;
+				case "delete-message":
+					await messageHandlers.handleDeleteMessage(ws, parsedData);
+					break;
+				case "update-message":
+					await messageHandlers.handleUpdateMessage(ws, parsedData);
+					break;
+				case "cursor":
+					await messageHandlers.handleCursor(ws, parsedData);
+					break;
+				case "sync-all":
+					await messageHandlers.handleSyncAll(ws, parsedData);
+					break;
+				case "undo":
+					await messageHandlers.handleUndo(
+						ws,
+						parsedData,
+						currentUser.userId
+					);
+					break;
+				case "redo":
+					await messageHandlers.handleRedo(
+						ws,
+						parsedData,
+						currentUser.userId
+					);
+					break;
+				case "reset-canvas":
+					await messageHandlers.handleResetCanvas(ws, parsedData);
+					break;
+				default:
+					ws.send(
+						JSON.stringify({
+							type: "error",
+							message: "Unknown message type",
+						})
+					);
+			}
+		} catch (error) {
+			Logger.error("Error handling message:", error);
 			ws.send(
 				JSON.stringify({
-					type: "sync",
-					messages: current,
+					type: "error",
+					message: "Internal server error",
 				})
 			);
-		}
-
-		if (parsedData.type === "leave-room") {
-			const roomId = parsedData.roomId;
-			for (let user of users) {
-				if (user.ws == ws) {
-					user.rooms = user.rooms.filter((room) => room != roomId);
-				}
-			}
-		}
-
-		if (parsedData.type === "draw-message") {
-			const userId = parsedData.clientId;
-			const now = Date.now();
-			const lastSent = userThrottles.get(userId) || 0;
-
-			// Throttle draw messages per user
-			if (now - lastSent < DRAW_MESSAGE_THROTTLE_MS) {
-				return; // Skip this message
-			}
-
-			userThrottles.set(userId, now);
-
-			const roomId = parsedData.roomId;
-			const message = parsedData.message;
-
-			if (!userId) {
-				try {
-					ws.send(
-						JSON.stringify({
-							type: "error",
-							message: "missing clientId",
-						})
-					);
-				} catch (err) {}
-				return;
-			}
-
-			// Only send to other users, not back to sender
-			for (let user of users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						if (
-							parsedData.flag === "text-preview" &&
-							user.ws === ws
-						)
-							continue;
-						user.ws.send(
-							JSON.stringify({
-								type: "draw",
-								message,
-							})
-						);
-					} catch (err) {
-						// ignore send errors
-					}
-				}
-			}
-		}
-
-		if (parsedData.type === "create-message") {
-			const message = parsedData.message;
-			const roomId = parsedData.roomId;
-			const userId = parsedData.clientId;
-			// require userId
-			if (!userId) {
-				try {
-					ws.send(
-						JSON.stringify({
-							type: "error",
-							message: "missing clientId",
-						})
-					);
-				} catch (err) {}
-				return;
-			}
-
-			// persist on server and record op
-			if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			const roomMsgs = messagesByRoom.get(roomId)!;
-			const index = roomMsgs.length;
-			roomMsgs.push(message);
-
-			const hist = historyByRoom.get(roomId)!;
-			const op: OpWithIndex = {
-				type: "create",
-				userId,
-				message,
-				index,
-			} as OpWithIndex;
-			hist.push(op);
-			historyByRoom.set(roomId, hist);
-
-			// clear redo for this user
-			const roomRedo = redoByRoomUser.get(roomId)!;
-			roomRedo.set(userId, []);
-
-			// broadcast create event to all clients in room
-			for (let user of users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						user.ws.send(
-							JSON.stringify({
-								type: "create",
-								message,
-								previewId: parsedData.previewId,
-							})
-						);
-					} catch (err) {
-						// ignore send errors
-					}
-				}
-			}
-
-			createMessage(message, userId, roomId);
-		}
-
-		if (parsedData.type === "delete-message") {
-			const id = parsedData.id;
-			const roomId = parsedData.roomId;
-			const userId = parsedData.clientId;
-
-			if (!userId) {
-				try {
-					ws.send(
-						JSON.stringify({
-							type: "error",
-							message: "missing clientId",
-						})
-					);
-				} catch (err) {}
-				return;
-			}
-			if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			const roomMsgs = messagesByRoom.get(roomId)!;
-			const idx = roomMsgs.findIndex((m: any) => m.id === id);
-			if (idx !== -1) {
-				const removed = roomMsgs.splice(idx, 1)[0];
-				const hist = historyByRoom.get(roomId)!;
-				const op: OpWithIndex = {
-					type: "delete",
-					userId,
-					message: removed,
-					index: idx,
-				} as OpWithIndex;
-				hist.push(op);
-				historyByRoom.set(roomId, hist);
-
-				// clear redo for this user
-				const roomRedo = redoByRoomUser.get(roomId)!;
-				roomRedo.set(userId, []);
-			}
-
-			for (let user of users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						user.ws.send(
-							JSON.stringify({
-								type: "delete",
-								id,
-							})
-						);
-					} catch (err) {
-						// ignore
-					}
-				}
-			}
-			deleteMessage(id);
-		}
-
-		if (parsedData.type === "update-message") {
-			const id = parsedData.id;
-			const newMessage = parsedData.newMessage;
-			const roomId = parsedData.roomId;
-			const userId = parsedData.clientId;
-
-			if (!userId) {
-				try {
-					ws.send(
-						JSON.stringify({
-							type: "error",
-							message: "missing clientId",
-						})
-					);
-				} catch (err) {}
-				return;
-			}
-			if (!parsedData.flag || parsedData.flag !== "update-preview") {
-				if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-				const roomMsgs = messagesByRoom.get(roomId)!;
-				const idx = roomMsgs.findIndex((m: any) => m.id === id);
-				if (idx !== -1) {
-					const prev = JSON.parse(JSON.stringify(roomMsgs[idx]));
-					roomMsgs[idx] = newMessage;
-					const hist = historyByRoom.get(roomId)!;
-					const op: OpWithIndex = {
-						type: "update",
-						userId,
-						id,
-						prevMessage: prev,
-						newMessage,
-					} as OpWithIndex;
-					hist.push(op);
-					historyByRoom.set(roomId, hist);
-
-					// clear redo for this user
-					const roomRedo = redoByRoomUser.get(roomId)!;
-					roomRedo.set(userId, []);
-				}
-				updateMessage(newMessage, id);
-			}
-
-			for (let user of users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						user.ws.send(
-							JSON.stringify({
-								type: "update",
-								id,
-								newMessage,
-							})
-						);
-					} catch (err) {
-						// ignore
-					}
-				}
-			}
-		}
-
-		if (parsedData.type === "cursor") {
-			const username = parsedData.username;
-			const pos = parsedData.pos;
-			const roomId = parsedData.roomId;
-
-			for (let u of users) {
-				// don't echo back to sender
-				if (u.ws === ws) continue;
-				if (u.rooms.includes(roomId)) {
-					try {
-						u.ws.send(
-							JSON.stringify({
-								type: "cursor",
-								username,
-								pos,
-							})
-						);
-					} catch (err) {
-						// ignore
-					}
-				}
-			}
-		}
-
-		if (parsedData.type === "sync-all") {
-			const messages = parsedData.messages;
-			const roomId = parsedData.roomId;
-
-			for (let u of users) {
-				if (u.rooms.includes(roomId)) {
-					try {
-						u.ws.send(
-							JSON.stringify({
-								type: "sync",
-								messages,
-							})
-						);
-					} catch (err) {
-						// ignore
-					}
-				}
-			}
-		}
-		// server-side undo/redo handlers (per-user)
-		if (parsedData.type === "undo") {
-			const roomId = parsedData.roomId;
-			const userId = parsedData.clientId;
-			if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			if (!historyByRoom.has(roomId)) historyByRoom.set(roomId, []);
-			if (!redoByRoomUser.has(roomId))
-				redoByRoomUser.set(roomId, new Map());
-
-			const hist = historyByRoom.get(roomId)!;
-			const roomMsgs = messagesByRoom.get(roomId)!;
-			if (!userId) {
-				try {
-					ws.send(JSON.stringify({ type: "undo-empty", roomId }));
-				} catch (err) {}
-				return;
-			}
-
-			// find last op by this user
-			let idx = -1;
-			for (let i = hist.length - 1; i >= 0; i--) {
-				if ((hist[i] as any).userId === userId) {
-					idx = i;
-					break;
-				}
-			}
-			if (idx === -1) {
-				try {
-					ws.send(JSON.stringify({ type: "undo-empty", roomId }));
-				} catch (err) {}
-				return;
-			}
-
-			const op = hist.splice(idx, 1)[0] as OpWithIndex | undefined;
-			historyByRoom.set(roomId, hist);
-
-			// push to this user's redo stack
-			if (!op) {
-				try {
-					ws.send(JSON.stringify({ type: "undo-empty", roomId }));
-				} catch (err) {}
-				return;
-			}
-
-			const roomRedo = redoByRoomUser.get(roomId)!;
-			const userRedo = roomRedo.get(userId) || [];
-			userRedo.push(op);
-			roomRedo.set(userId, userRedo);
-
-			// apply inverse
-			if (op.type === "create") {
-				// remove the created message by id
-				const mid = (op as any).message.id;
-				const i = roomMsgs.findIndex((m: any) => m.id === mid);
-				if (i !== -1) roomMsgs.splice(i, 1);
-			} else if (op.type === "delete") {
-				// re-insert at original index
-				const insertAt = (op as OpWithIndex).index ?? roomMsgs.length;
-				roomMsgs.splice(insertAt, 0, (op as any).message);
-			} else if (op.type === "update") {
-				const up = op as any;
-				const i = roomMsgs.findIndex((m: any) => m.id === up.id);
-				if (i !== -1) roomMsgs[i] = up.prevMessage;
-			}
-
-			// broadcast new state
-			for (let u of users) {
-				if (u.rooms.includes(roomId)) {
-					try {
-						u.ws.send(
-							JSON.stringify({
-								type: "sync",
-								messages: roomMsgs,
-								flag: "undo",
-								userId,
-							})
-						);
-					} catch (err) {}
-				}
-			}
-		}
-
-		if (parsedData.type === "redo") {
-			const roomId = parsedData.roomId;
-			const userId = parsedData.clientId;
-			if (!messagesByRoom.has(roomId)) messagesByRoom.set(roomId, []);
-			if (!historyByRoom.has(roomId)) historyByRoom.set(roomId, []);
-			if (!redoByRoomUser.has(roomId))
-				redoByRoomUser.set(roomId, new Map());
-
-			const hist = historyByRoom.get(roomId)!;
-			const roomMsgs = messagesByRoom.get(roomId)!;
-			if (!userId) {
-				try {
-					ws.send(JSON.stringify({ type: "redo-empty", roomId }));
-				} catch (err) {}
-				return;
-			}
-
-			const roomRedo = redoByRoomUser.get(roomId)!;
-			const userRedo = roomRedo.get(userId) || [];
-			if (userRedo.length === 0) {
-				try {
-					ws.send(JSON.stringify({ type: "redo-empty", roomId }));
-				} catch (err) {}
-				return;
-			}
-
-			const op = userRedo.pop()!;
-			roomRedo.set(userId, userRedo);
-
-			// re-apply op and push back to history
-			hist.push(op);
-			historyByRoom.set(roomId, hist);
-
-			if (op.type === "create") {
-				const insAt = (op as any).index ?? roomMsgs.length;
-				roomMsgs.splice(insAt, 0, (op as any).message);
-			} else if (op.type === "delete") {
-				const mid = (op as any).message.id;
-				const i = roomMsgs.findIndex((m: any) => m.id === mid);
-				if (i !== -1) roomMsgs.splice(i, 1);
-			} else if (op.type === "update") {
-				const up = op as any;
-				const i = roomMsgs.findIndex((m: any) => m.id === up.id);
-				if (i !== -1) roomMsgs[i] = up.newMessage;
-			}
-
-			for (let u of users) {
-				if (u.rooms.includes(roomId)) {
-					try {
-						u.ws.send(
-							JSON.stringify({
-								type: "sync",
-								messages: roomMsgs,
-								flag: "redo",
-								userId,
-							})
-						);
-					} catch (err) {}
-				}
-			}
-		}
-
-		if (parsedData.type === "reset-canvas") {
-			console.log("reset-canvas");
-			const roomId = parsedData.roomId;
-			// Clear all messages for the room
-			messagesByRoom.set(roomId, []);
-			// Clear undo history for the room
-			historyByRoom.set(roomId, []);
-			// Clear redo stack for every user in the room
-			if (redoByRoomUser.has(roomId)) {
-				const roomRedo = redoByRoomUser.get(roomId)!;
-				for (const userId of roomRedo.keys()) {
-					roomRedo.set(userId, []);
-				}
-			}
-			// Notify all users in the room to reload the canvas
-			for (let user of users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						user.ws.send(
-							JSON.stringify({
-								type: "reload",
-								roomId,
-							})
-						);
-					} catch (err) {
-						// ignore send errors
-					}
-				}
-			}
 		}
 	});
 
 	ws.on("close", () => {
-		// remove user from users list
+		// Remove user from users list
 		const idx = users.findIndex((u) => u.ws === ws);
-		if (idx !== -1) users.splice(idx, 1);
-		console.log("client disconnected.");
+		if (idx !== -1) {
+			const user = users[idx];
+			if (user) {
+				Logger.info("User disconnected:", user.userId);
+			}
+			users.splice(idx, 1);
+		}
 	});
 });
 
-// utility events
+// Add memory management and cleanup
+setInterval(() => {
+	for (const [roomId, messages] of messagesByRoom.entries()) {
+		const hasActiveUsers = users.some((user) =>
+			user.rooms.includes(roomId)
+		);
+
+		if (!hasActiveUsers) {
+			// Clean up empty rooms after some time
+			messagesByRoom.delete(roomId);
+			historyByRoom.delete(roomId);
+			redoByRoomUser.delete(roomId);
+			Logger.info(`Cleaned up inactive room: ${roomId}`);
+		} else {
+			// Limit history size
+			const history = historyByRoom.get(roomId);
+			if (history && history.length > config.maxHistorySize) {
+				history.splice(0, history.length - config.maxHistorySize);
+			}
+		}
+	}
+}, config.roomCleanupInterval);
+
+// Add connection health monitoring
+setInterval(() => {
+	users.forEach((user, index) => {
+		if (user.ws.readyState === WebSocket.CLOSED) {
+			Logger.info("Removing dead connection:", user.userId);
+			users.splice(index, 1);
+		} else if (user.ws.readyState === WebSocket.OPEN) {
+			// Send ping to check connection
+			try {
+				user.ws.ping();
+			} catch (error) {
+				Logger.error(`Failed to ping user ${user.username}:`, error);
+			}
+		}
+	});
+}, 30000); // Check every 30 seconds
+
+// Utility events
 wss.on("listening", () => {
-	console.log("websocket server is listening.");
+	Logger.info("WebSocket server is listening on port " + config.port);
 });
+
 wss.on("error", (error) => {
-	console.error("server error: ", error);
+	Logger.error("WebSocket server error:", error);
 });
+
 wss.on("close", () => {
-	console.log("connection closed");
+	Logger.info("WebSocket connection closed");
 });

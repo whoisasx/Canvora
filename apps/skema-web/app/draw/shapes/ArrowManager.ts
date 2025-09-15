@@ -12,7 +12,7 @@ import { Handle } from "../assist";
 type Point = { x: number; y: number };
 
 // Performance optimization constants
-const THROTTLE_MS = 100;
+const THROTTLE_MS = 16; // Match main render throttle (~60fps)
 
 /**
  * Helper class for arrow-specific utility functions
@@ -120,6 +120,10 @@ export class ArrowManager {
 		y2: number;
 	} | null = null;
 	private lastPreviewSend: number = 0;
+
+	// Throttling for drag/resize operations
+	private lastDragUpdate: number = 0;
+	private lastResizeUpdate: number = 0;
 
 	constructor(
 		private ctx: CanvasRenderingContext2D,
@@ -549,16 +553,22 @@ export class ArrowManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.clientId,
-				})
-			);
+
+			// Throttle socket messages during drag operations
+			const now = Date.now();
+			if (now - this.lastDragUpdate >= THROTTLE_MS) {
+				this.lastDragUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.clientId,
+					})
+				);
+			}
 		} catch (error) {
 			console.error("Error during arrow drag:", error);
 		}
@@ -653,16 +663,22 @@ export class ArrowManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.clientId,
-				})
-			);
+
+			// Throttle socket messages during resize operations
+			const now = Date.now();
+			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
+				this.lastResizeUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.clientId,
+					})
+				);
+			}
 
 			return { newHandler: resizeHandler };
 		} catch (error) {

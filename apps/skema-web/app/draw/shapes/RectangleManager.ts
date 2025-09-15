@@ -15,7 +15,8 @@ type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | "none";
 // Constants
 const MIN_SIZE = 1;
 const MAX_DIMENSION = 10000;
-const THROTTLE_MS = 100;
+// Performance optimization constants
+const THROTTLE_MS = 16; // Match main render throttle (~60fps)
 
 export class RectangleHelper {
 	/**
@@ -78,6 +79,10 @@ export class RectangleManager {
 	private shapeDataCache = new Map<string, Drawable>();
 	private lastPreviewRect: BoundingBox | null = null;
 	private lastPreviewSend: number = 0;
+
+	// Throttling for drag/resize operations
+	private lastDragUpdate: number = 0;
+	private lastResizeUpdate: number = 0;
 
 	constructor(
 		private ctx: CanvasRenderingContext2D,
@@ -285,16 +290,22 @@ export class RectangleManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			// Throttle socket messages during drag operations
+			const now = Date.now();
+			if (now - this.lastDragUpdate >= THROTTLE_MS) {
+				this.lastDragUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
+			}
 		} catch (error) {
 			console.error("Error during rectangle drag:", error);
 		}
@@ -360,16 +371,22 @@ export class RectangleManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			// Throttle socket messages during resize operations
+			const now = Date.now();
+			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
+				this.lastResizeUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
+			}
 
 			return { newHandler: flipResult.newHandler };
 		} catch (error) {
