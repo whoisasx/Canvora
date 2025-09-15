@@ -4,6 +4,10 @@ import { Message } from "../draw";
 import { CommonPropsGame } from "@/utils/propsStore";
 import { normalizeStroke, roughOptions } from "../render";
 import { createLinePath } from "../render/line";
+import { Handle } from "../assist";
+
+// Type definitions
+type Point = { x: number; y: number };
 
 // Performance optimization constants
 const THROTTLE_MS = 100;
@@ -402,5 +406,230 @@ export class LineManager {
 		} catch (error) {
 			console.error("Error updating line properties:", error);
 		}
+	}
+
+	/**
+	 * Standardized drag method matching RectangleManager and PencilManager pattern
+	 * Replaces handleLineDrag function with optimizations
+	 */
+	handleDragStandardized(
+		message: Message,
+		currentPos: Point,
+		previousPos: Point,
+		currentProps: CommonPropsGame,
+		setSelectedMessage: (msg: Message) => void
+	): void {
+		if (!message.lineData || Array.isArray(message.shapeData)) return;
+
+		try {
+			const dx = currentPos.x - previousPos.x;
+			const dy = currentPos.y - previousPos.y;
+
+			const { x1, y1, x2, y2 } = message.lineData;
+			const newLineData = {
+				x1: x1 + dx,
+				y1: y1 + dy,
+				x2: x2 + dx,
+				y2: y2 + dy,
+			};
+
+			const options = roughOptions(currentProps);
+			const shapeData = LineHelper.generateShapeData(
+				this.generator,
+				newLineData.x1,
+				newLineData.y1,
+				newLineData.x2,
+				newLineData.y2,
+				options,
+				message.shapeData.options.seed
+			);
+
+			const boundingBox = LineHelper.getBoundingBox(
+				newLineData.x1,
+				newLineData.y1,
+				newLineData.x2,
+				newLineData.y2
+			);
+
+			const newMessage: Message = {
+				...message,
+				shapeData,
+				boundingBox,
+				lineData: newLineData,
+			};
+
+			setSelectedMessage(newMessage);
+			this.socket.send(
+				JSON.stringify({
+					type: "update-message",
+					flag: "update-preview",
+					id: newMessage.id,
+					newMessage,
+					roomId: this.roomId,
+					clientId: this.clientId,
+				})
+			);
+		} catch (error) {
+			console.error("Error during line drag:", error);
+		}
+	}
+
+	/**
+	 * Standardized resize method matching RectangleManager and PencilManager pattern
+	 * Replaces handleLineResize function with enhanced logic
+	 */
+	handleResizeStandardized(
+		message: Message,
+		currentPos: Point,
+		previousPos: Point,
+		resizeHandler: Handle,
+		currentProps: CommonPropsGame,
+		setSelectedMessage: (msg: Message) => void,
+		setCursor: (cursor: string) => void
+	): { newHandler: Handle } {
+		if (
+			!message.lineData ||
+			resizeHandler === "none" ||
+			Array.isArray(message.shapeData)
+		) {
+			return { newHandler: resizeHandler };
+		}
+
+		try {
+			const { x1, y1, x2, y2 } = message.lineData;
+			let newLineData = { x1, y1, x2, y2 };
+
+			// Handle line resize based on which endpoint is being dragged
+			switch (resizeHandler) {
+				case "nw": // dragging start point
+					newLineData = {
+						x1: currentPos.x,
+						y1: currentPos.y,
+						x2,
+						y2,
+					};
+					setCursor("nw-resize");
+					break;
+				case "se": // dragging end point
+					newLineData = {
+						x1,
+						y1,
+						x2: currentPos.x,
+						y2: currentPos.y,
+					};
+					setCursor("se-resize");
+					break;
+				default:
+					return { newHandler: resizeHandler };
+			}
+
+			const options = roughOptions(currentProps);
+			const shapeData = LineHelper.generateShapeData(
+				this.generator,
+				newLineData.x1,
+				newLineData.y1,
+				newLineData.x2,
+				newLineData.y2,
+				options,
+				message.shapeData.options.seed
+			);
+
+			const boundingBox = LineHelper.getBoundingBox(
+				newLineData.x1,
+				newLineData.y1,
+				newLineData.x2,
+				newLineData.y2
+			);
+
+			const newMessage: Message = {
+				...message,
+				shapeData,
+				boundingBox,
+				lineData: newLineData,
+			};
+
+			setSelectedMessage(newMessage);
+			this.socket.send(
+				JSON.stringify({
+					type: "update-message",
+					flag: "update-preview",
+					id: newMessage.id,
+					newMessage,
+					roomId: this.roomId,
+					clientId: this.clientId,
+				})
+			);
+
+			return { newHandler: resizeHandler };
+		} catch (error) {
+			console.error("Error during line resize:", error);
+			return { newHandler: resizeHandler };
+		}
+	}
+
+	/**
+	 * Standardized properties update method matching RectangleManager and PencilManager pattern
+	 * Replaces handleLinePropsChange function with optimizations
+	 */
+	updatePropertiesStandardized(
+		message: Message,
+		currentProps: CommonPropsGame,
+		setSelectedMessage: (msg: Message) => void
+	): void {
+		if (!message.lineData || Array.isArray(message.shapeData)) return;
+
+		try {
+			const options = roughOptions(currentProps);
+			const shapeData = LineHelper.generateShapeData(
+				this.generator,
+				message.lineData.x1,
+				message.lineData.y1,
+				message.lineData.x2,
+				message.lineData.y2,
+				options,
+				message.shapeData.options.seed
+			);
+
+			const boundingBox = LineHelper.getBoundingBox(
+				message.lineData.x1,
+				message.lineData.y1,
+				message.lineData.x2,
+				message.lineData.y2
+			);
+
+			const newMessage: Message = {
+				...message,
+				shapeData,
+				opacity: currentProps.opacity,
+				boundingBox,
+			};
+
+			setSelectedMessage(newMessage);
+			this.socket.send(
+				JSON.stringify({
+					type: "update-message",
+					id: newMessage.id,
+					newMessage,
+					roomId: this.roomId,
+					clientId: this.clientId,
+				})
+			);
+		} catch (error) {
+			console.error("Error during line properties update:", error);
+		}
+	}
+
+	/**
+	 * Updates the manager when theme changes
+	 */
+	updateTheme(theme: "light" | "dark"): void {
+		this.theme = theme;
+	}
+
+	/**
+	 * Updates the manager when user changes
+	 */
+	updateUser(clientId: string): void {
+		this.clientId = clientId;
 	}
 }
