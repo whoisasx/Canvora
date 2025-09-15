@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSession } from "next-auth/react";
 import { useDemoDashboardStore, DemoRoom } from "@/utils/demoDashboardStore";
-import { Sidebar } from "@/components/demo/Sidebar";
-import { ProjectCard } from "@/components/demo/ProjectCard";
-import { CreateProjectModal } from "@/components/demo/CreateProjectModal";
+import { Sidebar } from "@/components/dashboard/Sidebar";
+import { ProjectCard } from "@/components/dashboard/ProjectCard";
+import { CreateProjectModal } from "@/components/dashboard/CreateProjectModal";
 import {
 	Bars3Icon,
 	MagnifyingGlassIcon,
@@ -14,9 +14,9 @@ import {
 	FunnelIcon,
 	LinkIcon,
 } from "@heroicons/react/24/outline";
-import { NotificationPanel } from "@/components/demo/NotificationPanel";
-import { EmptyState } from "@/components/demo/EmptyState";
-import { JoinSessionModal } from "@/components/demo/JoinSessionModal";
+import { NotificationPanel } from "@/components/dashboard/NotificationPanel";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { JoinSessionModal } from "@/components/dashboard/JoinSessionModal";
 import toast from "react-hot-toast";
 import axios from "axios";
 
