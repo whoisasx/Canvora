@@ -57,6 +57,9 @@ const authConfig = {
 			}
 			return session;
 		},
+		async authorized({ auth }) {
+			return !!auth;
+		},
 	},
 } satisfies NextAuthConfig;
 

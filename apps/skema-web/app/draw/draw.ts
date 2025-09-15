@@ -392,6 +392,9 @@ export class Game {
 			this.authenticated,
 			this.isActive
 		);
+		if (this.onMessageChange) {
+			this.onMessageChange();
+		}
 		this.renderCanvas();
 		window.addEventListener("keydown", (e) => {
 			//delete

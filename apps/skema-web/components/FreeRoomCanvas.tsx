@@ -44,7 +44,9 @@ export default function CanvasClient({
 				};
 				await getToken();
 
-				const ws = new WebSocket(`ws://localhost:8080?token=${token}`);
+				const ws = new WebSocket(
+					`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}`
+				);
 
 				ws.onopen = () => {
 					setSocket(ws);

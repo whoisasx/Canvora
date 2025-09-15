@@ -1,11 +1,11 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthRequest } from "next-auth";
 import authConfig from "@/auth.config";
-import { NextRequest, NextResponse as res } from "next/server";
+import { NextResponse as res } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-export default auth(async (req: NextRequest) => {
-	const session = await auth();
+export default auth((req: NextAuthRequest) => {
+	const session = req.auth;
 	if (!session) {
 		const newUrl = new URL("/signin", req.nextUrl.origin);
 		return res.redirect(newUrl);
@@ -16,7 +16,7 @@ export default auth(async (req: NextRequest) => {
 export const config = {
 	matcher: ["/dashboard", "/canvas/:path*"],
 };
-("/canvas/:path*");
+// ("/canvas/:path*");
 
 // const nextAuth = NextAuth(authConfig);
 

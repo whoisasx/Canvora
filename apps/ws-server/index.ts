@@ -1,12 +1,44 @@
 import WebSocket, { WebSocketServer } from "ws";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { createMessage, deleteMessage, updateMessage } from "./server";
+import http from "http";
+import url from "url";
+
+// Create HTTP server for health checks
+const server = http.createServer((req, res) => {
+	const parsedUrl = url.parse(req.url!, true);
+
+	if (parsedUrl.pathname === "/health") {
+		res.writeHead(200, { "Content-Type": "application/json" });
+		res.end(
+			JSON.stringify({
+				status: "healthy",
+				timestamp: new Date().toISOString(),
+				service: "skema-ws-server",
+				connectedUsers: users.length,
+				activeRooms: messagesByRoom.size,
+				uptime: process.uptime(),
+			})
+		);
+		return;
+	}
+
+	res.writeHead(404, { "Content-Type": "application/json" });
+	res.end(JSON.stringify({ error: "Not found" }));
+});
 
 const wss = new WebSocketServer({
-	port: 8080,
-	host: "localhost",
+	server,
 	clientTracking: true,
 });
+
+server.listen(
+	process.env.PORT ? Number(process.env.PORT) : 8080,
+	"0.0.0.0",
+	() => {
+		console.log("WebSocket server running on port 8080");
+	}
+);
 
 interface User {
 	username: string;
