@@ -411,6 +411,8 @@ export class Game {
 				this.offsetY = centerY - worldY * this.scale;
 
 				this.applyTransform();
+				// Re-render after programmatic zoom change for viewport culling
+				this.throttledRender();
 			}
 		);
 		this.setZoom = useZoomStore.getState().setZoom;
@@ -899,7 +901,7 @@ export class Game {
 			this.offsetX,
 			this.offsetY
 		);
-		this.renderCanvas();
+		// Note: Rendering is now handled by throttledRender() calls in viewport change handlers
 	}
 
 	selectTool(tool: Tool, props: CommonPropsGame) {
@@ -1014,6 +1016,36 @@ export class Game {
 		return this.coordinateHelper.getMousePos(e);
 	};
 
+	// Viewport culling methods
+	private getViewportBounds() {
+		const padding = 100; // Extra padding for smooth scrolling
+		return {
+			left: (-this.offsetX - padding) / this.scale,
+			top: (-this.offsetY - padding) / this.scale,
+			right: (-this.offsetX + this.canvas.width + padding) / this.scale,
+			bottom: (-this.offsetY + this.canvas.height + padding) / this.scale,
+		};
+	}
+
+	private isMessageInViewport(message: Message): boolean {
+		const viewport = this.getViewportBounds();
+		const bb = message.boundingBox;
+
+		// AABB (Axis-Aligned Bounding Box) intersection test
+		return !(
+			bb.x + bb.w < viewport.left || // Shape is completely to the left
+			bb.x > viewport.right || // Shape is completely to the right
+			bb.y + bb.h < viewport.top || // Shape is completely above
+			bb.y > viewport.bottom
+		); // Shape is completely below
+	}
+
+	private getVisibleMessages(): Message[] {
+		return this.messages.filter((message) =>
+			this.isMessageInViewport(message)
+		);
+	}
+
 	// Throttled render method to prevent excessive rendering
 	private throttledRender = () => {
 		if (this.pendingRender) return;
@@ -1073,23 +1105,29 @@ export class Game {
 		// Batch render operations
 		this.ctx.save();
 
-		// Group messages by type for batched rendering
-		const messagesByType = this.groupMessagesByType(this.messages);
+		// 🎯 VIEWPORT CULLING: Only render visible messages
+		const visibleMessages = this.getVisibleMessages();
+
+		// Group visible messages by type for batched rendering
+		const messagesByType = this.groupMessagesByType(visibleMessages);
 
 		// Render each type together to reduce context switches
 		for (const [type, messages] of messagesByType) {
 			this.renderMessageBatch(type, messages);
 		}
 
-		// Render preview messages
+		// Render preview messages (always render during drawing)
 		if (this.previewMessage.length > 0) this.renderCanvasPreview();
 
 		// Render UI elements
 		if (this.selectedMessage) {
-			this.setProps(this.selectedMessage.shape as Tool);
-			this.setSelectedProps(this.selectedMessage);
-			this.handleSelectedMessage(this.selectedMessage);
-			this.preSelectedMessage = null;
+			// Only render selection UI if the selected message is visible
+			if (this.isMessageInViewport(this.selectedMessage)) {
+				this.setProps(this.selectedMessage.shape as Tool);
+				this.setSelectedProps(this.selectedMessage);
+				this.handleSelectedMessage(this.selectedMessage);
+				this.preSelectedMessage = null;
+			}
 		}
 
 		if (this.tool == "laser") this.drawMovingLaser();
@@ -1433,6 +1471,9 @@ export class Game {
 			this.startY = mouseY;
 
 			this.applyTransform();
+
+			// Re-render after hand tool pan for viewport culling
+			this.throttledRender();
 			return;
 		}
 
@@ -1496,9 +1537,15 @@ export class Game {
 			this.offsetY = mouseY - worldY * this.scale;
 
 			this.setZoom(Math.round(this.scale * 100));
+
+			// Re-render after zoom change for viewport culling
+			this.throttledRender();
 		} else {
 			this.offsetX -= e.deltaX;
 			this.offsetY -= e.deltaY;
+
+			// Re-render after pan change for viewport culling
+			this.throttledRender();
 		}
 		this.applyTransform();
 	};
