@@ -470,6 +470,13 @@ export class Game {
 		this.socketHelper.sendRedo();
 	}
 
+	/**
+	 * Sets the cursor style for the canvas
+	 */
+	setCursor(cursor: string): void {
+		this.canvas.style.cursor = cursor;
+	}
+
 	/** ------------------------------------------------------------------- */
 	async initHandler() {
 		this.messages = await getExistingMessages(
@@ -2792,174 +2799,55 @@ export class Game {
 			return;
 		}
 
-		const deltaX = pos.x - this.prevX;
-		const deltaY = pos.y - this.prevY;
+		const currentPos = { x: pos.x, y: pos.y };
+		const previousPos = { x: this.prevX, y: this.prevY };
 
-		this.arrowManager.handleDrag(message, deltaX, deltaY, pos.x, pos.y);
+		this.arrowManager.handleDragStandardized(
+			message,
+			currentPos,
+			previousPos,
+			this.props,
+			this.setSelectedMessage.bind(this)
+		);
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
 	handleArrowResize(message: Message, pos: { x: number; y: number }) {
-		if (!message.lineData) return;
-		if (this.resizeHandler === "none") return;
-		if (!Array.isArray(message.shapeData)) return;
-
-		const { x1, y1, x2, y2 } = message.lineData;
-		let newLineData = { x1, y1, x2, y2 };
-
-		// For arrow resizing, use "nw" (start) and "se" (end) handles as an example
-		if (this.resizeHandler === "nw") {
-			newLineData = { x1: pos.x, y1: pos.y, x2, y2 };
-		} else if (this.resizeHandler === "se") {
-			newLineData = { x1, y1, x2: pos.x, y2: pos.y };
+		if (!this.arrowManager) {
+			console.error("ArrowManager not initialized");
+			return;
 		}
 
-		// rebuild arrow
-		const { linePath, frontHeadPath, backHeadPath } = createArrowPath(
-			newLineData.x1,
-			newLineData.y1,
-			newLineData.x2,
-			newLineData.y2,
-			message.arrowHead?.front!,
-			message.arrowHead?.back!,
-			message.arrowType!
+		const currentPos = { x: pos.x, y: pos.y };
+		const previousPos = { x: this.prevX, y: this.prevY };
+
+		const result = this.arrowManager.handleResizeStandardized(
+			message,
+			currentPos,
+			previousPos,
+			this.resizeHandler,
+			this.props,
+			this.setSelectedMessage.bind(this),
+			this.setCursor.bind(this)
 		);
 
-		const options = roughOptions(this.props);
-		const shapeData: Drawable[] = [];
-		if (linePath)
-			shapeData.push(
-				this.generator!.path(linePath, {
-					...options,
-					seed: message.shapeData[0]!.options.seed,
-				})
-			);
-		if (frontHeadPath)
-			shapeData.push(
-				this.generator!.path(frontHeadPath, {
-					...options,
-					seed: message.shapeData[1]!.options.seed,
-				})
-			);
-		if (backHeadPath)
-			shapeData.push(
-				this.generator!.path(backHeadPath, {
-					...options,
-					seed: message.shapeData[2]!.options.seed,
-				})
-			);
-
-		const rect = normalizeCoords(
-			newLineData.x1,
-			newLineData.y1,
-			newLineData.x2 - newLineData.x1,
-			newLineData.y2 - newLineData.y1
-		);
-
-		const newMessage: Message = {
-			...message,
-			shapeData,
-			boundingBox: rect,
-			lineData: newLineData,
-		};
+		// Update resize handler if changed
+		this.resizeHandler = result.newHandler;
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleArrowPropsChange(message: Message) {
-		if (!message.lineData) return;
-		if (!Array.isArray(message.shapeData)) return;
+		if (!this.arrowManager) {
+			console.error("ArrowManager not initialized");
+			return;
+		}
 
-		const { x1, y1, x2, y2 } = message.lineData;
-
-		const { linePath, frontHeadPath, backHeadPath } = createArrowPath(
-			x1,
-			y1,
-			x2,
-			y2,
-			this.props.arrowHead!.front!,
-			this.props.arrowHead!.back!,
-			this.props.arrowType!
-		);
-
-		const options = roughOptions(this.props);
-		const shapeData: Drawable[] = [];
-		if (linePath)
-			shapeData.push(
-				this.generator!.path(linePath, {
-					...options,
-					seed: message.shapeData[0]!.options.seed,
-				})
-			);
-		if (frontHeadPath)
-			shapeData.push(
-				this.generator!.path(frontHeadPath, {
-					...options,
-					fill:
-						this.props.arrowHead!.front === "triangle"
-							? this.props.stroke
-							: undefined,
-					fillStyle:
-						this.props.arrowHead!.front === "triangle"
-							? "solid"
-							: undefined,
-					seed: message.shapeData[0]!.options.seed,
-				})
-			);
-		if (backHeadPath)
-			shapeData.push(
-				this.generator!.path(backHeadPath, {
-					...options,
-					fill:
-						this.props.arrowHead!.back === "triangle"
-							? this.props.stroke
-							: undefined,
-					fillStyle:
-						this.props.arrowHead!.back === "triangle"
-							? "solid"
-							: undefined,
-					seed: message.shapeData[0]!.options.seed,
-				})
-			);
-
-		const rect = normalizeCoords(x1, y1, x2 - x1, y2 - y1);
-
-		const newMessage: Message = {
-			...message,
-			shapeData,
-			arrowHead: this.props.arrowHead,
-			arrowType: this.props.arrowType,
-			opacity: this.props.opacity,
-			boundingBox: rect,
-		};
-
-		this.setSelectedMessage(newMessage);
-
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.arrowManager.updatePropertiesStandardized(
+			message,
+			this.props,
+			this.setSelectedMessage.bind(this)
 		);
 	}
 	//* 5.line
