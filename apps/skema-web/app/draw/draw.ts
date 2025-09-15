@@ -28,14 +28,12 @@ import { RoughCanvas } from "roughjs/bin/canvas";
 import { RoughGenerator } from "roughjs/bin/generator";
 import { Drawable, Options } from "roughjs/bin/core";
 import { createRoundedRectPath } from "./render/rectangle";
-import { createRhombusPath } from "./render/rhombus";
 import {
 	normalizeCoords,
 	roughOptions,
 	normalizeStroke,
 	normalizeWheelDelta,
 	getResizeHandleAndCursor,
-	Handle,
 } from "./render";
 import { createEllipsePath } from "./render/ellipse";
 import { createLinePath } from "./render/line";
@@ -74,6 +72,32 @@ import {
 import { makeCircleCursor } from "./render/eraser";
 import { LayerManager } from "./render/layerManager";
 import { getExistingMessages } from "./server";
+import {
+	SocketHelper,
+	CoordinateHelper,
+	HitTestHelper,
+	ShapeCreator,
+	ResizeHelper,
+	PropertyConverter,
+	ThrottleHelper,
+	BoundingBoxHelper,
+	FontHelper,
+	Handle,
+	FONT_FAMILY_MAP,
+	FONT_WEIGHT_MAP,
+} from "./assist";
+import {
+	RectangleManager,
+	RectangleHelper,
+	RhombusManager,
+	RhombusHelper,
+	EllipseManager,
+	EllipseHelper,
+	LineManager,
+	LineHelper,
+	ArrowManager,
+	ArrowHelper,
+} from "./shapes";
 
 type Laser = {
 	x: number;
@@ -156,6 +180,13 @@ export class Game {
 	private imageSrc: string | null = null;
 	private imageCache = new Map<string, HTMLImageElement>();
 
+	// Shape managers
+	private rectangleManager: RectangleManager | null = null;
+	private rhombusManager: RhombusManager | null = null;
+	private ellipseManager: EllipseManager | null = null;
+	private lineManager: LineManager | null = null;
+	private arrowManager: ArrowManager | null = null;
+
 	// add small fields for throttling preview sends
 	private previewMessage: Message[];
 	private previewId: string = "";
@@ -217,6 +248,11 @@ export class Game {
 	private setLayers: (val: layers) => void;
 	private layerManager: LayerManager;
 
+	// Helper instances
+	private socketHelper: SocketHelper;
+	private coordinateHelper: CoordinateHelper;
+	private shapeCreator: ShapeCreator;
+
 	constructor(
 		socket: WebSocket,
 		canvas: HTMLCanvasElement,
@@ -237,6 +273,67 @@ export class Game {
 		this.layerManager = new LayerManager(this.messages);
 		this.rc = rough.canvas(this.canvas);
 		this.generator = rough.generator();
+
+		// Initialize helper classes
+		this.socketHelper = new SocketHelper(this.socket, this.roomId, "");
+		this.coordinateHelper = new CoordinateHelper(
+			this.canvas,
+			this.scale,
+			this.offsetX,
+			this.offsetY
+		);
+		this.shapeCreator = new ShapeCreator(this.generator);
+
+		// Initialize shape managers
+		this.rectangleManager = new RectangleManager(
+			this.ctx,
+			this.rc,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || ""
+		);
+
+		this.rhombusManager = new RhombusManager(
+			this.ctx,
+			this.rc,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || ""
+		);
+
+		this.ellipseManager = new EllipseManager(
+			this.ctx,
+			this.rc,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || ""
+		);
+
+		this.lineManager = new LineManager(
+			this.ctx,
+			this.rc,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || ""
+		);
+
+		this.arrowManager = new ArrowManager(
+			this.ctx,
+			this.rc,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || ""
+		);
 
 		this.initHandler();
 		this.initSocketHandler();
@@ -301,13 +398,8 @@ export class Game {
 								this.selectedMessage
 							);
 
-						this.socket.send(
-							JSON.stringify({
-								type: "sync-all",
-								messages: this.layerManager.getMessages(),
-								roomId: this.roomId,
-								clientId: this.user!.id,
-							})
+						this.socketHelper.sendSyncAll(
+							this.layerManager.getMessages()
 						);
 					}
 					this.setLayers("none");
@@ -351,15 +443,9 @@ export class Game {
 				this.lastCursorPos &&
 				now - this.lastMoveTs <= IDLE_TIMEOUT_MS
 			) {
-				this.socket.send(
-					JSON.stringify({
-						type: "cursor",
-						username: this.user.username,
-						pos: this.lastCursorPos,
-						roomId: this.roomId,
-						clientId: this.user!.id,
-						ts: now,
-					})
+				this.socketHelper.sendCursor(
+					this.user.username,
+					this.lastCursorPos
 				);
 				return;
 			}
@@ -367,22 +453,10 @@ export class Game {
 	}
 
 	undo() {
-		this.socket.send(
-			JSON.stringify({
-				type: "undo",
-				roomId: this.roomId,
-				clientId: this.user?.id,
-			})
-		);
+		this.socketHelper.sendUndo();
 	}
 	redo() {
-		this.socket.send(
-			JSON.stringify({
-				type: "redo",
-				roomId: this.roomId,
-				clientId: this.user?.id,
-			})
-		);
+		this.socketHelper.sendRedo();
 	}
 
 	/** ------------------------------------------------------------------- */
@@ -402,13 +476,8 @@ export class Game {
 				e.preventDefault();
 
 				if (this.selectedMessage) {
-					this.socket.send(
-						JSON.stringify({
-							type: "delete-message",
-							id: this.selectedMessage.id,
-							roomId: this.roomId,
-							clientId: this.user!.id,
-						})
+					this.socketHelper.sendDeleteMessage(
+						this.selectedMessage.id
 					);
 				}
 				this.selectedMessage = null;
@@ -752,6 +821,11 @@ export class Game {
 	}
 
 	applyTransform() {
+		this.coordinateHelper.updateTransform(
+			this.scale,
+			this.offsetX,
+			this.offsetY
+		);
 		this.ctx.setTransform(
 			this.scale,
 			0,
@@ -800,6 +874,61 @@ export class Game {
 	}
 	setUser(user: User) {
 		this.user = user;
+		// Update socket helper with user ID
+		this.socketHelper = new SocketHelper(this.socket, this.roomId, user.id);
+
+		// Update shape managers with user ID
+		if (this.rc && this.generator) {
+			this.rectangleManager = new RectangleManager(
+				this.ctx,
+				this.rc,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id
+			);
+
+			this.rhombusManager = new RhombusManager(
+				this.ctx,
+				this.rc,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id
+			);
+
+			this.ellipseManager = new EllipseManager(
+				this.ctx,
+				this.rc,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id
+			);
+
+			this.lineManager = new LineManager(
+				this.ctx,
+				this.rc,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id
+			);
+
+			this.arrowManager = new ArrowManager(
+				this.ctx,
+				this.rc,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id
+			);
+		}
 	}
 
 	getMessages(): Message[] {
@@ -807,17 +936,7 @@ export class Game {
 	}
 
 	getMousePos = (e: MouseEvent) => {
-		const rect = this.canvas.getBoundingClientRect();
-
-		const screenX = e.clientX - rect.x;
-		const screenY = e.clientY - rect.y;
-
-		const worldX = (screenX - this.offsetX) / this.scale;
-		const worldY = (screenY - this.offsetY) / this.scale;
-		return {
-			x: worldX,
-			y: worldY,
-		};
+		return this.coordinateHelper.getMousePos(e);
 	};
 
 	renderCanvas() {
@@ -834,9 +953,15 @@ export class Game {
 			if (message.shape === "rectangle") this.drawRect(message);
 			else if (message.shape === "rhombus") this.drawRhombus(message);
 			else if (message.shape === "arc") this.drawEllipse(message);
-			else if (message.shape === "line") this.drawLine(message);
-			else if (message.shape === "arrow") this.drawArrow(message);
-			else if (message.shape === "pencil") this.drawPencil(message);
+			else if (message.shape === "line") {
+				if (this.lineManager) {
+					this.lineManager.render(message);
+				}
+			} else if (message.shape === "arrow") {
+				if (this.arrowManager) {
+					this.arrowManager.render(message);
+				}
+			} else if (message.shape === "pencil") this.drawPencil(message);
 			else if (message.shape === "text") this.drawText(message);
 			else if (message.shape === "image") this.drawImage(message);
 		}
@@ -858,9 +983,15 @@ export class Game {
 			if (message.shape === "rectangle") this.drawRect(message);
 			else if (message.shape === "rhombus") this.drawRhombus(message);
 			else if (message.shape === "arc") this.drawEllipse(message);
-			else if (message.shape === "line") this.drawLine(message);
-			else if (message.shape === "arrow") this.drawArrow(message);
-			else if (message.shape === "pencil") this.drawPencil(message);
+			else if (message.shape === "line") {
+				if (this.lineManager) {
+					this.lineManager.render(message);
+				}
+			} else if (message.shape === "arrow") {
+				if (this.arrowManager) {
+					this.arrowManager.render(message);
+				}
+			} else if (message.shape === "pencil") this.drawPencil(message);
 			else if (message.shape === "text") this.drawText(message);
 			else if (message.shape === "image") this.drawImage(message);
 		}
@@ -1020,7 +1151,9 @@ export class Game {
 
 		this.clicked = true;
 		this.previewSeed = Math.floor(Math.random() * 1000000);
-		if (this.tool === "pencil") this.pencilPoints.push(pos);
+		if (this.tool === "pencil") {
+			this.pencilPoints.push(pos);
+		}
 		if (this.tool === "text") {
 			this.handleTextInput(e);
 		}
@@ -1080,15 +1213,7 @@ export class Game {
 
 		this.previewSeed = null;
 		if (!message) return;
-		this.socket.send(
-			JSON.stringify({
-				type: "create-message",
-				message,
-				previewId: this.previewId,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
+		this.socketHelper.sendCreateMessage(message, this.previewId);
 
 		if (this.lockClicked) return;
 
@@ -1244,587 +1369,184 @@ export class Game {
 
 	// !rectangle
 	messageRect(w: number, h: number): Message {
-		const options = roughOptions(this.props);
-		let shapeData: Drawable | null = null;
-
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		if (this.props.edges === "round") {
-			const path = createRoundedRectPath(rect.x, rect.y, rect.w, rect.h);
-
-			shapeData = this.generator!.path(path, {
-				...options,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-		} else {
-			shapeData = this.generator!.rectangle(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				{
-					...options,
-					seed:
-						this.previewSeed ?? Math.floor(Math.random() * 1000000),
-				}
-			);
+		if (!this.rectangleManager) {
+			throw new Error("RectangleManager not initialized");
 		}
-		return {
-			id: uuidv4(),
-			shape: "rectangle" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData,
-			boundingBox: rect,
-		};
+		return this.rectangleManager.createMessage(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	drawRect(message: Message) {
-		if (!this.rc) return;
-		this.ctx.save();
-
-		if (Array.isArray(message.shapeData)) return;
-		this.ctx.globalAlpha = message.opacity ?? 1;
-		this.ctx.lineJoin = "round";
-		this.ctx.lineCap = "round";
-
-		message.shapeData.options.stroke = normalizeStroke(
-			this.theme,
-			message.shapeData.options.stroke
-		);
-		this.rc.draw(message.shapeData);
-
-		this.ctx.restore();
-	}
-	drawMovingRect(w: number, h: number, options: Options) {
-		let shapeData: Drawable | null = null;
-		this.ctx.save();
-
-		this.ctx.globalAlpha = this.props.opacity ?? 1;
-		this.ctx.lineJoin = "round";
-		this.ctx.lineCap = "round";
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		if (this.props.edges === "round") {
-			const path = createRoundedRectPath(rect.x, rect.y, rect.w, rect.h);
-			shapeData = this.generator!.path(path, {
-				...options,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-		} else {
-			shapeData = this.generator!.rectangle(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				{
-					...options,
-					seed:
-						this.previewSeed ?? Math.floor(Math.random() * 1000000),
-				}
-			);
-		}
-		this.rc!.draw(shapeData);
-
-		this.ctx.restore();
-
-		// --- throttle & skip identical rects to avoid flooding ---
-		const now = Date.now();
-		const THROTTLE_MS = 100; // tune as needed (100ms is reasonable)
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
+		if (!this.rectangleManager) {
+			console.error("RectangleManager not initialized");
 			return;
 		}
-		this.lastPreviewSend = now;
-		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
-
-		const message: Message = {
-			id: this.previewId,
-			shape: "rectangle" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData,
-			boundingBox: rect,
-		};
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.rectangleManager.render(message);
+	}
+	drawMovingRect(w: number, h: number, options: Options) {
+		if (!this.rectangleManager) {
+			console.error("RectangleManager not initialized");
+			return;
+		}
+		this.rectangleManager.renderPreview(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
 	// !rhombus
 	messageRhombus(w: number, h: number): Message {
-		const options = roughOptions(this.props);
-		let shapeData: Drawable | null = null;
-
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		const path = createRhombusPath(
-			rect.x,
-			rect.y,
-			rect.w,
-			rect.h,
-			this.props.edges === "round" ? true : false
+		if (!this.rhombusManager) {
+			throw new Error("RhombusManager not initialized");
+		}
+		return this.rhombusManager.createMessage(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
-		shapeData = this.generator!.path(path, {
-			...options,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-
-		return {
-			id: uuidv4(),
-			shape: "rhombus" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData,
-			boundingBox: rect,
-		};
 	}
 	drawRhombus(message: Message) {
-		if (!this.rc) return;
-		this.ctx.save();
-
-		if (Array.isArray(message.shapeData)) return;
-		this.ctx.globalAlpha = message.opacity ?? 1;
-		this.ctx.lineJoin = "round";
-		this.ctx.lineCap = "round";
-
-		message.shapeData.options.stroke = normalizeStroke(
-			this.theme,
-			message.shapeData.options.stroke
-		);
-
-		this.rc.draw(message.shapeData);
-
-		this.ctx.restore();
-	}
-	drawMovingRhombus(w: number, h: number, options: Options) {
-		this.ctx.save();
-
-		this.ctx.globalAlpha = this.props.opacity ?? 1;
-		this.ctx.lineJoin = "round";
-		this.ctx.lineCap = "round";
-
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		const path = createRhombusPath(
-			rect.x,
-			rect.y,
-			rect.w,
-			rect.h,
-			this.props.edges === "round" ? true : false
-		);
-
-		const drawable = this.generator!.path(path, {
-			...options,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-		this.rc!.draw(drawable);
-
-		this.ctx.restore();
-
-		// --- throttle & skip identical rhombus to avoid flooding ---
-		const now = Date.now();
-		const THROTTLE_MS = 100;
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
+		if (!this.rhombusManager) {
+			console.error("RhombusManager not initialized");
 			return;
 		}
-		this.lastPreviewSend = now;
-		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
-
-		const message: Message = {
-			id: this.previewId,
-			shape: "rhombus" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData: drawable,
-			boundingBox: rect,
-		};
-
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.rhombusManager.render(message);
+	}
+	drawMovingRhombus(w: number, h: number, options: Options) {
+		if (!this.rhombusManager) {
+			console.error("RhombusManager not initialized");
+			return;
+		}
+		this.rhombusManager.renderPreview(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
 	// !ellipse
 	messageEllipse(w: number, h: number): Message {
-		const options = roughOptions(this.props);
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-
-		const path = createEllipsePath(rect.x, rect.y, rect.w, rect.h);
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-
-		return {
-			id: uuidv4(),
-			shape: "arc" as Tool,
-			opacity: this.props.opacity,
-			shapeData,
-			boundingBox: rect,
-		};
+		if (!this.ellipseManager) {
+			throw new Error("EllipseManager not initialized");
+		}
+		return this.ellipseManager.createMessage(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	drawEllipse(message: Message) {
-		this.ctx.save();
-		if (!this.rc) return;
-
-		if (Array.isArray(message.shapeData)) return;
-		this.ctx.globalAlpha = message.opacity ?? 1;
-		message.shapeData.options.stroke = normalizeStroke(
-			this.theme,
-			message.shapeData.options.stroke
-		);
-
-		this.rc.draw(message.shapeData);
-		this.ctx.restore();
-	}
-	drawMovingEllipse(w: number, h: number, options: Options) {
-		this.ctx.save();
-
-		this.ctx.globalAlpha = this.props.opacity ?? 1;
-
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		const path = createEllipsePath(rect.x, rect.y, rect.w, rect.h);
-
-		const drawable = this.generator!.path(path, {
-			...options,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-		this.rc!.draw(drawable);
-
-		this.ctx.restore();
-
-		// --- throttle & skip identical ellipses to avoid flooding ---
-		const now = Date.now();
-		const THROTTLE_MS = 100;
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
+		if (!this.ellipseManager) {
+			console.error("EllipseManager not initialized");
 			return;
 		}
-		this.lastPreviewSend = now;
-		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
 
-		const message: Message = {
-			id: this.previewId,
-			shape: "arc" as Tool,
-			opacity: this.props.opacity,
-			shapeData: drawable,
-			boundingBox: rect,
-		};
+		this.ellipseManager.render(message);
+	}
+	drawMovingEllipse(w: number, h: number, options: Options) {
+		if (!this.ellipseManager) {
+			console.error("EllipseManager not initialized");
+			return;
+		}
 
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.ellipseManager.renderPreview(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
 	// !line
 	messageLine(w: number, h: number): Message {
-		const options = roughOptions(this.props);
-		const x2 = this.startX + w;
-		const y2 = this.startY + h;
-
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		const path = createLinePath(this.startX, this.startY, x2, y2);
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-
-		return {
-			id: uuidv4(),
-			shape: "line" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData,
-			boundingBox: {
-				x: rect.x,
-				y: rect.y,
-				w: rect.w,
-				h: rect.h,
-			},
-			lineData: { x1: this.startX, y1: this.startY, x2, y2 },
-		};
+		if (!this.lineManager) {
+			throw new Error("LineManager not initialized");
+		}
+		return this.lineManager.createMessage(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	drawLine(message: Message) {
-		if (!this.rc) return;
-		this.ctx.save();
-
-		if (Array.isArray(message.shapeData)) return;
-		this.ctx.globalAlpha = message.opacity ?? 1;
-
-		message.shapeData.options.stroke = normalizeStroke(
-			this.theme,
-			message.shapeData.options.stroke
-		);
-		this.rc.draw(message.shapeData);
-
-		this.ctx.restore();
-	}
-	drawMovingLine(w: number, h: number, options: Options) {
-		this.ctx.save();
-
-		this.ctx.globalAlpha = this.props.opacity ?? 1;
-		const x2 = this.startX + w;
-		const y2 = this.startY + h;
-
-		// draw locally
-		const path = createLinePath(this.startX, this.startY, x2, y2);
-		const drawable = this.generator!.path(path, {
-			...options,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-		this.rc!.draw(drawable);
-
-		this.ctx.restore();
-
-		// bounding box for throttling / preview
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-
-		// --- throttle & skip identical lines to avoid flooding ---
-		const now = Date.now();
-		const THROTTLE_MS = 100;
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
+		if (!this.lineManager) {
+			console.error("LineManager not initialized");
 			return;
 		}
-		this.lastPreviewSend = now;
-		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
-
-		const message: Message = {
-			id: this.previewId,
-			shape: "line" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData: drawable,
-			boundingBox: {
-				x: rect.x,
-				y: rect.y,
-				w: rect.w,
-				h: rect.h,
-			},
-			lineData: { x1: this.startX, y1: this.startY, x2, y2 },
-		};
-
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.lineManager.render(message);
+	}
+	drawMovingLine(w: number, h: number, options: Options) {
+		if (!this.lineManager) {
+			console.error("LineManager not initialized");
+			return;
+		}
+		this.lineManager.renderPreview(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
 	// !arrow
 	messageArrow(w: number, h: number): Message {
-		const options = roughOptions(this.props);
-		const x2 = this.startX + w;
-		const y2 = this.startY + h;
-
-		const rect = normalizeCoords(this.startX, this.startY, w, h);
-		const front = this.props.arrowHead!.front!;
-		const back = this.props.arrowHead!.back!;
-		const arrow_type = this.props.arrowType;
-
-		const { linePath, frontHeadPath, backHeadPath } = createArrowPath(
+		if (!this.arrowManager) {
+			throw new Error("ArrowManager not initialized");
+		}
+		return this.arrowManager.createMessage(
 			this.startX,
 			this.startY,
-			x2,
-			y2,
-			front,
-			back,
-			arrow_type!
+			w,
+			h,
+			this.props,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
-
-		let shapeData: Drawable[] = [];
-
-		if (linePath) {
-			const lineDrawable = this.generator!.path(linePath, {
-				...options,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-			shapeData.push(lineDrawable);
-		}
-		if (frontHeadPath) {
-			const frontHeadDrawable = this.generator!.path(frontHeadPath, {
-				...options,
-				fill: front === "triangle" ? this.props.stroke : undefined,
-				fillStyle: front === "triangle" ? "solid" : undefined,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-			shapeData.push(frontHeadDrawable);
-		}
-		if (backHeadPath) {
-			const backHeadDrawable = this.generator!.path(backHeadPath, {
-				...options,
-				fill: back === "triangle" ? this.props.stroke : undefined,
-				fillStyle: back === "triangle" ? "solid" : undefined,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-			shapeData.push(backHeadDrawable);
-		}
-
-		return {
-			id: uuidv4(),
-			shape: "arrow" as Tool,
-			opacity: this.props.opacity,
-			arrowHead: this.props.arrowHead,
-			arrowType: this.props.arrowType,
-			shapeData,
-			boundingBox: {
-				x: rect.x,
-				y: rect.y,
-				w: rect.w,
-				h: rect.h,
-			},
-			lineData: { x1: this.startX, y1: this.startY, x2, y2 },
-		};
 	}
 	drawArrow(message: Message) {
-		if (!this.ctx) return;
-		this.ctx.save();
-
-		if (!Array.isArray(message.shapeData)) return;
-		this.ctx.globalAlpha = message.opacity ?? 1;
-
-		for (let shape of message.shapeData) {
-			shape.options.stroke = normalizeStroke(
-				this.theme,
-				shape.options.stroke
-			);
-			this.rc!.draw(shape);
-		}
-
-		this.ctx.restore();
-	}
-	drawMovingArrow(w: number, h: number, options: Options) {
-		this.ctx.save();
-
-		this.ctx.globalAlpha = this.props.opacity!;
-		const x2 = this.startX + w;
-		const y2 = this.startY + h;
-
-		const front = this.props.arrowHead!.front!;
-		const back = this.props.arrowHead!.back!;
-		const arrow_type = this.props.arrowType;
-
-		const { linePath, frontHeadPath, backHeadPath } = createArrowPath(
-			this.startX,
-			this.startY,
-			x2,
-			y2,
-			front,
-			back,
-			arrow_type!
-		);
-
-		// build drawables (and collect them for preview message)
-		const drawables: Drawable[] = [];
-
-		if (linePath) {
-			const lineDrawable = this.generator!.path(linePath, {
-				...options,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-			this.rc!.draw(lineDrawable);
-			drawables.push(lineDrawable);
-		}
-		if (frontHeadPath) {
-			const headDrawable = this.generator!.path(frontHeadPath, {
-				...options,
-				fill: front === "triangle" ? this.props.stroke : undefined,
-				fillStyle: front === "triangle" ? "solid" : undefined,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-			this.rc!.draw(headDrawable);
-			drawables.push(headDrawable);
-		}
-		if (backHeadPath) {
-			const headDrawable = this.generator!.path(backHeadPath, {
-				...options,
-				fill: back === "triangle" ? this.props.stroke : undefined,
-				fillStyle: back === "triangle" ? "solid" : undefined,
-				seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-			});
-			this.rc!.draw(headDrawable);
-			drawables.push(headDrawable);
-		}
-
-		this.ctx.restore();
-
-		// bounding box for throttling / preview
-		const rect = normalizeCoords(
-			this.startX,
-			this.startY,
-			x2 - this.startX,
-			y2 - this.startY
-		);
-
-		// --- throttle & skip identical arrows to avoid flooding ---
-		const now = Date.now();
-		const THROTTLE_MS = 100;
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
+		if (!this.arrowManager) {
+			console.error("ArrowManager not initialized");
 			return;
 		}
-		this.lastPreviewSend = now;
-		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
-
-		const message: Message = {
-			id: this.previewId,
-			shape: "arrow" as Tool,
-			opacity: this.props.opacity,
-			arrowHead: this.props.arrowHead,
-			arrowType: this.props.arrowType,
-			shapeData: drawables,
-			boundingBox: rect,
-			lineData: { x1: this.startX, y1: this.startY, x2, y2 },
-		};
-
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.arrowManager.render(message);
+	}
+	drawMovingArrow(w: number, h: number, options: Options) {
+		if (!this.arrowManager) {
+			console.error("ArrowManager not initialized");
+			return;
+		}
+		this.arrowManager.renderPreview(
+			this.startX,
+			this.startY,
+			w,
+			h,
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
 	// !pencil
@@ -1866,8 +1588,9 @@ export class Game {
 				h: maxy - miny,
 			},
 			pencilPoints: this.pencilPoints,
-		};
+		} as Message;
 	}
+
 	drawPencil(message: Message) {
 		if (!this.rc) return;
 		this.ctx.save();
@@ -1883,6 +1606,7 @@ export class Game {
 
 		this.ctx.restore();
 	}
+
 	drawMovingPencil(options: Options) {
 		this.ctx.save();
 
@@ -2223,6 +1947,7 @@ export class Game {
 
 		textarea.focus();
 	}
+
 	drawText(message: Message) {
 		if (!message.textData) return;
 
@@ -2442,181 +2167,58 @@ export class Game {
 
 			if (message.shape === "line" || message.shape === "arrow") {
 				const { x1, y1, x2, y2 } = message.lineData!;
-				if (this.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)) {
+				if (
+					HitTestHelper.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)
+				) {
 					foundMessage = true;
-					this.socket.send(
-						JSON.stringify({
-							type: "delete-message",
-							id: message.id,
-							roomId: this.roomId,
-							clientId: this.user!.id,
-						})
-					);
+					this.socketHelper.sendDeleteMessage(message.id);
 				}
 			} else if (message.shape === "pencil" && message.pencilPoints) {
-				for (let i = 0; i < message.pencilPoints.length - 1; i++) {
-					const p1 = message.pencilPoints[i];
-					const p2 = message.pencilPoints[i + 1];
-					if (
-						this.pointNearLine(
-							pos.x,
-							pos.y,
-							p1!.x,
-							p1!.y,
-							p2!.x,
-							p2!.y,
-							8
-						)
-					) {
-						foundMessage = true;
-						this.socket.send(
-							JSON.stringify({
-								type: "delete-message",
-								id: message.id,
-								roomId: this.roomId,
-								clientId: this.user!.id,
-							})
-						);
-					}
+				if (
+					HitTestHelper.testPencilPoints(
+						pos.x,
+						pos.y,
+						message.pencilPoints,
+						8
+					)
+				) {
+					foundMessage = true;
+					this.socketHelper.sendDeleteMessage(message.id);
 				}
 			} else if (message.shape === "image" || message.shape === "text") {
 				const { x, y, w, h } = this.getBoundindBox(message);
-				const bounded =
-					pos.x >= x &&
-					pos.x <= x + w &&
-					pos.y >= y &&
-					pos.y <= y + h;
-
-				if (bounded) {
-					this.socket.send(
-						JSON.stringify({
-							type: "delete-message",
-							id: message.id,
-							roomId: this.roomId,
-							clientId: this.user!.id,
-						})
-					);
+				if (HitTestHelper.pointInBounds(pos.x, pos.y, x, y, w, h)) {
+					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			} else if (message.shape === "rectangle") {
-				const rect = message.boundingBox;
-				const top = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y,
-					rect.x + rect.w,
-					rect.y,
-					10
-				);
-				const right = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w,
-					rect.y,
-					rect.x + rect.w,
-					rect.y + rect.h,
-					10
-				);
-				const bottom = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y + rect.h,
-					rect.x + rect.w,
-					rect.y + rect.h,
-					10
-				);
-				const left = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y,
-					rect.x,
-					rect.y + rect.h,
-					10
-				);
-				if (top || right || bottom || left) {
-					this.socket.send(
-						JSON.stringify({
-							type: "delete-message",
-							id: message.id,
-							roomId: this.roomId,
-							clientId: this.user!.id,
-						})
-					);
+				if (
+					HitTestHelper.testRectangleEdges(
+						pos.x,
+						pos.y,
+						message.boundingBox,
+						10
+					)
+				) {
+					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			} else if (message.shape === "rhombus") {
-				const rect = message.boundingBox;
-				const top = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w / 2,
-					rect.y,
-					rect.x + rect.w,
-					rect.y + rect.h / 2,
-					10
-				);
-				const right = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w,
-					rect.y + rect.h / 2,
-					rect.x + rect.w / 2,
-					rect.y + rect.h,
-					10
-				);
-				const bottom = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y + rect.h / 2,
-					rect.x + rect.w / 2,
-					rect.y + rect.h,
-					10
-				);
-				const left = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w / 2,
-					rect.y,
-					rect.x,
-					rect.y + rect.h / 2,
-					10
-				);
-				if (top || right || bottom || left) {
-					this.socket.send(
-						JSON.stringify({
-							type: "delete-message",
-							id: message.id,
-							roomId: this.roomId,
-							clientId: this.user!.id,
-						})
-					);
+				if (
+					HitTestHelper.testRhombusEdges(
+						pos.x,
+						pos.y,
+						message.boundingBox,
+						10
+					)
+				) {
+					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			} else if (message.shape === "arc") {
 				const rect = message.boundingBox;
-				if (
-					this.pointNearEllipse(
-						pos.x,
-						pos.y,
-						rect.x,
-						rect.y,
-						rect.w,
-						rect.h,
-						10
-					)
-				) {
-					this.socket.send(
-						JSON.stringify({
-							type: "delete-message",
-							id: message.id,
-							roomId: this.roomId,
-							clientId: this.user!.id,
-						})
-					);
+				if (HitTestHelper.testEllipseEdges(pos.x, pos.y, rect, 10)) {
+					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			}
@@ -2658,72 +2260,8 @@ export class Game {
 		}
 		return boundingBox;
 	}
-	pointNearLine(
-		px: number,
-		py: number,
-		x1: number,
-		y1: number,
-		x2: number,
-		y2: number,
-		tolerance: number = 5
-	) {
-		const A = px - x1;
-		const B = py - y1;
-		const C = x2 - x1;
-		const D = y2 - y1;
-
-		const dot = A * C + B * D;
-		const len_sq = C * C + D * D;
-		let param = -1;
-		if (len_sq !== 0) param = dot / len_sq;
-
-		let xx, yy;
-		if (param < 0) {
-			xx = x1;
-			yy = y1;
-		} else if (param > 1) {
-			xx = x2;
-			yy = y2;
-		} else {
-			xx = x1 + param * C;
-			yy = y1 + param * D;
-		}
-
-		const dx = px - xx;
-		const dy = py - yy;
-		return dx * dx + dy * dy <= tolerance * tolerance;
-	}
-	pointNearEllipse(
-		px: number,
-		py: number,
-		x: number,
-		y: number,
-		w: number,
-		h: number,
-		tolerance: number = 2 // pixels
-	): boolean {
-		const rx = w / 2;
-		const ry = h / 2;
-		const cx = x + rx;
-		const cy = y + ry;
-
-		if (rx === 0 || ry === 0) return false;
-
-		// Normalized ellipse equation value
-		const value =
-			((px - cx) * (px - cx)) / (rx * rx) +
-			((py - cy) * (py - cy)) / (ry * ry);
-
-		// Approximate "distance" from ellipse boundary
-		// sqrt(value) - 1 ~ relative offset from ellipse
-		const distance = Math.abs(Math.sqrt(value) - 1);
-
-		// Scale distance into pixel space
-		// use rx or ry avg as scaling factor
-		const scaled = distance * Math.min(rx, ry);
-
-		return scaled <= tolerance;
-	}
+	// Remove the old pointNearLine method as it's now in HitTestHelper
+	// Remove the old pointNearEllipse method as it's now in HitTestHelper
 	// !laser
 	drawMovingLaser() {
 		if (this.laserPoints.length < 2) return;
@@ -2804,133 +2342,52 @@ export class Game {
 			let foundMessage: boolean = false;
 			if (message.shape === "line" || message.shape === "arrow") {
 				const { x1, y1, x2, y2 } = message.lineData!;
-				if (this.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)) {
+				if (
+					HitTestHelper.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)
+				) {
 					foundMessage = true;
 				}
 			} else if (message.shape === "pencil" && message.pencilPoints) {
-				for (let i = 0; i < message.pencilPoints.length - 1; i++) {
-					const p1 = message.pencilPoints[i];
-					const p2 = message.pencilPoints[i + 1];
-					if (
-						this.pointNearLine(
-							pos.x,
-							pos.y,
-							p1!.x,
-							p1!.y,
-							p2!.x,
-							p2!.y,
-							8
-						)
-					) {
-						foundMessage = true;
-					}
+				if (
+					HitTestHelper.testPencilPoints(
+						pos.x,
+						pos.y,
+						message.pencilPoints,
+						8
+					)
+				) {
+					foundMessage = true;
 				}
 			} else if (message.shape === "image" || message.shape === "text") {
 				const { x, y, w, h } = this.getBoundindBox(message);
-				const bounded =
-					pos.x >= x &&
-					pos.x <= x + w &&
-					pos.y >= y &&
-					pos.y <= y + h;
-
-				if (bounded) {
+				if (HitTestHelper.pointInBounds(pos.x, pos.y, x, y, w, h)) {
 					foundMessage = true;
 				}
 			} else if (message.shape === "rectangle") {
-				const rect = message.boundingBox;
-				const top = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y,
-					rect.x + rect.w,
-					rect.y,
-					10
-				);
-				const right = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w,
-					rect.y,
-					rect.x + rect.w,
-					rect.y + rect.h,
-					10
-				);
-				const bottom = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y + rect.h,
-					rect.x + rect.w,
-					rect.y + rect.h,
-					10
-				);
-				const left = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y,
-					rect.x,
-					rect.y + rect.h,
-					10
-				);
-				if (top || right || bottom || left) {
+				if (
+					HitTestHelper.testRectangleEdges(
+						pos.x,
+						pos.y,
+						message.boundingBox,
+						10
+					)
+				) {
 					foundMessage = true;
 				}
 			} else if (message.shape === "rhombus") {
-				const rect = message.boundingBox;
-				const top = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w / 2,
-					rect.y,
-					rect.x + rect.w,
-					rect.y + rect.h / 2,
-					10
-				);
-				const right = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w,
-					rect.y + rect.h / 2,
-					rect.x + rect.w / 2,
-					rect.y + rect.h,
-					10
-				);
-				const bottom = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x,
-					rect.y + rect.h / 2,
-					rect.x + rect.w / 2,
-					rect.y + rect.h,
-					10
-				);
-				const left = this.pointNearLine(
-					pos.x,
-					pos.y,
-					rect.x + rect.w / 2,
-					rect.y,
-					rect.x,
-					rect.y + rect.h / 2,
-					10
-				);
-				if (top || right || bottom || left) {
+				if (
+					HitTestHelper.testRhombusEdges(
+						pos.x,
+						pos.y,
+						message.boundingBox,
+						10
+					)
+				) {
 					foundMessage = true;
 				}
 			} else if (message.shape === "arc") {
 				const rect = message.boundingBox;
-				if (
-					this.pointNearEllipse(
-						pos.x,
-						pos.y,
-						rect.x,
-						rect.y,
-						rect.w,
-						rect.h,
-						10
-					)
-				) {
+				if (HitTestHelper.testEllipseEdges(pos.x, pos.y, rect, 10)) {
 					foundMessage = true;
 				}
 			}
@@ -3256,801 +2713,168 @@ export class Game {
 	// !dragging shapes
 	//* 1.rectangle
 	handleRectangleDrag(message: Message, pos: { x: number; y: number }) {
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-		const rect = message.boundingBox;
-		if (Array.isArray(message.shapeData)) return;
-
-		const x = rect.x + dx;
-		const y = rect.y + dy;
-
-		let shapeData: Drawable | null = null;
-		const options = roughOptions(this.props);
-		if (message.edges === "round") {
-			const path = createRoundedRectPath(x, y, rect.w, rect.h);
-			shapeData = this.generator!.path(path, {
-				...options,
-				seed: message.shapeData.options.seed,
-			});
-		} else {
-			shapeData = this.generator!.rectangle(x, y, rect.w, rect.h, {
-				...options,
-				seed: message.shapeData.options.seed,
-			});
+		if (!this.rectangleManager) {
+			console.error("RectangleManager not initialized");
+			return;
 		}
+
+		const previousPos = { x: this.prevX, y: this.prevY };
+		this.rectangleManager.handleDrag(
+			message,
+			pos,
+			previousPos,
+			this.props,
+			this.setSelectedMessage.bind(this)
+		);
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		const newBB = {
-			x: rect.x + dx,
-			y: rect.y + dy,
-			w: rect.w,
-			h: rect.h,
-		};
-		const newMessage: Message = {
-			id: message.id,
-			shape: "rectangle" as Tool,
-			opacity: message.opacity,
-			edges: message.edges,
-			shapeData,
-			boundingBox: newBB,
-		};
-
-		// this.messages = this.messages.map((msg) => {
-		// 	if (msg.id === message.id) {
-		// 		return {
-		// 			...newMessage,
-		// 		};
-		// 	}
-		// 	return msg;
-		// });
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleRectangleResize(message: Message, pos: { x: number; y: number }) {
-		if (Array.isArray(message.shapeData)) return;
-		if (this.resizeHandler === "none") return;
-
-		const rect = message.boundingBox;
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-		switch (this.resizeHandler) {
-			case "e": // right edge
-				rect.w += dx;
-				break;
-			case "w": // left edge
-				rect.x += dx;
-				rect.w -= dx;
-				break;
-			case "s": // bottom edge
-				rect.h += dy;
-				break;
-			case "n": // top edge
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-
-			case "se": // bottom-right
-				rect.w += dx;
-				rect.h += dy;
-				break;
-			case "sw": // bottom-left
-				rect.x += dx;
-				rect.w -= dx;
-				rect.h += dy;
-				break;
-			case "ne": // top-right
-				rect.w += dx;
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-			case "nw": // top-left
-				rect.x += dx;
-				rect.w -= dx;
-				rect.y += dy;
-				rect.h -= dy;
-				break;
+		if (!this.rectangleManager) {
+			console.error("RectangleManager not initialized");
+			return;
 		}
 
-		// If user dragged past the opposite side, flip rect and swap the handle
-		let hFlip = false;
-		let vFlip = false;
+		const previousPos = { x: this.prevX, y: this.prevY };
+		const result = this.rectangleManager.handleResize(
+			message,
+			pos,
+			previousPos,
+			this.resizeHandler,
+			this.props,
+			this.setSelectedMessage.bind(this),
+			(cursor: string) => {
+				this.canvas.style.cursor = cursor;
+			}
+		);
 
-		if (rect.w < 0) {
-			rect.x += rect.w; // move x to the new left
-			rect.w = -rect.w; // keep width positive
-			hFlip = true;
-		}
-		if (rect.h < 0) {
-			rect.y += rect.h; // move y to the new top
-			rect.h = -rect.h; // keep height positive
-			vFlip = true;
-		}
-
-		// Optionally clamp to avoid degenerate sizes
-		const MIN_SIZE = 1;
-		rect.w = Math.max(rect.w, MIN_SIZE);
-		rect.h = Math.max(rect.h, MIN_SIZE);
-
-		// Swap the active handle so dragging keeps feeling natural
-		if (hFlip || vFlip) {
-			let h = this.resizeHandler.includes("e")
-				? "e"
-				: this.resizeHandler.includes("w")
-					? "w"
-					: "";
-			let v = this.resizeHandler.includes("n")
-				? "n"
-				: this.resizeHandler.includes("s")
-					? "s"
-					: "";
-
-			if (hFlip) h = h === "e" ? "w" : h === "w" ? "e" : "";
-			if (vFlip) v = v === "n" ? "s" : v === "s" ? "n" : "";
-
-			const newHandle = (v + h) as Handle; // order like "ne", "sw", "n", "e", etc.
-			this.resizeHandler = newHandle;
-			this.canvas.style.cursor = `${newHandle}-resize`;
-		}
-
+		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		const normalRect = normalizeCoords(rect.x, rect.y, rect.w, rect.h);
-		const newBB = {
-			x: normalRect.x,
-			y: normalRect.y,
-			w: normalRect.w,
-			h: normalRect.h,
-		};
-		let shapeData: Drawable | null = null;
-		const options = roughOptions(this.props);
-		if (message.edges === "round") {
-			const path = createRoundedRectPath(
-				normalRect.x,
-				normalRect.y,
-				normalRect.w,
-				normalRect.h
-			);
-			shapeData = this.generator!.path(path, {
-				...options,
-				seed: message.shapeData.options.seed,
-			});
-		} else {
-			shapeData = this.generator!.rectangle(
-				normalRect.x,
-				normalRect.y,
-				normalRect.w,
-				normalRect.h,
-				{ ...options, seed: message.shapeData.options.seed }
-			);
-		}
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "rectangle" as Tool,
-			opacity: message.opacity,
-			edges: message.edges,
-			shapeData,
-			boundingBox: newBB,
-		};
-
-		// this.messages = this.messages.map((msg) => {
-		// 	if (msg.id === message.id) {
-		// 		return {
-		// 			...newMessage,
-		// 		};
-		// 	}
-		// 	return msg;
-		// });
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleRectanglePropsChange(message: Message) {
-		const rect = message.boundingBox;
-		if (Array.isArray(message.shapeData)) return;
-
-		let shapeData: Drawable | null = null;
-		const options = roughOptions(this.props);
-		if (this.props.edges === "round") {
-			const path = createRoundedRectPath(rect.x, rect.y, rect.w, rect.h);
-			shapeData = this.generator!.path(path, {
-				...options,
-				seed: message.shapeData.options.seed,
-			});
-		} else {
-			shapeData = this.generator!.rectangle(
-				rect.x,
-				rect.y,
-				rect.w,
-				rect.h,
-				{
-					...options,
-					seed: message.shapeData.options.seed,
-				}
-			);
+		if (!this.rectangleManager) {
+			console.error("RectangleManager not initialized");
+			return;
 		}
-		const newMessage: Message = {
-			id: message.id,
-			shape: "rectangle" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData,
-			boundingBox: rect,
-		};
 
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.rectangleManager.updateProperties(
+			message,
+			this.props,
+			this.setSelectedMessage.bind(this)
 		);
 	}
 	//* 2.rhombus
 	handleRhombusDrag(message: Message, pos: { x: number; y: number }) {
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-		const rect = message.boundingBox;
+		if (!this.rhombusManager) {
+			console.error("RhombusManager not initialized");
+			return;
+		}
 
-		// update bounding box
-		const newRect = {
-			x: rect.x + dx,
-			y: rect.y + dy,
-			w: rect.w,
-			h: rect.h,
-		};
-
-		// rebuild shapeData
-		const options = roughOptions(this.props);
-		const path = createRhombusPath(
-			newRect.x,
-			newRect.y,
-			newRect.w,
-			newRect.h,
-			message.edges === "round" ? true : false
+		const previousPos = { x: this.prevX, y: this.prevY };
+		this.rhombusManager.handleDrag(
+			message,
+			pos,
+			previousPos,
+			this.props,
+			this.setSelectedMessage.bind(this)
 		);
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: !Array.isArray(message.shapeData)
-				? message.shapeData.options.seed
-				: Math.floor(Math.random() * 1000000),
-		});
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "rhombus" as Tool,
-			opacity: message.opacity,
-			edges: message.edges,
-			shapeData,
-			boundingBox: newRect,
-		};
-
-		// replace in messages
-		this.messages = this.messages.map((msg) =>
-			msg.id === message.id ? { ...newMessage } : msg
-		);
-
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleRhombusResize(message: Message, pos: { x: number; y: number }) {
-		if (Array.isArray(message.shapeData)) return;
-		if (this.resizeHandler === "none") return;
-
-		const rect = message.boundingBox;
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-
-		switch (this.resizeHandler) {
-			case "e": // right edge
-				rect.w += dx;
-				break;
-			case "w": // left edge
-				rect.x += dx;
-				rect.w -= dx;
-				break;
-			case "s": // bottom edge
-				rect.h += dy;
-				break;
-			case "n": // top edge
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-			case "se": // bottom-right
-				rect.w += dx;
-				rect.h += dy;
-				break;
-			case "sw": // bottom-left
-				rect.x += dx;
-				rect.w -= dx;
-				rect.h += dy;
-				break;
-			case "ne": // top-right
-				rect.w += dx;
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-			case "nw": // top-left
-				rect.x += dx;
-				rect.w -= dx;
-				rect.y += dy;
-				rect.h -= dy;
-				break;
+		if (!this.rhombusManager) {
+			console.error("RhombusManager not initialized");
+			return;
 		}
 
-		// Flip check to keep w,h positive
-		let hFlip = false;
-		let vFlip = false;
-		if (rect.w < 0) {
-			rect.x += rect.w;
-			rect.w = -rect.w;
-			hFlip = true;
-		}
-		if (rect.h < 0) {
-			rect.y += rect.h;
-			rect.h = -rect.h;
-			vFlip = true;
-		}
-		const MIN_SIZE = 1;
-		rect.w = Math.max(rect.w, MIN_SIZE);
-		rect.h = Math.max(rect.h, MIN_SIZE);
+		const previousPos = { x: this.prevX, y: this.prevY };
+		const result = this.rhombusManager.handleResize(
+			message,
+			pos,
+			previousPos,
+			this.resizeHandler,
+			this.props,
+			this.setSelectedMessage.bind(this),
+			(cursor: string) => {
+				this.canvas.style.cursor = cursor;
+			}
+		);
 
-		// Swap handle if flipped
-		if (hFlip || vFlip) {
-			let h = this.resizeHandler.includes("e")
-				? "e"
-				: this.resizeHandler.includes("w")
-					? "w"
-					: "";
-			let v = this.resizeHandler.includes("n")
-				? "n"
-				: this.resizeHandler.includes("s")
-					? "s"
-					: "";
-
-			if (hFlip) h = h === "e" ? "w" : h === "w" ? "e" : "";
-			if (vFlip) v = v === "n" ? "s" : v === "s" ? "n" : "";
-
-			const newHandle = (v + h) as Handle;
-			this.resizeHandler = newHandle;
-			this.canvas.style.cursor = `${newHandle}-resize`;
-		}
-
+		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		const normalRect = normalizeCoords(rect.x, rect.y, rect.w, rect.h);
-		const newBB = {
-			x: normalRect.x,
-			y: normalRect.y,
-			w: normalRect.w,
-			h: normalRect.h,
-		};
-
-		// regenerate rhombus path
-		const options = roughOptions(this.props);
-		const path = createRhombusPath(
-			newBB.x,
-			newBB.y,
-			newBB.w,
-			newBB.h,
-			message.edges === "round" ? true : false
-		);
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: message.shapeData.options.seed,
-		});
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "rhombus" as Tool,
-			opacity: message.opacity,
-			edges: message.edges,
-			shapeData,
-			boundingBox: newBB,
-		};
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? { ...newMessage } : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleRhombusPropsChange(message: Message) {
-		if (Array.isArray(message.shapeData)) return;
+		if (!this.rhombusManager) {
+			console.error("RhombusManager not initialized");
+			return;
+		}
 
-		const rect = message.boundingBox;
-		const options = roughOptions(this.props);
-
-		// rebuild path for rhombus with current props
-		const path = createRhombusPath(
-			rect.x,
-			rect.y,
-			rect.w,
-			rect.h,
-			this.props.edges === "round" ? true : false
-		);
-
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: message.shapeData.options.seed, // keep consistent shape
-		});
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "rhombus" as Tool,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-			shapeData,
-			boundingBox: rect,
-		};
-
-		// update in messages list
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? { ...newMessage } : msg
-		// );
-
-		this.setSelectedMessage(newMessage);
-		// this.renderCanvas();
-
-		// optionally send to server if you want live prop updates
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.rhombusManager.updateProperties(
+			message,
+			this.props,
+			this.setSelectedMessage.bind(this)
 		);
 	}
 	//* 3.ellipse
 	handleEllipseDrag(message: Message, pos: { x: number; y: number }) {
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-		const rect = message.boundingBox;
-		if (Array.isArray(message.shapeData)) return;
+		if (!this.ellipseManager) {
+			console.error("EllipseManager not initialized");
+			return;
+		}
 
-		const newRect = {
-			x: rect.x + dx,
-			y: rect.y + dy,
-			w: rect.w,
-			h: rect.h,
-		};
-
-		const options = roughOptions(this.props);
-
-		// build path just like drawMovingEllipse
-		const path = createEllipsePath(
-			newRect.x,
-			newRect.y,
-			newRect.w,
-			newRect.h
+		const previousPos = { x: this.prevX, y: this.prevY };
+		this.ellipseManager.handleDrag(
+			message,
+			pos,
+			previousPos,
+			this.props,
+			this.setSelectedMessage.bind(this)
 		);
-
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: message.shapeData.options.seed,
-		});
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "arc" as Tool,
-			opacity: message.opacity,
-			shapeData,
-			boundingBox: newRect,
-		};
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? { ...newMessage } : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleEllipseResize(message: Message, pos: { x: number; y: number }) {
-		if (Array.isArray(message.shapeData)) return;
-		if (this.resizeHandler === "none") return;
-
-		const rect = message.boundingBox;
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-
-		switch (this.resizeHandler) {
-			case "e":
-				rect.w += dx;
-				break;
-			case "w":
-				rect.x += dx;
-				rect.w -= dx;
-				break;
-			case "s":
-				rect.h += dy;
-				break;
-			case "n":
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-			case "se":
-				rect.w += dx;
-				rect.h += dy;
-				break;
-			case "sw":
-				rect.x += dx;
-				rect.w -= dx;
-				rect.h += dy;
-				break;
-			case "ne":
-				rect.w += dx;
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-			case "nw":
-				rect.x += dx;
-				rect.w -= dx;
-				rect.y += dy;
-				rect.h -= dy;
-				break;
-		}
-
-		// normalize (no negative w/h)
-		let hFlip = false,
-			vFlip = false;
-		if (rect.w < 0) {
-			rect.x += rect.w;
-			rect.w = -rect.w;
-			hFlip = true;
-		}
-		if (rect.h < 0) {
-			rect.y += rect.h;
-			rect.h = -rect.h;
-			vFlip = true;
-		}
-		const MIN_SIZE = 1;
-		rect.w = Math.max(rect.w, MIN_SIZE);
-		rect.h = Math.max(rect.h, MIN_SIZE);
-
-		// swap handle if flipped
-		if (hFlip || vFlip) {
-			let h = this.resizeHandler.includes("e")
-				? "e"
-				: this.resizeHandler.includes("w")
-					? "w"
-					: "";
-			let v = this.resizeHandler.includes("n")
-				? "n"
-				: this.resizeHandler.includes("s")
-					? "s"
-					: "";
-			if (hFlip) h = h === "e" ? "w" : h === "w" ? "e" : "";
-			if (vFlip) v = v === "n" ? "s" : v === "s" ? "n" : "";
-			const newHandle = (v + h) as Handle;
-			this.resizeHandler = newHandle;
-			this.canvas.style.cursor = `${newHandle}-resize`;
-		}
-
+		if (!this.ellipseManager) return;
+		const result = this.ellipseManager.handleResize(
+			message,
+			pos,
+			{ x: this.prevX, y: this.prevY },
+			this.resizeHandler,
+			this.props,
+			(msg) => this.setSelectedMessage(msg),
+			(cursor) => {
+				this.canvas.style.cursor = cursor;
+			}
+		);
+		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		const normalRect = normalizeCoords(rect.x, rect.y, rect.w, rect.h);
-
-		const options = roughOptions(this.props);
-		const path = createEllipsePath(
-			normalRect.x,
-			normalRect.y,
-			normalRect.w,
-			normalRect.h
-		);
-
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: message.shapeData.options.seed,
-		});
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "arc" as Tool,
-			opacity: message.opacity,
-			shapeData,
-			boundingBox: normalRect,
-		};
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? { ...newMessage } : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleEllipsePropsChange(message: Message) {
-		if (Array.isArray(message.shapeData)) return;
-
-		const rect = message.boundingBox;
-		const options = roughOptions(this.props);
-
-		const path = createEllipsePath(rect.x, rect.y, rect.w, rect.h);
-		const shapeData = this.generator!.path(path, {
-			...options,
-			seed: message.shapeData.options.seed, // only carry forward the seed
-		});
-
-		const newMessage: Message = {
-			id: message.id,
-			shape: "arc" as Tool,
-			opacity: this.props.opacity,
-			shapeData,
-			boundingBox: rect,
-		};
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? { ...newMessage } : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		// this.renderCanvas();
-
-		// send to server if you want real-time sync
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		if (!this.ellipseManager) return;
+		this.ellipseManager.updateProperties(message, this.props, (msg) =>
+			this.setSelectedMessage(msg)
 		);
 	}
 	//* 4.arrow
 	handleArrowDrag(message: Message, pos: { x: number; y: number }) {
-		if (!Array.isArray(message.shapeData)) return;
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
+		if (!this.arrowManager) {
+			console.error("ArrowManager not initialized");
+			return;
+		}
 
-		if (!message.lineData) return;
+		const deltaX = pos.x - this.prevX;
+		const deltaY = pos.y - this.prevY;
 
-		const { x1, y1, x2, y2 } = message.lineData;
-		const newLineData = {
-			x1: x1 + dx,
-			y1: y1 + dy,
-			x2: x2 + dx,
-			y2: y2 + dy,
-		};
-
-		// rebuild paths
-		const { linePath, frontHeadPath, backHeadPath } = createArrowPath(
-			newLineData.x1,
-			newLineData.y1,
-			newLineData.x2,
-			newLineData.y2,
-			message.arrowHead?.front!,
-			message.arrowHead?.back!,
-			message.arrowType!
-		);
-
-		const options = roughOptions(this.props);
-		const shapeData: Drawable[] = [];
-		if (linePath)
-			shapeData.push(
-				this.generator!.path(linePath, {
-					...options,
-					seed: message.shapeData[0]!.options.seed,
-				})
-			);
-		if (frontHeadPath)
-			shapeData.push(
-				this.generator!.path(frontHeadPath, {
-					...options,
-					seed: message.shapeData[1]!.options.seed,
-				})
-			);
-		if (backHeadPath)
-			shapeData.push(
-				this.generator!.path(backHeadPath, {
-					...options,
-					seed: message.shapeData[2]!.options.seed,
-				})
-			);
-
-		const rect = normalizeCoords(
-			newLineData.x1,
-			newLineData.y1,
-			newLineData.x2 - newLineData.x1,
-			newLineData.y2 - newLineData.y1
-		);
-
-		const newMessage: Message = {
-			...message,
-			shapeData,
-			boundingBox: rect,
-			lineData: newLineData,
-		};
+		this.arrowManager.handleDrag(message, deltaX, deltaY, pos.x, pos.y);
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleArrowResize(message: Message, pos: { x: number; y: number }) {
 		if (!message.lineData) return;

@@ -496,7 +496,7 @@
 	}
 
 	.custom-slider {
-		@apply w-full appearance-none bg-oc-grape-2;
+		@apply w-full appearance-none;
 	}
 
 	.custom-slider::-webkit-slider-thumb {

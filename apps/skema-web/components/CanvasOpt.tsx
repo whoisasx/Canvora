@@ -654,16 +654,35 @@ export default function CanvasOpt() {
 													min="0"
 													max="100"
 													step="10"
+													list="opacity-values"
 													className="custom-slider rounded-full"
 													value={opacity}
-													onChange={(e) =>
+													onChange={(e) => {
+														const value = Number(
+															e.target.value
+														);
+														const roundedValue =
+															Math.round(
+																value / 10
+															) * 10;
 														setOpacity(
-															Number(
-																e.target.value
-															)
-														)
-													}
+															roundedValue
+														);
+													}}
 												/>
+												<datalist id="opacity-values">
+													<option value="0" />
+													<option value="10" />
+													<option value="20" />
+													<option value="30" />
+													<option value="40" />
+													<option value="50" />
+													<option value="60" />
+													<option value="70" />
+													<option value="80" />
+													<option value="90" />
+													<option value="100" />
+												</datalist>
 											</div>
 											<div
 												className="w-full flex items-center justify-between pt-1.5"
