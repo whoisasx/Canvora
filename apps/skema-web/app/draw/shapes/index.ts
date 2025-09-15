@@ -3,3 +3,4 @@ export { RhombusManager, RhombusHelper } from "./RhombusManager";
 export { EllipseManager, EllipseHelper } from "./EllipseManager";
 export { LineManager, LineHelper } from "./LineManager";
 export { ArrowManager, ArrowHelper } from "./ArrowManager";
+export { PencilManager, PencilHelper } from "./PencilManager";

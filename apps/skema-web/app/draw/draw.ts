@@ -97,6 +97,7 @@ import {
 	LineHelper,
 	ArrowManager,
 	ArrowHelper,
+	PencilManager,
 } from "./shapes";
 
 type Laser = {
@@ -186,6 +187,7 @@ export class Game {
 	private ellipseManager: EllipseManager | null = null;
 	private lineManager: LineManager | null = null;
 	private arrowManager: ArrowManager | null = null;
+	private pencilManager: PencilManager | null = null;
 
 	// add small fields for throttling preview sends
 	private previewMessage: Message[];
@@ -326,6 +328,16 @@ export class Game {
 		);
 
 		this.arrowManager = new ArrowManager(
+			this.ctx,
+			this.rc,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || ""
+		);
+
+		this.pencilManager = new PencilManager(
 			this.ctx,
 			this.rc,
 			this.generator,
@@ -920,6 +932,16 @@ export class Game {
 			);
 
 			this.arrowManager = new ArrowManager(
+				this.ctx,
+				this.rc,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id
+			);
+
+			this.pencilManager = new PencilManager(
 				this.ctx,
 				this.rc,
 				this.generator,
@@ -1551,131 +1573,34 @@ export class Game {
 	}
 	// !pencil
 	messagePencil(): Message {
-		const options = roughOptions(this.props);
-
-		const path = createPencilPath(this.pencilPoints);
-		const shapeData = this.generator!.path(path, {
-			...options,
-			strokeWidth: options.strokeWidth! * 2,
-			roughness: 0,
-			bowing: 0,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-
-		let minx = Number.MAX_VALUE,
-			miny = Number.MAX_VALUE;
-		let maxx = Number.MIN_VALUE, // ✅ fix
-			maxy = Number.MIN_VALUE; // ✅ fix
-
-		for (let point of this.pencilPoints) {
-			let x = point.x,
-				y = point.y;
-			minx = Math.min(minx, x);
-			maxx = Math.max(maxx, x);
-			miny = Math.min(miny, y);
-			maxy = Math.max(maxy, y);
+		if (!this.pencilManager) {
+			throw new Error("PencilManager not initialized");
 		}
-
-		return {
-			id: uuidv4(),
-			shape: "pencil" as Tool,
-			opacity: this.props.opacity,
-			shapeData,
-			boundingBox: {
-				x: minx,
-				y: miny,
-				w: maxx - minx,
-				h: maxy - miny,
-			},
-			pencilPoints: this.pencilPoints,
-		} as Message;
+		return this.pencilManager.createMessage(
+			this.pencilPoints,
+			this.props,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 
 	drawPencil(message: Message) {
-		if (!this.rc) return;
-		this.ctx.save();
-
-		if (Array.isArray(message.shapeData)) return;
-		this.ctx.globalAlpha = message.opacity ?? 1;
-
-		message.shapeData.options.stroke = normalizeStroke(
-			this.theme,
-			message.shapeData.options.stroke
-		);
-		this.rc.draw(message.shapeData);
-
-		this.ctx.restore();
+		if (!this.pencilManager) {
+			console.error("PencilManager not initialized");
+			return;
+		}
+		this.pencilManager.render(message);
 	}
 
 	drawMovingPencil(options: Options) {
-		this.ctx.save();
-
-		if (this.pencilPoints.length < 1) {
-			this.ctx.restore();
+		if (!this.pencilManager) {
+			console.error("PencilManager not initialized");
 			return;
 		}
-		const path = createPencilPath(this.pencilPoints);
-		const drawable = this.generator!.path(path, {
-			...options,
-			strokeWidth: options.strokeWidth! * 2,
-			roughness: 0,
-			bowing: 0,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		});
-		this.rc!.draw(drawable);
-
-		this.ctx.restore();
-
-		// compute bounding box for the current pencil points
-		let minx = Number.MAX_VALUE,
-			miny = Number.MAX_VALUE;
-		let maxx = Number.MIN_VALUE,
-			maxy = Number.MIN_VALUE;
-		for (const p of this.pencilPoints) {
-			minx = Math.min(minx, p.x);
-			miny = Math.min(miny, p.y);
-			maxx = Math.max(maxx, p.x);
-			maxy = Math.max(maxy, p.y);
-		}
-		const rect = {
-			x: minx,
-			y: miny,
-			w: Math.max(0, maxx - minx),
-			h: Math.max(0, maxy - miny),
-		};
-
-		// --- throttle & skip identical pencil previews to avoid flooding ---
-		const now = Date.now();
-		const THROTTLE_MS = 100;
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
-			return;
-		}
-		this.lastPreviewSend = now;
-		this.lastPreviewRect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
-
-		const message: Message = {
-			id: this.previewId,
-			shape: "pencil" as Tool,
-			opacity: this.props.opacity,
-			shapeData: drawable,
-			boundingBox: rect,
-			pencilPoints: this.pencilPoints.slice(),
-		};
-
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.pencilManager.renderPreview(
+			this.pencilPoints,
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
 	// !text
@@ -3197,238 +3122,56 @@ export class Game {
 	}
 	//* 6.pencil
 	handlePencilDrag(message: Message, pos: { x: number; y: number }) {
-		if (!message.pencilPoints) return;
-		if (Array.isArray(message.shapeData)) return;
-
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-
-		const newPoints = message.pencilPoints.map((p) => ({
-			x: p.x + dx,
-			y: p.y + dy,
-		}));
-
-		const path = createPencilPath(newPoints); // you likely already have this
-		const options = roughOptions(this.props);
-
-		const shapeData = this.generator!.path(path, {
-			...options,
-			strokeWidth: options.strokeWidth! * 2,
-			roughness: 0,
-			bowing: 0,
-			seed: message.shapeData.options.seed,
-		});
-
-		let minx = Number.MAX_VALUE,
-			miny = Number.MAX_VALUE;
-		let maxx = Number.MIN_VALUE, // ✅ fix
-			maxy = Number.MIN_VALUE; // ✅ fix
-
-		for (let point of newPoints) {
-			let x = point.x,
-				y = point.y;
-			minx = Math.min(minx, x);
-			maxx = Math.max(maxx, x);
-			miny = Math.min(miny, y);
-			maxy = Math.max(maxy, y);
+		if (!this.pencilManager) {
+			console.error("PencilManager not initialized");
+			return;
 		}
 
-		const newMessage: Message = {
-			...message,
-			pencilPoints: newPoints,
-			shapeData,
-			boundingBox: {
-				x: minx,
-				y: miny,
-				w: maxx - minx,
-				h: maxy - miny,
-			},
-		};
+		const previousPos = { x: this.prevX, y: this.prevY };
+		this.pencilManager.handleDrag(
+			message,
+			pos,
+			previousPos,
+			this.props,
+			this.setSelectedMessage.bind(this)
+		);
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handlePencilResize(message: Message, pos: { x: number; y: number }) {
-		if (!message.pencilPoints) return;
-		if (this.resizeHandler === "none") return;
-		if (Array.isArray(message.shapeData)) return;
-
-		const rect = message.boundingBox!;
-		const { x, y, w, h } = rect;
-
-		let anchorX = x;
-		let anchorY = y;
-		let newWidth = w;
-		let newHeight = h;
-
-		switch (this.resizeHandler) {
-			case "se": // dragging bottom-right
-				anchorX = x; // anchor = top-left
-				anchorY = y;
-				newWidth = Math.max(1, pos.x - x);
-				newHeight = Math.max(1, pos.y - y);
-				break;
-
-			case "nw": // dragging top-left
-				anchorX = x + w; // anchor = bottom-right
-				anchorY = y + h;
-				newWidth = Math.max(1, anchorX - pos.x);
-				newHeight = Math.max(1, anchorY - pos.y);
-				break;
-
-			case "ne": // dragging top-right
-				anchorX = x; // anchor = bottom-left
-				anchorY = y + h;
-				newWidth = Math.max(1, pos.x - x);
-				newHeight = Math.max(1, anchorY - pos.y);
-				break;
-
-			case "sw": // dragging bottom-left
-				anchorX = x + w; // anchor = top-right
-				anchorY = y;
-				newWidth = Math.max(1, anchorX - pos.x);
-				newHeight = Math.max(1, pos.y - y);
-				break;
-
-			default:
-				return;
+		if (!this.pencilManager) {
+			console.error("PencilManager not initialized");
+			return;
 		}
 
-		// avoid divide-by-zero
-		if (w === 0 || h === 0) return;
+		const previousPos = { x: this.prevX, y: this.prevY };
+		const result = this.pencilManager.handleResize(
+			message,
+			pos,
+			previousPos,
+			this.resizeHandler,
+			this.props,
+			this.setSelectedMessage.bind(this),
+			(cursor: string) => {
+				this.canvas.style.cursor = cursor;
+			}
+		);
 
-		const scaleX = newWidth / w;
-		const scaleY = newHeight / h;
-
-		// scale all pencil points relative to anchor
-		const newPoints = message.pencilPoints.map((p) => ({
-			x: anchorX + (p.x - anchorX) * scaleX,
-			y: anchorY + (p.y - anchorY) * scaleY,
-		}));
-
-		// re-generate shape path
-		const path = createPencilPath(newPoints);
-		const options = roughOptions(this.props);
-
-		const shapeData = this.generator!.path(path, {
-			...options,
-			strokeWidth: options.strokeWidth! * 2,
-			roughness: 0,
-			bowing: 0,
-			seed: message.shapeData.options.seed,
-		});
-
-		// recalc bounding box
-		let minx = Number.MAX_VALUE,
-			miny = Number.MAX_VALUE;
-		let maxx = Number.MIN_VALUE,
-			maxy = Number.MIN_VALUE;
-
-		for (let point of newPoints) {
-			minx = Math.min(minx, point.x);
-			maxx = Math.max(maxx, point.x);
-			miny = Math.min(miny, point.y);
-			maxy = Math.max(maxy, point.y);
-		}
-
-		const newMessage: Message = {
-			...message,
-			pencilPoints: newPoints,
-			shapeData,
-			boundingBox: {
-				x: minx,
-				y: miny,
-				w: maxx - minx,
-				h: maxy - miny,
-			},
-		};
-
+		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handlePencilPropsChange(message: Message) {
-		if (!message.pencilPoints) return;
-		if (Array.isArray(message.shapeData)) return;
-
-		const path = createPencilPath(message.pencilPoints);
-		const options = roughOptions(this.props);
-
-		const shapeData = this.generator!.path(path, {
-			...options,
-			strokeWidth: options.strokeWidth! * 2,
-			roughness: 0,
-			bowing: 0,
-			seed: message.shapeData.options.seed,
-		});
-
-		let minx = Number.MAX_VALUE,
-			miny = Number.MAX_VALUE;
-		let maxx = Number.MIN_VALUE, // ✅ fix
-			maxy = Number.MIN_VALUE; // ✅ fix
-
-		for (let point of message.pencilPoints) {
-			let x = point.x,
-				y = point.y;
-			minx = Math.min(minx, x);
-			maxx = Math.max(maxx, x);
-			miny = Math.min(miny, y);
-			maxy = Math.max(maxy, y);
+		if (!this.pencilManager) {
+			console.error("PencilManager not initialized");
+			return;
 		}
 
-		const newMessage: Message = {
-			...message,
-			shapeData,
-			opacity: this.props.opacity,
-			boundingBox: {
-				x: minx,
-				y: miny,
-				w: maxx - minx,
-				h: maxy - miny,
-			},
-		};
-
-		this.setSelectedMessage(newMessage);
-
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.pencilManager.updateProperties(
+			message,
+			this.props,
+			this.setSelectedMessage.bind(this)
 		);
 	}
 	//* 7.text
