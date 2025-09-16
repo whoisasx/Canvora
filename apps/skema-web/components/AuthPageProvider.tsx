@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export default function AuthPage({ type }: { type: "signup" | "signin" }) {
 	const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +19,23 @@ export default function AuthPage({ type }: { type: "signup" | "signin" }) {
 			setIsLoading(false);
 		}
 	};
+
+	// Generate consistent floating particles to avoid hydration issues
+	const floatingParticles = useMemo(() => {
+		// Use a seeded random function to ensure consistent values
+		const seededRandom = (seed: number) => {
+			const x = Math.sin(seed) * 10000;
+			return x - Math.floor(x);
+		};
+
+		return Array.from({ length: 6 }, (_, i) => ({
+			id: i,
+			left: seededRandom(i * 1.7) * 100,
+			top: seededRandom(i * 2.3) * 100,
+			duration: 3 + seededRandom(i * 3.1) * 2,
+			delay: seededRandom(i * 4.7) * 2,
+		}));
+	}, []);
 
 	const containerVariants = {
 		hidden: { opacity: 0, y: 20 },
@@ -61,13 +78,13 @@ export default function AuthPage({ type }: { type: "signup" | "signin" }) {
 		>
 			{/* Floating particles background */}
 			<div className="absolute inset-0 overflow-hidden pointer-events-none">
-				{[...Array(6)].map((_, i) => (
+				{floatingParticles.map((particle) => (
 					<motion.div
-						key={i}
+						key={particle.id}
 						className="absolute w-2 h-2 bg-canvora-300/30 rounded-full"
 						style={{
-							left: `${Math.random() * 100}%`,
-							top: `${Math.random() * 100}%`,
+							left: `${particle.left}%`,
+							top: `${particle.top}%`,
 						}}
 						animate={{
 							y: [0, -20, 0],
@@ -75,9 +92,9 @@ export default function AuthPage({ type }: { type: "signup" | "signin" }) {
 							scale: [1, 1.2, 1],
 						}}
 						transition={{
-							duration: 3 + Math.random() * 2,
+							duration: particle.duration,
 							repeat: Infinity,
-							delay: Math.random() * 2,
+							delay: particle.delay,
 							ease: "easeInOut",
 						}}
 					/>
