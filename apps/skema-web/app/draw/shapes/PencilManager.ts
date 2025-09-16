@@ -16,7 +16,7 @@ type Point = { x: number; y: number };
 const MIN_POINTS = 1;
 const MAX_POINTS = 10000;
 // Performance optimization constants
-const THROTTLE_MS = 16; // Match main render throttle (~60fps)
+const THROTTLE_MS = 33; // Match main render throttle (~60fps)
 
 export class PencilHelper {
 	/**
@@ -96,6 +96,10 @@ export class PencilManager {
 	private shapeDataCache = new Map<string, Drawable>();
 	private lastPreviewBoundingBox: BoundingBox | null = null;
 	private lastPreviewSend: number = 0;
+
+	// Throttling for drag/resize operations
+	private lastDragUpdate: number = 0;
+	private lastResizeUpdate: number = 0;
 
 	constructor(
 		private ctx: CanvasRenderingContext2D,
@@ -310,16 +314,22 @@ export class PencilManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			// Throttle socket messages during drag operations
+			const now = Date.now();
+			if (now - this.lastDragUpdate >= THROTTLE_MS) {
+				this.lastDragUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
+			}
 		} catch (error) {
 			console.error("Error during pencil drag:", error);
 		}
@@ -462,16 +472,22 @@ export class PencilManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			// Throttle socket messages during resize operations
+			const now = Date.now();
+			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
+				this.lastResizeUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
+			}
 
 			return { newHandler: resizeHandler };
 		} catch (error) {

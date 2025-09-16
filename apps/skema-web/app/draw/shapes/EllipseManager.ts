@@ -282,16 +282,22 @@ export class EllipseManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			// Throttle socket messages during drag operations
+			const now = Date.now();
+			if (now - this.lastDragUpdate >= THROTTLE_MS) {
+				this.lastDragUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
+			}
 		} catch (error) {
 			console.error("Error during ellipse drag:", error);
 		}
@@ -356,16 +362,22 @@ export class EllipseManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			// Throttle socket messages during resize operations
+			const now = Date.now();
+			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
+				this.lastResizeUpdate = now;
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
+			}
 
 			return { newHandler: flipResult.newHandler };
 		} catch (error) {

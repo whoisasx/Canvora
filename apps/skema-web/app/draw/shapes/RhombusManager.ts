@@ -16,7 +16,7 @@ type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | "none";
 const MIN_SIZE = 1;
 const MAX_DIMENSION = 10000;
 // Performance optimization constants
-const THROTTLE_MS = 16; // Match main render throttle (~60fps)
+const THROTTLE_MS = 33; // Match main render throttle (~60fps)
 
 export class RhombusHelper {
 	/**
