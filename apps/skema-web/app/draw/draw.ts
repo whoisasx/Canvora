@@ -451,7 +451,7 @@ export class Game {
 			(state) => state.theme,
 			(newVal, prevVal) => {
 				this.theme = newVal;
-				this.renderCanvas();
+				this.throttledRender();
 			}
 		);
 		this.setTool = useToolStore.getState().setTool;
@@ -567,7 +567,7 @@ export class Game {
 		if (this.onMessageChange) {
 			this.onMessageChange();
 		}
-		this.renderCanvas();
+		this.throttledRender();
 		window.addEventListener("keydown", (e) => {
 			//delete
 			if (e.key === "Backspace") {
@@ -883,7 +883,7 @@ export class Game {
 						pos: pos,
 						lastSeen: Date.now(),
 					});
-					this.renderCanvas();
+					this.throttledRender();
 					break;
 				}
 				case "sync": {
@@ -902,7 +902,7 @@ export class Game {
 							this.setSelectedMessage(null);
 						}
 					}
-					this.renderCanvas();
+					this.throttledRender();
 					// Notify about message changes
 					if (this.onMessageChange) {
 						this.onMessageChange();
@@ -911,7 +911,7 @@ export class Game {
 				}
 				case "reload": {
 					console.log("reload");
-					this.renderCanvas();
+					this.throttledRender();
 					// Notify about message changes (canvas was reset)
 					if (this.onMessageChange) {
 						this.onMessageChange();
@@ -1173,11 +1173,6 @@ export class Game {
 		// Render preview messages (always render during drawing)
 		if (this.previewMessage.length > 0) this.renderCanvasPreview();
 
-		// // Render local preview for current user's drawing
-		// if (this.clicked && this.localPreview) {
-		// 	this.renderLocalPreview();
-		// }
-
 		// Render UI elements
 		if (this.selectedMessage) {
 			// Only render selection UI if the selected message is visible
@@ -1273,164 +1268,7 @@ export class Game {
 		}
 	}
 
-	renderLocalPreview() {
-		if (!this.localPreview || !this.rc || !this.generator) return;
-
-		const { tool, startX, startY, w, h, props, seed } = this.localPreview;
-		const options = roughOptions(props);
-
-		this.ctx.save();
-		this.ctx.globalAlpha = props.opacity ?? 1;
-
-		try {
-			if (tool === "line" && this.lineManager) {
-				// Create a temporary message for rendering
-				const tempMessage = this.lineManager.createMessage(
-					startX,
-					startY,
-					w,
-					h,
-					props,
-					seed
-				);
-				this.lineManager.render(tempMessage);
-			} else if (tool === "arrow" && this.arrowManager) {
-				// Create a temporary message for rendering
-				const tempMessage = this.arrowManager.createMessage(
-					startX,
-					startY,
-					w,
-					h,
-					props,
-					seed
-				);
-				this.arrowManager.render(tempMessage);
-			} else if (tool === "rectangle" && this.rectangleManager) {
-				const tempMessage = this.rectangleManager.createMessage(
-					startX,
-					startY,
-					w,
-					h,
-					props,
-					seed
-				);
-				this.rectangleManager.render(tempMessage);
-			} else if (tool === "rhombus" && this.rhombusManager) {
-				const tempMessage = this.rhombusManager.createMessage(
-					startX,
-					startY,
-					w,
-					h,
-					props,
-					seed
-				);
-				this.rhombusManager.render(tempMessage);
-			} else if (tool === "arc" && this.ellipseManager) {
-				const tempMessage = this.ellipseManager.createMessage(
-					startX,
-					startY,
-					w,
-					h,
-					props,
-					seed
-				);
-				this.ellipseManager.render(tempMessage);
-			}
-		} catch (error) {
-			console.error("Error rendering local preview:", error);
-		}
-
-		this.ctx.restore();
-	}
-
 	// --------------------------------------------------------- Events
-
-	usersCursor() {
-		const theme = this.theme;
-		const colorFromString = (str: string) => {
-			let hash = 0;
-			for (let i = 0; i < str.length; i++)
-				hash = str.charCodeAt(i) + ((hash << 5) - hash);
-			const hue = Math.abs(hash % 360);
-			return `hsl(${hue}, 70%, 50%)`;
-		};
-
-		const drawPointer = (
-			ctx: CanvasRenderingContext2D,
-			cx: number,
-			cy: number,
-			size: number,
-			color: string
-		) => {
-			const tip = { x: cx, y: cy };
-			const p1 = { x: cx - size, y: cy + size * 0.35 };
-			const p2 = { x: cx - size * 0.35, y: cy + size };
-
-			ctx.save();
-			ctx.beginPath();
-			ctx.moveTo(tip.x, tip.y);
-			ctx.lineTo(p1.x, p1.y);
-			const ctrl = { x: cx - size * 0.4, y: cy + size * 0.4 };
-			ctx.quadraticCurveTo(ctrl.x, ctrl.y, p2.x, p2.y);
-			ctx.closePath();
-			ctx.fillStyle = color;
-			ctx.fill();
-			ctx.restore();
-		};
-
-		for (const [username, { pos, lastSeen }] of this.otherUsers) {
-			if (!pos) continue;
-
-			const idleMs = Date.now() - Number(lastSeen);
-			let alpha = 1;
-			// start fading after 5s idle; full fade over next 2s, clamp minimum alpha
-			const START_FADE_MS = 5000;
-			const FADE_DURATION_MS = 2000;
-			if (idleMs > START_FADE_MS) {
-				const fadeMs = Math.min(
-					(idleMs - START_FADE_MS) / FADE_DURATION_MS,
-					1
-				);
-				alpha = 1 - fadeMs;
-				if (alpha <= 0.2) alpha = 0.2; // keep a small visible hint if desired
-			}
-
-			const screenX = pos.x * this.scale + this.offsetX;
-			const screenY = pos.y * this.scale + this.offsetY;
-
-			const userColor = colorFromString(username);
-			const textColor = theme === "dark" ? "#fff" : "#1e1e1e";
-
-			this.ctx.save();
-			this.ctx.globalAlpha = alpha;
-			this.ctx.font = `14px ${excali.style.fontFamily}`;
-
-			const padX = 8;
-			const textW = this.ctx.measureText(username).width;
-			const boxW = Math.max(32, textW + padX * 2);
-			const boxH = 24;
-
-			const boxX = screenX;
-			const boxY = screenY;
-
-			this.ctx.beginPath();
-			this.ctx.fillStyle = userColor;
-			this.ctx.roundRect(boxX, boxY, boxW, boxH, 8);
-			this.ctx.fill();
-
-			this.ctx.fillStyle = textColor;
-			this.ctx.textBaseline = "middle";
-			this.ctx.fillText(username, boxX + padX, boxY + boxH / 2);
-
-			// ✅ pointer tip aligned with box's top-right corner
-			const pointerTipX = boxX + boxW + 8;
-			const pointerTipY = boxY - 10;
-
-			drawPointer(this.ctx, pointerTipX, pointerTipY, 16, userColor);
-
-			this.ctx.restore();
-		}
-	}
 
 	handleMouseDown = (e: PointerEvent) => {
 		const pos = this.getMousePos(e);
@@ -1605,7 +1443,7 @@ export class Game {
 			this.applyTransform();
 
 			// Re-render after hand tool pan for viewport culling
-			this.throttledRender();
+			this.renderCanvas();
 			return;
 		}
 
@@ -1733,6 +1571,500 @@ export class Game {
 		if (this.textManager) this.textManager.cleanup();
 	}
 
+	// !mouse
+	selectShapeHover(pos: { x: number; y: number }) {
+		if (this.selectedMessage) {
+			const bb = this.selectedMessage.boundingBox;
+			const padding = 12;
+			const rect = {
+				x: bb.x - padding,
+				y: bb.y - padding,
+				w: bb.w + padding * 2,
+				h: bb.h + padding * 2,
+			};
+
+			const { handle, cursor } = getResizeHandleAndCursor(
+				pos.x,
+				pos.y,
+				rect,
+				6
+			);
+			if (handle !== "none") {
+				this.canvas.style.cursor = cursor;
+				this.resizeHandler = handle;
+				return;
+			}
+
+			if (
+				bb.x - 10 <= pos.x &&
+				bb.y - 10 <= pos.y &&
+				bb.x + bb.w + 10 >= pos.x &&
+				bb.y + bb.h + 10 >= pos.y
+			) {
+				this.canvas.style.cursor = "move";
+				return;
+			}
+		}
+		for (const message of this.messages) {
+			let foundMessage: boolean = false;
+			if (message.shape === "line" || message.shape === "arrow") {
+				const { x1, y1, x2, y2 } = message.lineData!;
+				if (
+					HitTestHelper.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)
+				) {
+					foundMessage = true;
+				}
+			} else if (message.shape === "pencil" && message.pencilPoints) {
+				if (
+					HitTestHelper.testPencilPoints(
+						pos.x,
+						pos.y,
+						message.pencilPoints,
+						8
+					)
+				) {
+					foundMessage = true;
+				}
+			} else if (message.shape === "image" || message.shape === "text") {
+				const { x, y, w, h } = this.getBoundindBox(message);
+				if (HitTestHelper.pointInBounds(pos.x, pos.y, x, y, w, h)) {
+					foundMessage = true;
+				}
+			} else if (message.shape === "rectangle") {
+				if (
+					HitTestHelper.testRectangleEdges(
+						pos.x,
+						pos.y,
+						message.boundingBox,
+						10
+					)
+				) {
+					foundMessage = true;
+				}
+			} else if (message.shape === "rhombus") {
+				if (
+					HitTestHelper.testRhombusEdges(
+						pos.x,
+						pos.y,
+						message.boundingBox,
+						10
+					)
+				) {
+					foundMessage = true;
+				}
+			} else if (message.shape === "arc") {
+				const rect = message.boundingBox;
+				if (HitTestHelper.testEllipseEdges(pos.x, pos.y, rect, 10)) {
+					foundMessage = true;
+				}
+			}
+
+			if (foundMessage) {
+				this.canvas.style.cursor = "move";
+				this.preSelectedMessage = message;
+				return;
+			} else {
+				this.canvas.style.cursor = "default";
+				this.preSelectedMessage = null;
+			}
+			this.resizeHandler = "none";
+		}
+	}
+	handleMouseDrag(pos: { x: number; y: number }) {
+		if (!this.selectedMessage) return;
+		if (this.selectedMessage.shape === "rectangle") {
+			if (this.isDragging)
+				this.handleRectangleDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleRectangleResize(this.selectedMessage, pos);
+			return;
+		} else if (this.selectedMessage.shape === "rhombus") {
+			if (this.isDragging)
+				this.handleRhombusDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleRhombusResize(this.selectedMessage, pos);
+		} else if (this.selectedMessage.shape === "arc") {
+			if (this.isDragging)
+				this.handleEllipseDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleEllipseResize(this.selectedMessage, pos);
+		} else if (this.selectedMessage.shape === "arrow") {
+			if (this.isDragging)
+				this.handleArrowDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleArrowResize(this.selectedMessage, pos);
+		} else if (this.selectedMessage.shape === "line") {
+			if (this.isDragging) this.handleLineDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleLineResize(this.selectedMessage, pos);
+		} else if (this.selectedMessage.shape === "pencil") {
+			if (this.isDragging)
+				this.handlePencilDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handlePencilResize(this.selectedMessage, pos);
+		} else if (this.selectedMessage.shape === "text") {
+			if (this.isDragging) this.handleTextDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleTextResize(this.selectedMessage, pos);
+		} else if (this.selectedMessage.shape === "image") {
+			if (this.isDragging)
+				this.handleImageDrag(this.selectedMessage, pos);
+			else if (this.isResizing)
+				this.handleImageResize(this.selectedMessage, pos);
+		}
+	}
+
+	usersCursor() {
+		const theme = this.theme;
+		const colorFromString = (str: string) => {
+			let hash = 0;
+			for (let i = 0; i < str.length; i++)
+				hash = str.charCodeAt(i) + ((hash << 5) - hash);
+			const hue = Math.abs(hash % 360);
+			return `hsl(${hue}, 70%, 50%)`;
+		};
+
+		const drawPointer = (
+			ctx: CanvasRenderingContext2D,
+			cx: number,
+			cy: number,
+			size: number,
+			color: string
+		) => {
+			const tip = { x: cx, y: cy };
+			const p1 = { x: cx - size, y: cy + size * 0.35 };
+			const p2 = { x: cx - size * 0.35, y: cy + size };
+
+			ctx.save();
+			ctx.beginPath();
+			ctx.moveTo(tip.x, tip.y);
+			ctx.lineTo(p1.x, p1.y);
+			const ctrl = { x: cx - size * 0.4, y: cy + size * 0.4 };
+			ctx.quadraticCurveTo(ctrl.x, ctrl.y, p2.x, p2.y);
+			ctx.closePath();
+			ctx.fillStyle = color;
+			ctx.fill();
+			ctx.restore();
+		};
+
+		for (const [username, { pos, lastSeen }] of this.otherUsers) {
+			if (!pos) continue;
+
+			const idleMs = Date.now() - Number(lastSeen);
+			let alpha = 1;
+			// start fading after 5s idle; full fade over next 2s, clamp minimum alpha
+			const START_FADE_MS = 5000;
+			const FADE_DURATION_MS = 2000;
+			if (idleMs > START_FADE_MS) {
+				const fadeMs = Math.min(
+					(idleMs - START_FADE_MS) / FADE_DURATION_MS,
+					1
+				);
+				alpha = 1 - fadeMs;
+				if (alpha <= 0.2) alpha = 0.2; // keep a small visible hint if desired
+			}
+
+			const screenX = pos.x * this.scale + this.offsetX;
+			const screenY = pos.y * this.scale + this.offsetY;
+
+			const userColor = colorFromString(username);
+			const textColor = theme === "dark" ? "#fff" : "#1e1e1e";
+
+			this.ctx.save();
+			this.ctx.globalAlpha = alpha;
+			this.ctx.font = `14px ${excali.style.fontFamily}`;
+
+			const padX = 8;
+			const textW = this.ctx.measureText(username).width;
+			const boxW = Math.max(32, textW + padX * 2);
+			const boxH = 24;
+
+			const boxX = screenX;
+			const boxY = screenY;
+
+			this.ctx.beginPath();
+			this.ctx.fillStyle = userColor;
+			this.ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+			this.ctx.fill();
+
+			this.ctx.fillStyle = textColor;
+			this.ctx.textBaseline = "middle";
+			this.ctx.fillText(username, boxX + padX, boxY + boxH / 2);
+
+			// ✅ pointer tip aligned with box's top-right corner
+			const pointerTipX = boxX + boxW + 8;
+			const pointerTipY = boxY - 10;
+
+			drawPointer(this.ctx, pointerTipX, pointerTipY, 16, userColor);
+
+			this.ctx.restore();
+		}
+	}
+
+	// !selected message
+	handleSelectedMessage(message: Message) {
+		const bb = message.boundingBox;
+
+		const padding = 10;
+		const x = bb.x - padding;
+		const y = bb.y - padding;
+		const w = bb.w + padding * 2;
+		const h = bb.h + padding * 2;
+
+		this.ctx.save();
+		this.ctx.strokeStyle = `${this.theme === "light" ? "rgba(103,65,217, 1)" : "rgba(208,191,255,1)"}`;
+		this.ctx.lineWidth = 1;
+		this.ctx.strokeRect(x, y, w, h);
+
+		const handleSize = 10;
+		const handleRadius = 2;
+		const handles = [
+			{ x, y },
+			{ x: x + w, y },
+			{ x, y: y + h },
+			{ x: x + w, y: y + h },
+		];
+
+		this.ctx.fillStyle = `#${this.canvasbg}`;
+		this.ctx.strokeStyle = `${this.theme === "light" ? "rgba(103,65,217, 1)" : "rgba(208,191,255,1)"}`;
+		for (const hPos of handles) {
+			this.ctx.beginPath();
+			this.ctx.roundRect(
+				hPos.x - handleSize / 2,
+				hPos.y - handleSize / 2,
+				handleSize,
+				handleSize,
+				handleRadius
+			);
+			this.ctx.fill();
+			this.ctx.stroke();
+		}
+
+		this.ctx.restore();
+	}
+	setSelectedProps(message: Message) {
+		if (Array.isArray(message.shapeData)) {
+			const stroke = message.shapeData[0]!.options.stroke;
+			const strokeWidth = message.shapeData[0]!.options.strokeWidth;
+			const strokeLineDash = message.shapeData[0]!.options.strokeLineDash;
+			const roughness = message.shapeData[0]!.options.roughness;
+			const opacity = message.opacity;
+			const arrowType = message.arrowType;
+			const arrowHead = message.arrowHead;
+
+			if (message.shape === "arrow") {
+				this.setStroke(stroke.split("#")[1]!);
+				this.setStrokeWidth(
+					strokeWidth === 1
+						? "thin"
+						: strokeWidth === 2
+							? "normal"
+							: "thick"
+				);
+				this.setStrokeStyle(
+					!strokeLineDash || strokeLineDash.length === 0
+						? "solid"
+						: Array.isArray(strokeLineDash) &&
+							  strokeLineDash.length === 2 &&
+							  strokeLineDash[0] === 10 &&
+							  strokeLineDash[1] === 10
+							? "dashed"
+							: "dotted"
+				);
+				this.setSlopiness(
+					roughness === 0
+						? "architect"
+						: roughness === 1
+							? "artist"
+							: "cartoonist"
+				);
+				this.setArrowType(arrowType!);
+				this.setFrontArrowHead(arrowHead!.front);
+				this.setBackArrowHead(arrowHead!.back);
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			}
+		} else {
+			const stroke = message.shapeData.options.stroke;
+			const fill = message.shapeData.options.fill;
+			const fillStyle = message.shapeData.options.fillStyle;
+			const strokeWidth = message.shapeData.options.strokeWidth;
+			const strokeLineDash = message.shapeData.options.strokeLineDash;
+			const roughness = message.shapeData.options.roughness;
+			const opacity = message.opacity;
+			const edges = message.edges;
+			const fontSize = message.textData?.fontSize;
+			const fontFamily = message.textData?.fontFamily;
+			const textAlign = message.textData?.textAlign;
+			const textColor = message.textData?.textColor;
+
+			if (message.shape === "rectangle" || message.shape === "rhombus") {
+				this.setStroke(
+					stroke === "transparent"
+						? "transparent"
+						: stroke.split("#")[1]!
+				);
+				this.setBg(!fill ? "transparent" : fill.split("#")[1]!);
+				this.setFill(
+					fillStyle === "cross-hatch"
+						? ("cross" as fill)
+						: (fillStyle as fill)
+				);
+				this.setStrokeWidth(
+					strokeWidth === 1
+						? "thin"
+						: strokeWidth === 2
+							? "normal"
+							: "thick"
+				);
+				this.setStrokeStyle(
+					!strokeLineDash || strokeLineDash.length === 0
+						? "solid"
+						: Array.isArray(strokeLineDash) &&
+							  strokeLineDash.length === 2 &&
+							  strokeLineDash[0] === 10 &&
+							  strokeLineDash[1] === 10
+							? "dashed"
+							: "dotted"
+				);
+				this.setSlopiness(
+					roughness === 0
+						? "architect"
+						: roughness === 1
+							? "artist"
+							: "cartoonist"
+				);
+				this.setEdges(edges === "round" ? "round" : "sharp");
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			} else if (message.shape === "arc") {
+				this.setStroke(stroke.split("#")[1]!);
+				this.setBg(!fill ? "transparent" : fill.split("#")[1]!);
+				this.setFill(
+					fillStyle === "cross-hatch"
+						? ("cross" as fill)
+						: (fillStyle as fill)
+				);
+				this.setStrokeWidth(
+					strokeWidth === 1
+						? "thin"
+						: strokeWidth === 2
+							? "normal"
+							: "thick"
+				);
+				this.setStrokeStyle(
+					!strokeLineDash || strokeLineDash.length === 0
+						? "solid"
+						: Array.isArray(strokeLineDash) &&
+							  strokeLineDash.length === 2 &&
+							  strokeLineDash[0] === 10 &&
+							  strokeLineDash[1] === 10
+							? "dashed"
+							: "dotted"
+				);
+				this.setSlopiness(
+					roughness === 0
+						? "architect"
+						: roughness === 1
+							? "artist"
+							: "cartoonist"
+				);
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			} else if (message.shape === "line") {
+				this.setStroke(stroke.split("#")[1]!);
+				this.setStrokeWidth(
+					strokeWidth === 1
+						? "thin"
+						: strokeWidth === 2
+							? "normal"
+							: "thick"
+				);
+				this.setStrokeStyle(
+					!strokeLineDash || strokeLineDash.length === 0
+						? "solid"
+						: Array.isArray(strokeLineDash) &&
+							  strokeLineDash.length === 2 &&
+							  strokeLineDash[0] === 10 &&
+							  strokeLineDash[1] === 10
+							? "dashed"
+							: "dotted"
+				);
+				this.setSlopiness(
+					roughness === 0
+						? "architect"
+						: roughness === 1
+							? "artist"
+							: "cartoonist"
+				);
+				this.setEdges(edges === "round" ? "round" : "sharp");
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			} else if (message.shape === "pencil") {
+				this.setStroke(stroke.split("#")[1]!);
+				this.setStrokeWidth(
+					strokeWidth / 2 === 1
+						? "thin"
+						: strokeWidth / 2 === 2
+							? "normal"
+							: "thick"
+				);
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			} else if (message.shape === "text") {
+				this.setStroke(textColor!.split("#")[1]!);
+				if (fontFamily === "caveat")
+					this.setFontFamily("caveat" as fontFamily);
+				else if (fontFamily === "excali")
+					this.setFontFamily("draw" as fontFamily);
+				else if (fontFamily === "firaCode")
+					this.setFontFamily("code" as fontFamily);
+				else if (fontFamily === "jakarta")
+					this.setFontFamily("normal" as fontFamily);
+				else if (fontFamily === "sourceCode")
+					this.setFontFamily("little" as fontFamily);
+				else if (fontFamily === "monospace")
+					this.setFontFamily("mono" as fontFamily);
+				else if (fontFamily === "nunito")
+					this.setFontFamily("nunito" as fontFamily);
+				this.setFontSize(
+					fontSize === "16px"
+						? "small"
+						: fontSize === "24px"
+							? "medium"
+							: fontSize === "32px"
+								? "large"
+								: "xlarge"
+				);
+				this.setTextAlign(textAlign as textAlign);
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			} else if (message.shape === "image") {
+				this.setEdges(edges === "round" ? "round" : "sharp");
+				this.setOpacity(opacity ? opacity * 100 : 100);
+			}
+		}
+	}
+	handlePropsChange() {
+		if (!this.selectedMessage) return;
+		if (Array.isArray(this.selectedMessage.shapeData)) {
+			if (this.selectedMessage.shape === "arrow")
+				this.handleArrowPropsChange(this.selectedMessage);
+			return;
+		}
+		if (this.selectedMessage.shape === "rectangle")
+			this.handleRectanglePropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "rhombus")
+			this.handleRhombusPropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "arc")
+			this.handleEllipsePropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "arrow")
+			this.handleArrowPropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "line")
+			this.handleLinePropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "pencil")
+			this.handlePencilPropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "text")
+			this.handleTextPropsChange(this.selectedMessage);
+		else if (this.selectedMessage.shape === "image")
+			this.handleImagePropsChange(this.selectedMessage);
+	}
+
+	//* Shape drawing
 	// !rectangle
 	messageRect(w: number, h: number): Message {
 		if (!this.rectangleManager) {
@@ -2329,411 +2661,6 @@ export class Game {
 		if (this.laserPoints.length > 0) {
 			requestAnimationFrame(() => this.renderCanvas());
 		}
-	}
-	// !mouse
-	selectShapeHover(pos: { x: number; y: number }) {
-		if (this.selectedMessage) {
-			const bb = this.selectedMessage.boundingBox;
-			const padding = 12;
-			const rect = {
-				x: bb.x - padding,
-				y: bb.y - padding,
-				w: bb.w + padding * 2,
-				h: bb.h + padding * 2,
-			};
-
-			const { handle, cursor } = getResizeHandleAndCursor(
-				pos.x,
-				pos.y,
-				rect,
-				6
-			);
-			if (handle !== "none") {
-				this.canvas.style.cursor = cursor;
-				this.resizeHandler = handle;
-				return;
-			}
-
-			if (
-				bb.x - 10 <= pos.x &&
-				bb.y - 10 <= pos.y &&
-				bb.x + bb.w + 10 >= pos.x &&
-				bb.y + bb.h + 10 >= pos.y
-			) {
-				this.canvas.style.cursor = "move";
-				return;
-			}
-		}
-		for (const message of this.messages) {
-			let foundMessage: boolean = false;
-			if (message.shape === "line" || message.shape === "arrow") {
-				const { x1, y1, x2, y2 } = message.lineData!;
-				if (
-					HitTestHelper.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)
-				) {
-					foundMessage = true;
-				}
-			} else if (message.shape === "pencil" && message.pencilPoints) {
-				if (
-					HitTestHelper.testPencilPoints(
-						pos.x,
-						pos.y,
-						message.pencilPoints,
-						8
-					)
-				) {
-					foundMessage = true;
-				}
-			} else if (message.shape === "image" || message.shape === "text") {
-				const { x, y, w, h } = this.getBoundindBox(message);
-				if (HitTestHelper.pointInBounds(pos.x, pos.y, x, y, w, h)) {
-					foundMessage = true;
-				}
-			} else if (message.shape === "rectangle") {
-				if (
-					HitTestHelper.testRectangleEdges(
-						pos.x,
-						pos.y,
-						message.boundingBox,
-						10
-					)
-				) {
-					foundMessage = true;
-				}
-			} else if (message.shape === "rhombus") {
-				if (
-					HitTestHelper.testRhombusEdges(
-						pos.x,
-						pos.y,
-						message.boundingBox,
-						10
-					)
-				) {
-					foundMessage = true;
-				}
-			} else if (message.shape === "arc") {
-				const rect = message.boundingBox;
-				if (HitTestHelper.testEllipseEdges(pos.x, pos.y, rect, 10)) {
-					foundMessage = true;
-				}
-			}
-
-			if (foundMessage) {
-				this.canvas.style.cursor = "move";
-				this.preSelectedMessage = message;
-				return;
-			} else {
-				this.canvas.style.cursor = "default";
-				this.preSelectedMessage = null;
-			}
-			this.resizeHandler = "none";
-		}
-	}
-	handleMouseDrag(pos: { x: number; y: number }) {
-		if (!this.selectedMessage) return;
-		if (this.selectedMessage.shape === "rectangle") {
-			if (this.isDragging)
-				this.handleRectangleDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleRectangleResize(this.selectedMessage, pos);
-			return;
-		} else if (this.selectedMessage.shape === "rhombus") {
-			if (this.isDragging)
-				this.handleRhombusDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleRhombusResize(this.selectedMessage, pos);
-		} else if (this.selectedMessage.shape === "arc") {
-			if (this.isDragging)
-				this.handleEllipseDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleEllipseResize(this.selectedMessage, pos);
-		} else if (this.selectedMessage.shape === "arrow") {
-			if (this.isDragging)
-				this.handleArrowDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleArrowResize(this.selectedMessage, pos);
-		} else if (this.selectedMessage.shape === "line") {
-			if (this.isDragging) this.handleLineDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleLineResize(this.selectedMessage, pos);
-		} else if (this.selectedMessage.shape === "pencil") {
-			if (this.isDragging)
-				this.handlePencilDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handlePencilResize(this.selectedMessage, pos);
-		} else if (this.selectedMessage.shape === "text") {
-			if (this.isDragging) this.handleTextDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleTextResize(this.selectedMessage, pos);
-		} else if (this.selectedMessage.shape === "image") {
-			if (this.isDragging)
-				this.handleImageDrag(this.selectedMessage, pos);
-			else if (this.isResizing)
-				this.handleImageResize(this.selectedMessage, pos);
-		}
-	}
-
-	// !selected message
-	handleSelectedMessage(message: Message) {
-		const bb = message.boundingBox;
-
-		const padding = 10;
-		const x = bb.x - padding;
-		const y = bb.y - padding;
-		const w = bb.w + padding * 2;
-		const h = bb.h + padding * 2;
-
-		this.ctx.save();
-		this.ctx.strokeStyle = `${this.theme === "light" ? "rgba(103,65,217, 1)" : "rgba(208,191,255,1)"}`;
-		this.ctx.lineWidth = 1;
-		this.ctx.strokeRect(x, y, w, h);
-
-		const handleSize = 10;
-		const handleRadius = 2;
-		const handles = [
-			{ x, y },
-			{ x: x + w, y },
-			{ x, y: y + h },
-			{ x: x + w, y: y + h },
-		];
-
-		this.ctx.fillStyle = `#${this.canvasbg}`;
-		this.ctx.strokeStyle = `${this.theme === "light" ? "rgba(103,65,217, 1)" : "rgba(208,191,255,1)"}`;
-		for (const hPos of handles) {
-			this.ctx.beginPath();
-			this.ctx.roundRect(
-				hPos.x - handleSize / 2,
-				hPos.y - handleSize / 2,
-				handleSize,
-				handleSize,
-				handleRadius
-			);
-			this.ctx.fill();
-			this.ctx.stroke();
-		}
-
-		this.ctx.restore();
-	}
-	setSelectedProps(message: Message) {
-		if (Array.isArray(message.shapeData)) {
-			const stroke = message.shapeData[0]!.options.stroke;
-			const strokeWidth = message.shapeData[0]!.options.strokeWidth;
-			const strokeLineDash = message.shapeData[0]!.options.strokeLineDash;
-			const roughness = message.shapeData[0]!.options.roughness;
-			const opacity = message.opacity;
-			const arrowType = message.arrowType;
-			const arrowHead = message.arrowHead;
-
-			if (message.shape === "arrow") {
-				this.setStroke(stroke.split("#")[1]!);
-				this.setStrokeWidth(
-					strokeWidth === 1
-						? "thin"
-						: strokeWidth === 2
-							? "normal"
-							: "thick"
-				);
-				this.setStrokeStyle(
-					!strokeLineDash || strokeLineDash.length === 0
-						? "solid"
-						: Array.isArray(strokeLineDash) &&
-							  strokeLineDash.length === 2 &&
-							  strokeLineDash[0] === 10 &&
-							  strokeLineDash[1] === 10
-							? "dashed"
-							: "dotted"
-				);
-				this.setSlopiness(
-					roughness === 0
-						? "architect"
-						: roughness === 1
-							? "artist"
-							: "cartoonist"
-				);
-				this.setArrowType(arrowType!);
-				this.setFrontArrowHead(arrowHead!.front);
-				this.setBackArrowHead(arrowHead!.back);
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			}
-		} else {
-			const stroke = message.shapeData.options.stroke;
-			const fill = message.shapeData.options.fill;
-			const fillStyle = message.shapeData.options.fillStyle;
-			const strokeWidth = message.shapeData.options.strokeWidth;
-			const strokeLineDash = message.shapeData.options.strokeLineDash;
-			const roughness = message.shapeData.options.roughness;
-			const opacity = message.opacity;
-			const edges = message.edges;
-			const fontSize = message.textData?.fontSize;
-			const fontFamily = message.textData?.fontFamily;
-			const textAlign = message.textData?.textAlign;
-			const textColor = message.textData?.textColor;
-
-			if (message.shape === "rectangle" || message.shape === "rhombus") {
-				this.setStroke(
-					stroke === "transparent"
-						? "transparent"
-						: stroke.split("#")[1]!
-				);
-				this.setBg(!fill ? "transparent" : fill.split("#")[1]!);
-				this.setFill(
-					fillStyle === "cross-hatch"
-						? ("cross" as fill)
-						: (fillStyle as fill)
-				);
-				this.setStrokeWidth(
-					strokeWidth === 1
-						? "thin"
-						: strokeWidth === 2
-							? "normal"
-							: "thick"
-				);
-				this.setStrokeStyle(
-					!strokeLineDash || strokeLineDash.length === 0
-						? "solid"
-						: Array.isArray(strokeLineDash) &&
-							  strokeLineDash.length === 2 &&
-							  strokeLineDash[0] === 10 &&
-							  strokeLineDash[1] === 10
-							? "dashed"
-							: "dotted"
-				);
-				this.setSlopiness(
-					roughness === 0
-						? "architect"
-						: roughness === 1
-							? "artist"
-							: "cartoonist"
-				);
-				this.setEdges(edges === "round" ? "round" : "sharp");
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			} else if (message.shape === "arc") {
-				this.setStroke(stroke.split("#")[1]!);
-				this.setBg(!fill ? "transparent" : fill.split("#")[1]!);
-				this.setFill(
-					fillStyle === "cross-hatch"
-						? ("cross" as fill)
-						: (fillStyle as fill)
-				);
-				this.setStrokeWidth(
-					strokeWidth === 1
-						? "thin"
-						: strokeWidth === 2
-							? "normal"
-							: "thick"
-				);
-				this.setStrokeStyle(
-					!strokeLineDash || strokeLineDash.length === 0
-						? "solid"
-						: Array.isArray(strokeLineDash) &&
-							  strokeLineDash.length === 2 &&
-							  strokeLineDash[0] === 10 &&
-							  strokeLineDash[1] === 10
-							? "dashed"
-							: "dotted"
-				);
-				this.setSlopiness(
-					roughness === 0
-						? "architect"
-						: roughness === 1
-							? "artist"
-							: "cartoonist"
-				);
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			} else if (message.shape === "line") {
-				this.setStroke(stroke.split("#")[1]!);
-				this.setStrokeWidth(
-					strokeWidth === 1
-						? "thin"
-						: strokeWidth === 2
-							? "normal"
-							: "thick"
-				);
-				this.setStrokeStyle(
-					!strokeLineDash || strokeLineDash.length === 0
-						? "solid"
-						: Array.isArray(strokeLineDash) &&
-							  strokeLineDash.length === 2 &&
-							  strokeLineDash[0] === 10 &&
-							  strokeLineDash[1] === 10
-							? "dashed"
-							: "dotted"
-				);
-				this.setSlopiness(
-					roughness === 0
-						? "architect"
-						: roughness === 1
-							? "artist"
-							: "cartoonist"
-				);
-				this.setEdges(edges === "round" ? "round" : "sharp");
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			} else if (message.shape === "pencil") {
-				this.setStroke(stroke.split("#")[1]!);
-				this.setStrokeWidth(
-					strokeWidth / 2 === 1
-						? "thin"
-						: strokeWidth / 2 === 2
-							? "normal"
-							: "thick"
-				);
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			} else if (message.shape === "text") {
-				this.setStroke(textColor!.split("#")[1]!);
-				if (fontFamily === "caveat")
-					this.setFontFamily("caveat" as fontFamily);
-				else if (fontFamily === "excali")
-					this.setFontFamily("draw" as fontFamily);
-				else if (fontFamily === "firaCode")
-					this.setFontFamily("code" as fontFamily);
-				else if (fontFamily === "jakarta")
-					this.setFontFamily("normal" as fontFamily);
-				else if (fontFamily === "sourceCode")
-					this.setFontFamily("little" as fontFamily);
-				else if (fontFamily === "monospace")
-					this.setFontFamily("mono" as fontFamily);
-				else if (fontFamily === "nunito")
-					this.setFontFamily("nunito" as fontFamily);
-				this.setFontSize(
-					fontSize === "16px"
-						? "small"
-						: fontSize === "24px"
-							? "medium"
-							: fontSize === "32px"
-								? "large"
-								: "xlarge"
-				);
-				this.setTextAlign(textAlign as textAlign);
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			} else if (message.shape === "image") {
-				this.setEdges(edges === "round" ? "round" : "sharp");
-				this.setOpacity(opacity ? opacity * 100 : 100);
-			}
-		}
-	}
-	handlePropsChange() {
-		if (!this.selectedMessage) return;
-		if (Array.isArray(this.selectedMessage.shapeData)) {
-			if (this.selectedMessage.shape === "arrow")
-				this.handleArrowPropsChange(this.selectedMessage);
-			return;
-		}
-		if (this.selectedMessage.shape === "rectangle")
-			this.handleRectanglePropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "rhombus")
-			this.handleRhombusPropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "arc")
-			this.handleEllipsePropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "arrow")
-			this.handleArrowPropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "line")
-			this.handleLinePropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "pencil")
-			this.handlePencilPropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "text")
-			this.handleTextPropsChange(this.selectedMessage);
-		else if (this.selectedMessage.shape === "image")
-			this.handleImagePropsChange(this.selectedMessage);
 	}
 
 	// !dragging shapes
