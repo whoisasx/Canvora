@@ -7,13 +7,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 
 export default function NavBar() {
 	const [isResourcesHovered, setIsResourcesHovered] = useState(false);
 	const setIsSideBarOpen = useSideBarStore((state) => state.setIsOpen);
-
 	const [githubStar, setGithubStar] = useState<string>("");
+	const [mounted, setMounted] = useState(false);
 	const router = useRouter();
+	const { theme, setTheme } = useTheme();
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	useEffect(() => {
 		async function getStarCount() {
@@ -46,21 +52,34 @@ export default function NavBar() {
 	};
 
 	return (
-		<div className="w-[80vw] xl:h-20 h-18 sticky top-10 border-t-[1px] border-x-[2px] border-canvora-100 rounded-3xl mx-auto flex items-center justify-between px-5 shadow-md shadow-canvora-100 bg-canvora-50/50 z-20">
+		<div className="w-[80vw] xl:h-20 h-18 sticky top-10 border-t-[1px] border-x-[2px] border-canvora-100 dark:border-canvora-600 rounded-3xl mx-auto flex items-center justify-between px-5 shadow-md shadow-canvora-100 dark:shadow-canvora-800 bg-canvora-50/50 dark:bg-gray-800/50 backdrop-blur-md z-20 transition-all duration-300">
 			<div className="flex items-center justify-between gap-2">
-				<button
-					className="w-fit h-fit lg:hidden cursor-pointer"
+				<motion.button
+					className="w-fit h-fit lg:hidden cursor-pointer group"
 					onClick={setIsSideBarOpen}
+					whileHover={{ scale: 1.08 }}
+					whileTap={{ scale: 0.92 }}
+					initial={{ opacity: 0, x: -20 }}
+					animate={{ opacity: 1, x: 0 }}
+					transition={{ duration: 0.3 }}
 				>
-					<div className="w-10 h-10 rounded-2xl bg-canvora-200 flex items-center justify-center hover:scale-95 transition-all duration-300 ease-in-out border-[0.5px] border-transparent hover:border-canvora-500">
-						<div className="flex h-4 w-4 cursor-pointer flex-col justify-around">
-							<div className="bg-canvora-500 h-0.5 rounded-md transition duration-500 ease-in-out"></div>
-							<div className="bg-canvora-500 h-0.5 rounded-md transition duration-500 ease-in-out opacity-100"></div>
-							<div className="bg-canvora-500 h-0.5 rounded-md transition duration-500 ease-in-out"></div>
+					<div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-canvora-100 to-canvora-200 dark:from-canvora-700 dark:to-canvora-800 flex items-center justify-center transition-all duration-300 ease-in-out border border-canvora-300 dark:border-canvora-600 hover:border-canvora-500 dark:hover:border-canvora-400 shadow-md hover:shadow-lg group-hover:from-canvora-200 group-hover:to-canvora-300 dark:group-hover:from-canvora-600 dark:group-hover:to-canvora-700">
+						<div className="relative flex h-4 w-4 cursor-pointer flex-col justify-around z-10">
+							<motion.div
+								className="bg-canvora-600 dark:bg-canvora-300 h-0.5 rounded-full transition-all duration-300 ease-in-out group-hover:bg-canvora-700 dark:group-hover:bg-canvora-200"
+								whileHover={{ scaleX: 1.1 }}
+							></motion.div>
+							<motion.div
+								className="bg-canvora-600 dark:bg-canvora-300 h-0.5 rounded-full transition-all duration-300 ease-in-out opacity-100 group-hover:bg-canvora-700 dark:group-hover:bg-canvora-200"
+								whileHover={{ scaleX: 0.9 }}
+							></motion.div>
+							<motion.div
+								className="bg-canvora-600 dark:bg-canvora-300 h-0.5 rounded-full transition-all duration-300 ease-in-out group-hover:bg-canvora-700 dark:group-hover:bg-canvora-200"
+								whileHover={{ scaleX: 1.1 }}
+							></motion.div>
 						</div>
 					</div>
-				</button>
-
+				</motion.button>{" "}
 				<motion.div
 					initial={{ x: -15, opacity: 0, scale: "0.95" }}
 					animate={{ x: 0, opacity: 1, scale: "1" }}
@@ -145,7 +164,7 @@ export default function NavBar() {
 										style={{
 											transformOrigin: "top center",
 										}}
-										className="px-5 py-2 absolute top-full bg-oc-gray-0 rounded-xl shadow-sm"
+										className="px-5 py-2 absolute top-full bg-oc-gray-0 dark:bg-gray-800 rounded-xl shadow-sm border dark:border-canvora-600"
 									>
 										<ul className="list-none p-0 m-0 flex flex-col items-center gap-1.5">
 											<NavList
@@ -184,7 +203,7 @@ export default function NavBar() {
 			<div className="flex items-center justify-center xl:gap-5 lg:gap-2">
 				<div className="">
 					<Link
-						className="lg:w-15 w-12 h-8 lg:h-10 rounded-2xl flex items-center gap-1 justify-center hover:bg-canvora-100 transition-all duration-300 ease-in-out"
+						className="lg:w-15 w-12 h-8 lg:h-10 rounded-2xl flex items-center gap-1 justify-center hover:bg-canvora-100 dark:hover:bg-canvora-700 transition-all duration-300 ease-in-out"
 						href={"https://www.github.com/whoisasx/Canvora"}
 						target="_blank"
 						rel="noopener noreferrer"

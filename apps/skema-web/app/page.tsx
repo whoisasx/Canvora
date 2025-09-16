@@ -10,15 +10,9 @@ import { useEffect } from "react";
 export default function Home() {
 	const isSideBarOpen = useSideBarStore((state) => state.isOpen);
 
-	// const { setTheme } = useTheme();
-
-	// useEffect(() => {
-	// 	setTheme("light"); // 👈 always force light when landing page mounts
-	// }, [setTheme]);
-
 	return (
-		<div className="min-h-screen min-w-screen scroll-none landing-force-light">
-			<div className="min-h-screen min-w-screen p-5 relative bg-page-gradient-green">
+		<div className="min-h-screen min-w-screen scroll-none transition-colors duration-500">
+			<div className="min-h-screen min-w-screen p-5 relative bg-gradient-to-br from-canvora-50 via-canvora-100 to-canvora-200 dark:from-gray-900 dark:via-gray-800 dark:to-canvora-900">
 				<NavBar />
 				<MainSection />
 				{isSideBarOpen && <SideMenu key="side-menu" />}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeWrapper } from "../components/ThemeWrapper";
+import FloatingThemeToggle from "../components/FloatingThemeToggle";
 import {
 	chilanka,
 	comic, // select it for the large and bold
@@ -45,8 +46,11 @@ export default function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`font-nunito ${nunito.variable}`}>
-				{children}
-				<Toaster position="top-center" reverseOrder={false} />
+				<ThemeWrapper>
+					{children}
+					<FloatingThemeToggle />
+					<Toaster position="top-center" reverseOrder={false} />
+				</ThemeWrapper>
 			</body>
 		</html>
 	);

@@ -14,7 +14,7 @@ export const NavList = ({
 	const router = useRouter();
 	return (
 		<li
-			className={`group ${className} w-full h-10  border-transparent hover:bg-canvora-50 hover:border-oc-gray-6 border-t-[0.5px] border-x-[1px] border-b-[2px] text-xs rounded-2xl transition-all duration-300 ease-in-out`}
+			className={`group ${className} w-full h-10 border-transparent hover:bg-canvora-50 dark:hover:bg-canvora-800/50 hover:border-oc-gray-6 dark:hover:border-canvora-600 border-t-[0.5px] border-x-[1px] border-b-[2px] text-xs rounded-2xl transition-all duration-300 ease-in-out hover:text-canvora-900 dark:hover:text-canvora-100`}
 		>
 			<Link
 				href={href}
