@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/ui/Button";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
 
 export default function SideMenu() {
 	const [isResourcesHovered, setIsResourcesHovered] = useState(false);
@@ -13,12 +14,23 @@ export default function SideMenu() {
 	const divRef = useRef<HTMLDivElement | null>(null);
 	const isOpen = useSideBarStore((s) => s.isOpen);
 	const { theme, setTheme } = useTheme();
+	const { data: session, status } = useSession();
 
 	const router = useRouter();
 
 	useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	const handleSignIn = () => {
+		if (session) {
+			// User is already signed in, redirect to dashboard
+			router.push("/dashboard");
+		} else {
+			// User is not signed in, redirect to sign-in page
+			router.push("/signin");
+		}
+	};
 
 	return (
 		<AnimatePresence>
@@ -576,10 +588,10 @@ export default function SideMenu() {
 							>
 								<Button
 									className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300"
-									children={"Sign in"}
+									children={session ? "Dashboard" : "Sign in"}
 									size="large"
 									level="tertiary"
-									onClick={() => router.push("/signin")}
+									onClick={handleSignIn}
 								/>
 							</motion.div>
 							<motion.div

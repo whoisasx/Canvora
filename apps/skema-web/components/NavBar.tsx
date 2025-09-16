@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
 
 export default function NavBar() {
 	const [isResourcesHovered, setIsResourcesHovered] = useState(false);
@@ -16,6 +17,7 @@ export default function NavBar() {
 	const [mounted, setMounted] = useState(false);
 	const router = useRouter();
 	const { theme, setTheme } = useTheme();
+	const { data: session, status } = useSession();
 
 	useEffect(() => {
 		setMounted(true);
@@ -49,6 +51,16 @@ export default function NavBar() {
 
 	const handleFreeBoard = async () => {
 		window.open("/free-board", "_blank");
+	};
+
+	const handleSignIn = () => {
+		if (session) {
+			// User is already signed in, redirect to dashboard
+			router.push("/dashboard");
+		} else {
+			// User is not signed in, redirect to sign-in page
+			router.push("/signin");
+		}
 	};
 
 	return (
@@ -227,10 +239,10 @@ export default function NavBar() {
 				<div className="flex items-center justify-center gap-3">
 					<Button
 						className="hidden lg:block"
-						children={"Sign in"}
+						children={session ? "Dashboard" : "Sign in"}
 						size="small"
 						level="tertiary"
-						onClick={() => router.push("/signin")}
+						onClick={handleSignIn}
 					/>
 					<Button
 						className="min-[580px]:block hidden"
