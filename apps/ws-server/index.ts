@@ -69,13 +69,83 @@ const redoByRoomUser = new Map<string, Map<string, Op[]>>();
 // Add throttling for draw messages
 const userThrottles = new Map<string, number>();
 
+// Cursor broadcasting system
+const roomCursorBroadcasters = new Map<string, NodeJS.Timeout>();
+
+// Cursor broadcasting functions
+function startCursorBroadcasting(roomId: string) {
+	// Clear existing interval if any
+	if (roomCursorBroadcasters.has(roomId)) {
+		clearInterval(roomCursorBroadcasters.get(roomId)!);
+	}
+
+	const interval = setInterval(() => {
+		const roomUsers = users.filter((user) => user.rooms.includes(roomId));
+
+		// Only broadcast if there are multiple users in the room
+		if (roomUsers.length <= 1) return;
+
+		// Collect all cursor positions for this room
+		const cursors: Array<{
+			username: string;
+			pos: { x: number; y: number };
+			lastSeen: number;
+		}> = [];
+
+		for (const user of roomUsers) {
+			if (user.lastCursorPos && user.lastCursorUpdate) {
+				// Only include recent cursor positions (within last 10 seconds)
+				const timeSinceUpdate = Date.now() - user.lastCursorUpdate;
+				if (timeSinceUpdate < 10000) {
+					cursors.push({
+						username: user.username,
+						pos: user.lastCursorPos,
+						lastSeen: user.lastCursorUpdate,
+					});
+				}
+			}
+		}
+
+		// Broadcast to each user (excluding their own cursor)
+		for (const user of roomUsers) {
+			const otherCursors = cursors.filter(
+				(cursor) => cursor.username !== user.username
+			);
+
+			if (otherCursors.length > 0) {
+				try {
+					user.ws.send(
+						JSON.stringify({
+							type: "cursors-batch",
+							cursors: otherCursors,
+						})
+					);
+				} catch (error) {
+					// Handle send errors silently
+				}
+			}
+		}
+	}, 500); // Broadcast every 500ms
+
+	roomCursorBroadcasters.set(roomId, interval);
+}
+
+function stopCursorBroadcasting(roomId: string) {
+	if (roomCursorBroadcasters.has(roomId)) {
+		clearInterval(roomCursorBroadcasters.get(roomId)!);
+		roomCursorBroadcasters.delete(roomId);
+	}
+}
+
 // Initialize message handlers
 const messageHandlers = new MessageHandlers(
 	users,
 	messagesByRoom,
 	historyByRoom,
 	redoByRoomUser,
-	{ maxHistorySize: config.maxHistorySize }
+	{ maxHistorySize: config.maxHistorySize },
+	startCursorBroadcasting,
+	stopCursorBroadcasting
 );
 
 wss.on("connection", (ws, req) => {
@@ -227,6 +297,16 @@ wss.on("connection", (ws, req) => {
 			const user = users[idx];
 			if (user) {
 				Logger.info("User disconnected:", user.userId);
+
+				// Check if any rooms need cursor broadcasting updates
+				for (const roomId of user.rooms) {
+					const remainingUsers = users.filter(
+						(u) => u !== user && u.rooms.includes(roomId)
+					);
+					if (remainingUsers.length < 2) {
+						stopCursorBroadcasting(roomId);
+					}
+				}
 			}
 			users.splice(idx, 1);
 		}
@@ -245,12 +325,23 @@ setInterval(() => {
 			messagesByRoom.delete(roomId);
 			historyByRoom.delete(roomId);
 			redoByRoomUser.delete(roomId);
+			stopCursorBroadcasting(roomId); // Stop cursor broadcasting
 			Logger.info(`Cleaned up inactive room: ${roomId}`);
 		} else {
 			// Limit history size
 			const history = historyByRoom.get(roomId);
 			if (history && history.length > config.maxHistorySize) {
 				history.splice(0, history.length - config.maxHistorySize);
+			}
+
+			// Start cursor broadcasting if multiple users
+			const roomUsers = users.filter((user) =>
+				user.rooms.includes(roomId)
+			);
+			if (roomUsers.length >= 2 && !roomCursorBroadcasters.has(roomId)) {
+				startCursorBroadcasting(roomId);
+			} else if (roomUsers.length < 2) {
+				stopCursorBroadcasting(roomId);
 			}
 		}
 	}

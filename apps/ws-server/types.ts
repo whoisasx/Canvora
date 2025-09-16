@@ -8,6 +8,7 @@ export type messageType =
 	| "delete-message"
 	| "update-message"
 	| "cursor"
+	| "cursors-batch"
 	| "sync-all"
 	| "undo"
 	| "redo"
@@ -32,6 +33,9 @@ export interface User {
 	userId: string;
 	ws: WebSocket;
 	rooms: string[];
+	// Cursor tracking fields
+	lastCursorPos?: { x: number; y: number };
+	lastCursorUpdate?: number;
 }
 
 export interface JwtPayload {

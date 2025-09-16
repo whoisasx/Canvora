@@ -522,61 +522,6 @@ export class Game {
 		this.setFrontArrowHead =
 			useFrontArrowStore.getState().setFrontArrowType;
 		this.setBackArrowHead = useBackArrowStore.getState().setBackArrowType;
-
-		const CURSOR_SEND_MS = 500; // send interval (tune as needed)
-		const IDLE_TIMEOUT_MS = 5000;
-
-		// Only start cursor interval if user is already set, otherwise it will be started in setUser()
-		if (this.user) {
-			this.cursorInterval = setInterval(() => {
-				if (!this.user) return;
-
-				const now = Date.now();
-				if (
-					this.lastCursorPos &&
-					now - this.lastMoveTs <= IDLE_TIMEOUT_MS
-				) {
-					this.socketHelper.sendCursor(
-						this.user.username,
-						this.lastCursorPos
-					);
-					return;
-				}
-			}, CURSOR_SEND_MS);
-		}
-	}
-
-	/**
-	 * Restart the cursor interval - useful when user is set
-	 */
-	private restartCursorInterval() {
-		// Clear existing interval if it exists
-		if (this.cursorInterval !== null) {
-			clearInterval(this.cursorInterval);
-			this.cursorInterval = null;
-		}
-
-		// Only start cursor interval if user is set
-		if (!this.user) return;
-
-		const CURSOR_SEND_MS = 500; // send interval (tune as needed)
-		const IDLE_TIMEOUT_MS = 5000;
-
-		this.cursorInterval = setInterval(() => {
-			if (!this.user) return;
-
-			const now = Date.now();
-			if (
-				this.lastCursorPos &&
-				now - this.lastMoveTs <= IDLE_TIMEOUT_MS
-			) {
-				this.socketHelper.sendCursor(
-					this.user.username,
-					this.lastCursorPos
-				);
-				return;
-			}
-		}, CURSOR_SEND_MS);
 	}
 
 	undo() {
@@ -922,6 +867,25 @@ export class Game {
 					this.throttledRender();
 					break;
 				}
+				case "cursors-batch": {
+					const cursors = parsedData.cursors;
+					if (!Array.isArray(cursors)) return;
+
+					// Clear old cursors and update with new batch
+					this.otherUsers.clear();
+
+					for (const cursor of cursors) {
+						if (cursor.username && cursor.pos && cursor.lastSeen) {
+							this.otherUsers.set(cursor.username, {
+								pos: cursor.pos,
+								lastSeen: cursor.lastSeen,
+							});
+						}
+					}
+
+					this.throttledRender();
+					break;
+				}
 				case "sync": {
 					this.messages = parsedData.messages;
 					this.layerManager.setMessages(this.messages);
@@ -1023,9 +987,6 @@ export class Game {
 		this.user = user;
 		// Update socket helper with user ID
 		this.socketHelper = new SocketHelper(this.socket, this.roomId, user.id);
-
-		// Restart cursor interval now that user is set
-		this.restartCursorInterval();
 
 		// Update shape managers with user ID
 		if (this.rc && this.generator) {
@@ -1456,6 +1417,11 @@ export class Game {
 
 		this.lastCursorPos = pos;
 		this.lastMoveTs = Date.now();
+
+		// Send cursor position immediately (server will handle throttling)
+		if (this.user) {
+			this.socketHelper.sendCursor(this.user.username, pos);
+		}
 
 		if (this.tool === "mouse" && !this.clicked) {
 			this.selectShapeHover(pos);

@@ -10,7 +10,9 @@ export class MessageHandlers {
 		private messagesByRoom: Map<string, any[]>,
 		private historyByRoom: Map<string, Op[]>,
 		private redoByRoomUser: Map<string, Map<string, Op[]>>,
-		private config: { maxHistorySize: number }
+		private config: { maxHistorySize: number },
+		private startCursorBroadcasting: (roomId: string) => void,
+		private stopCursorBroadcasting: (roomId: string) => void
 	) {}
 
 	async handleJoinRoom(ws: WebSocket, data: MessageData) {
@@ -24,7 +26,9 @@ export class MessageHandlers {
 
 		for (let user of this.users) {
 			if (user.ws === ws) {
-				user.rooms.push(roomId);
+				if (!user.rooms.includes(roomId)) {
+					user.rooms.push(roomId);
+				}
 			}
 		}
 
@@ -37,6 +41,14 @@ export class MessageHandlers {
 
 		const current = this.messagesByRoom.get(roomId) || [];
 		ws.send(JSON.stringify({ type: "sync", messages: current }));
+
+		// Start cursor broadcasting for this room if multiple users
+		const roomUsers = this.users.filter((user) =>
+			user.rooms.includes(roomId)
+		);
+		if (roomUsers.length >= 2) {
+			this.startCursorBroadcasting(roomId);
+		}
 	}
 
 	async handleLeaveRoom(ws: WebSocket, data: MessageData) {
@@ -326,22 +338,16 @@ export class MessageHandlers {
 			return;
 		}
 
-		// Broadcast cursor position to other users in the room
+		// Update user's cursor position in memory
 		for (let user of this.users) {
-			if (user.rooms.includes(roomId) && user.ws !== ws) {
-				try {
-					user.ws.send(
-						JSON.stringify({
-							type: "cursor",
-							username,
-							pos,
-						})
-					);
-				} catch (err) {
-					// ignore send errors
-				}
+			if (user.ws === ws) {
+				user.lastCursorPos = pos;
+				user.lastCursorUpdate = Date.now();
+				break;
 			}
 		}
+
+		// Note: No immediate broadcasting here - the interval will handle it
 	}
 
 	async handleSyncAll(ws: WebSocket, data: MessageData) {
