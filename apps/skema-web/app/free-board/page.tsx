@@ -54,7 +54,7 @@ export default function () {
 
 	return (
 		<SessionProvider>
-			{room && user ? (
+			{/* {room && user ? (
 				<CanvasClient
 					roomId={room.id}
 					user={user}
@@ -62,7 +62,8 @@ export default function () {
 				/>
 			) : (
 				<div>Loading...</div>
-			)}
+			)} */}
+			<div>adil</div>
 		</SessionProvider>
 	);
 }

@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { JoinSessionModal } from "@/components/dashboard/JoinSessionModal";
 import toast from "react-hot-toast";
 import axios from "axios";
+import Loading from "./loading";
 
 export default function DemoDashboard() {
 	const { data: session, status } = useSession();
@@ -154,11 +155,7 @@ export default function DemoDashboard() {
 	};
 
 	if (!mounted || status === "loading") {
-		return (
-			<div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-			</div>
-		);
+		return <Loading />;
 	}
 
 	return (

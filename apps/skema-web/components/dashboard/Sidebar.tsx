@@ -272,7 +272,7 @@ export function Sidebar() {
 							<div className="flex items-center justify-between">
 								<ThemeToggle />
 								<button
-									onClick={() => signOut(redirect("/"))}
+									onClick={() => signOut(redirect("/signin"))}
 									className="flex items-center space-x-2 text-canvora-600 dark:text-canvora-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
 								>
 									<svg

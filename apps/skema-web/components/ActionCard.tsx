@@ -227,7 +227,7 @@ export default function ActionCard({
 										<ButtonAction
 											children={actionIcon.lo}
 											onClick={() =>
-												signOut(redirect("/"))
+												signOut(redirect("/signin"))
 											}
 										/>
 									</motion.div>
