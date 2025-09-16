@@ -99,6 +99,8 @@ import {
 	PencilManager,
 	ImageManager,
 	ImageHelper,
+	TextManager,
+	TextHelper,
 } from "./shapes";
 
 type Laser = {
@@ -189,17 +191,11 @@ export class Game {
 	private arrowManager: ArrowManager | null = null;
 	private pencilManager: PencilManager | null = null;
 	private imageManager: ImageManager | null = null;
+	private textManager: TextManager | null = null;
 
 	// add small fields for throttling preview sends
 	private previewMessage: Message[];
 	private previewId: string = "";
-	private lastPreviewSend: number = 0;
-	private lastPreviewRect: {
-		x: number;
-		y: number;
-		w: number;
-		h: number;
-	} | null = null;
 
 	// Local preview state for current user's drawing
 	private localPreview: {
@@ -416,6 +412,15 @@ export class Game {
 			() => this.renderCanvas()
 		);
 
+		this.textManager = new TextManager(
+			this.ctx,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || "",
+			this.scale
+		);
+
 		this.initHandler();
 		this.initSocketHandler();
 		this.initMouseEventHandler();
@@ -432,6 +437,9 @@ export class Game {
 
 				this.offsetX = centerX - worldX * this.scale;
 				this.offsetY = centerY - worldY * this.scale;
+
+				// Update scale for text manager
+				if (this.textManager) this.textManager.updateScale(this.scale);
 
 				this.applyTransform();
 				// Re-render after programmatic zoom change for viewport culling
@@ -1051,6 +1059,15 @@ export class Game {
 				user.id,
 				() => this.renderCanvas()
 			);
+
+			this.textManager = new TextManager(
+				this.ctx,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id,
+				this.scale
+			);
 		}
 	}
 
@@ -1421,8 +1438,6 @@ export class Game {
 		this.startY = pos.y;
 
 		this.previewId = uuidv4();
-		this.lastPreviewSend = 0;
-		this.lastPreviewRect = null;
 		this.localPreview = null; // Clear any existing local preview
 
 		if (this.tool === "mouse") {
@@ -1599,7 +1614,7 @@ export class Game {
 				this.canvas.style.cursor = this.resizeHandler + "-resize";
 			else if (this.isDragging) this.canvas.style.cursor = "move";
 			this.handleMouseDrag(pos);
-			this.throttledRender();
+			this.renderCanvas();
 			return;
 		}
 		this.renderCanvas();
@@ -1653,6 +1668,9 @@ export class Game {
 
 			this.offsetX = mouseX - worldX * this.scale;
 			this.offsetY = mouseY - worldY * this.scale;
+
+			// Update scale for text manager
+			if (this.textManager) this.textManager.updateScale(this.scale);
 
 			this.setZoom(Math.round(this.scale * 100));
 
@@ -1712,6 +1730,7 @@ export class Game {
 		if (this.rhombusManager) this.rhombusManager.cleanup();
 		if (this.ellipseManager) this.ellipseManager.cleanup();
 		if (this.imageManager) this.imageManager.cleanup();
+		if (this.textManager) this.textManager.cleanup();
 	}
 
 	// !rectangle
@@ -2034,139 +2053,38 @@ export class Game {
 		};
 
 		const sendPreview = () => {
-			// do not render this client's preview locally; only send to server so other clients see it
-			const tempValue = textarea.value;
-			const totalLines = (tempValue || "").split("\n").length;
+			if (!this.textManager) return;
 
-			// convert measured dimensions back to world coords
-			const bboxWidthWorld = width / this.scale;
-			const bboxHeightWorld = Math.max(
-				(height || totalLines * this.props.fontSize! * this.scale) /
-					this.scale,
-				this.props.fontSize!
-			);
-
-			const rect = {
-				x: pos.x,
-				y: pos.y,
-				w: bboxWidthWorld,
-				h: bboxHeightWorld,
-			};
-
-			// throttle & skip identical rects
-			const now = Date.now();
-			if (
-				this.lastPreviewRect &&
-				this.lastPreviewRect.x === rect.x &&
-				this.lastPreviewRect.y === rect.y &&
-				this.lastPreviewRect.w === rect.w &&
-				this.lastPreviewRect.h === rect.h &&
-				now - this.lastPreviewSend < THROTTLE_MS
-			) {
-				return;
-			}
-			this.lastPreviewSend = now;
-			this.lastPreviewRect = {
-				x: rect.x,
-				y: rect.y,
-				w: rect.w,
-				h: rect.h,
-			};
-
-			// lightweight dummy for shapeData
-			const dummyShapeData = { options: {} } as unknown as Drawable;
-
-			const message: Message = {
-				id: this.previewId,
-				shape: "text" as Tool,
-				shapeData: dummyShapeData,
-				opacity: this.props.opacity,
-				textData: {
-					text: textarea.value,
-					fontFamily: this.props.fontFamily!,
-					fontSize: `${this.props.fontSize}px`,
-					textColor: this.props.stroke!,
-					textAlign: this.props.textAlign!,
-					pos,
-				},
-				boundingBox: rect,
-			};
-
-			// NOTE: do NOT push this preview into this.previewMessage for the local user.
-			// Other clients will receive the preview via the socket and render it.
-			this.socket.send(
-				JSON.stringify({
-					type: "draw-message",
-					flag: "text-preview",
-					message,
-					roomId: this.roomId,
-					clientId: this.user!.id,
-				})
+			this.textManager.sendTextPreview(
+				textarea.value,
+				pos,
+				width,
+				height,
+				this.props,
+				this.previewId
 			);
 		};
 
 		let messageSend: boolean = false;
 		const messageText = () => {
-			if (messageSend) return;
+			if (messageSend || !this.textManager) return;
 			messageSend = true;
-			const text = textarea.value.trim();
-			if (!text) {
-				if (textarea.parentNode) textarea.remove();
-				this.setTool("mouse" as Tool);
-				this.setProps("mouse" as Tool);
-				return;
-			}
 
-			const tempValue = textarea.value.trim();
-			const totalLines = tempValue.split("\n").length;
-			// Convert measurements taken in screen pixels back to world coordinates
-			const bboxWidthWorld = width / this.scale;
-			const bboxHeightWorld = Math.max(
-				(height || totalLines * this.props.fontSize! * this.scale) /
-					this.scale,
-				this.props.fontSize!
+			this.textManager.createTextMessage(
+				textarea.value,
+				pos,
+				width,
+				height,
+				this.props,
+				this.previewId,
+				() => {
+					// Cleanup callback
+					if (textarea.parentNode) textarea.remove();
+					this.setTool("mouse" as Tool);
+					this.setProps("mouse" as Tool);
+					this.clicked = false;
+				}
 			);
-
-			const dummyShapeData = { options: {} } as unknown as Drawable;
-
-			const message: Message = {
-				id: uuidv4(),
-				shape: "text" as Tool,
-				shapeData: dummyShapeData,
-				opacity: this.props.opacity,
-				textData: {
-					text,
-					fontFamily: this.props.fontFamily!,
-					fontSize: `${this.props.fontSize}px`,
-					textColor: this.props.stroke!,
-					textAlign: this.props.textAlign!,
-					pos,
-				},
-				boundingBox: {
-					x: pos.x,
-					y: pos.y,
-					w: bboxWidthWorld,
-					h: bboxHeightWorld,
-				},
-			};
-
-			// include previewId so server can clear previews for other clients
-			this.socket.send(
-				JSON.stringify({
-					type: "create-message",
-					message,
-					previewId: this.previewId,
-					roomId: this.roomId,
-					clientId: this.user!.id,
-				})
-			);
-
-			// local preview wasn't added, so just clean up UI
-			if (textarea.parentNode) textarea.remove();
-			this.setTool("mouse" as Tool);
-			this.setProps("mouse" as Tool);
-			this.clicked = false;
-			return;
 		};
 
 		// initial sizing + initial preview
@@ -2200,85 +2118,12 @@ export class Game {
 		textarea.focus();
 	}
 
-	// Font family cache for better performance
-	private fontFamilyCache = new Map<string, string>([
-		["mononoki", mononoki.style.fontFamily],
-		["excali", excali.style.fontFamily],
-		["firaCode", firaCode.style.fontFamily],
-		["ibm", ibm.style.fontFamily],
-		["comic", comic.style.fontFamily],
-		["monospace", monospace.style.fontFamily],
-		["nunito", nunito.style.fontFamily],
-	]);
-
-	private getFontFamily(fontFamily: string): string {
-		return this.fontFamilyCache.get(fontFamily) || excali.style.fontFamily;
-	}
-
-	private calculateTextX(
-		x: number,
-		bboxW: number,
-		leftPaddingWorld: number,
-		textAlign: string
-	): number {
-		switch (textAlign) {
-			case "center":
-				return x + bboxW / 2;
-			case "right":
-				return x + bboxW;
-			default:
-				return x + leftPaddingWorld;
-		}
-	}
-
 	drawText(message: Message) {
-		if (!message.textData) return;
-
-		// Cache font setup to avoid repeated context changes
-		this.ctx.save();
-
-		// Set all properties at once
-		const fontFamily = this.getFontFamily(message.textData.fontFamily);
-		this.ctx.font = `${message.textData.fontSize} ${fontFamily}`;
-		this.ctx.textBaseline = "top";
-		this.ctx.textAlign = (message.textData.textAlign ||
-			"left") as CanvasTextAlign;
-		this.ctx.fillStyle = normalizeStroke(
-			this.theme,
-			message.textData.textColor
-		);
-		this.ctx.globalAlpha = message.opacity ?? 1;
-
-		// Calculate all positions before drawing
-		const lines = message.textData.text.includes("\n")
-			? message.textData.text.split("\n")
-			: [message.textData.text];
-
-		const x = message.textData.pos.x;
-		const y = message.textData.pos.y;
-		const topPaddingWorld = 8 / this.scale;
-		const leftPaddingWorld = 8 / this.scale;
-		const fontSizeNum = parseInt(message.textData.fontSize);
-		const lineHeight = fontSizeNum * 1.5;
-		const bboxW = message.boundingBox.w;
-
-		// Draw all lines in one pass
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i] || "";
-			let drawX = this.calculateTextX(
-				x,
-				bboxW,
-				leftPaddingWorld,
-				message.textData.textAlign
-			);
-			this.ctx.fillText(
-				line,
-				drawX,
-				y + topPaddingWorld + i * lineHeight
-			);
+		if (!this.textManager) {
+			console.error("TextManager not initialized");
+			return;
 		}
-
-		this.ctx.restore();
+		this.textManager.render(message);
 	}
 	// !image
 	async handleImageUpload() {
@@ -3317,219 +3162,61 @@ export class Game {
 	}
 	//* 7.text
 	handleTextDrag(message: Message, pos: { x: number; y: number }) {
-		if (!message.boundingBox) return;
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-		const rect = {
-			...message.boundingBox,
-			x: message.boundingBox.x + dx,
-			y: message.boundingBox.y + dy,
-		};
-		// also translate any text position inside the message so the visible text moves with the box
-		const newTextData = message.textData
-			? {
-					...message.textData,
-					pos: {
-						x: message.textData.pos.x + dx,
-						y: message.textData.pos.y + dy,
-					},
+		if (!this.textManager) {
+			console.error("TextManager not initialized");
+			return;
+		}
+
+		this.textManager.handleDrag(
+			message,
+			pos,
+			{ x: this.prevX, y: this.prevY },
+			(updatedMessage: Message) => this.setSelectedMessage(updatedMessage)
+		);
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
 				}
-			: undefined;
-		const newMessage: Message = {
-			...message,
-			boundingBox: rect,
-			textData: newTextData,
-		};
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleTextResize(message: Message, pos: { x: number; y: number }) {
-		if (!message.boundingBox || !message.textData) return;
-		if (this.resizeHandler === "none") return;
+		if (!this.textManager) return;
 
-		const { x, y, w, h } = message.boundingBox;
-		let newRect = { x, y, w, h };
-
-		// --- resize logic (only corners) ---
-		switch (this.resizeHandler) {
-			case "se": // bottom-right
-				newRect = { x, y, w: pos.x - x, h: pos.y - y };
-				break;
-			case "sw": // bottom-left
-				newRect = { x: pos.x, y, w: w + (x - pos.x), h: pos.y - y };
-				break;
-			case "ne": // top-right
-				newRect = { x, y: pos.y, w: pos.x - x, h: h + (y - pos.y) };
-				break;
-			case "nw": // top-left
-				newRect = {
-					x: pos.x,
-					y: pos.y,
-					w: w + (x - pos.x),
-					h: h + (y - pos.y),
-				};
-				break;
-			default:
-				return; // ❌ ignore side handles
+		this.textManager.handleResize(
+			message,
+			pos,
+			this.resizeHandler,
+			(updatedMessage: Message) =>
+				this.setSelectedMessage(updatedMessage),
+			(cursor: string) => {
+				// Update cursor if needed
+			}
+		);
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
 		}
-
-		// --- ❌ prevent flip ---
-		if (newRect.w <= 0 || newRect.h <= 0) {
-			return; // freeze
-		}
-
-		// --- uniform scaling (based on width + height) ---
-		const scaleX = w === 0 ? 1 : newRect.w / w;
-		const scaleY = h === 0 ? 1 : newRect.h / h;
-		const scale = Math.min(scaleX, scaleY); // uniform scale
-
-		const oldFont = message.textData?.fontSize ?? "16px";
-		const oldFontNum = parseFloat(oldFont);
-		const newFontSizeNum = Math.max(16, oldFontNum * scale); // clamp >= 16px
-		const newFontSize = `${newFontSizeNum}px`;
-
-		// --- adjust pos if origin moved ---
-		const deltaX = newRect.x - x;
-		const deltaY = newRect.y - y;
-		const newTextPos = {
-			...message.textData.pos,
-			x: message.textData.pos.x + deltaX,
-			y: message.textData.pos.y + deltaY,
-		};
-
-		// --- new message ---
-		const newMessage: Message = {
-			...message,
-			boundingBox: newRect,
-			textData: {
-				...message.textData,
-				fontSize: newFontSize,
-				pos: newTextPos,
-			},
-		};
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
 	}
 	handleTextPropsChange(message: Message) {
-		if (!message.boundingBox || !message.textData) return;
+		if (!this.textManager) return;
 
-		// ensure fontSize uses px like drawText/handleTextInput
-		const fontSizePx = `${this.props.fontSize}px`;
-
-		// compute lines and height (use similar lineHeight as drawText)
-		const lines = message.textData.text
-			? message.textData.text.split("\n")
-			: [""];
-		const fontSizeNum = this.props.fontSize!;
-		const lineHeight = fontSizeNum * 1.5; // same multiplier as drawText
-		const estimatedHeight = Math.max(
-			lines.length * lineHeight,
-			fontSizeNum
-		);
-
-		// compute width using canvas measureText so we can update bbox.w
-		let fontFamily = "";
-		if (this.props.fontFamily === "mononoki")
-			fontFamily = mononoki.style.fontFamily;
-		if (this.props.fontFamily === "excali")
-			fontFamily = excali.style.fontFamily;
-		if (this.props.fontFamily === "firaCode")
-			fontFamily = firaCode.style.fontFamily;
-		if (this.props.fontFamily === "ibm") fontFamily = ibm.style.fontFamily;
-		if (this.props.fontFamily === "comic")
-			fontFamily = comic.style.fontFamily;
-		if (this.props.fontFamily === "monospace")
-			fontFamily = monospace.style.fontFamily;
-		if (this.props.fontFamily === "nunito")
-			fontFamily = nunito.style.fontFamily;
-
-		this.ctx.save();
-		this.ctx.font = `${fontSizePx} ${fontFamily}`;
-		let maxLineWidth = 0;
-		for (let l of lines) {
-			const w = this.ctx.measureText(l || " ").width;
-			if (w > maxLineWidth) maxLineWidth = w;
-		}
-		this.ctx.restore();
-
-		// textarea horizontal padding was 8px each side -> convert to world units
-		const horizontalPaddingWorld = (8 + 8) / this.scale; // 16px total / scale
-
-		// convert measured pixel width to world units (match handleTextInput flow)
-		const textWidthWorld = maxLineWidth / this.scale;
-		const estimatedWidth = Math.max(
-			textWidthWorld + horizontalPaddingWorld,
-			fontSizeNum
-		);
-
-		// assign estimated width/height directly so bbox shrinks when font size reduces
-		const newBoundingBox = {
-			...message.boundingBox,
-			w: estimatedWidth,
-			h: estimatedHeight,
-		};
-
-		const newMessage: Message = {
-			...message,
-			opacity: this.props.opacity,
-			textData: {
-				...message.textData,
-				fontSize: fontSizePx,
-				fontFamily: this.props.fontFamily!,
-				textColor: this.props.stroke!,
-				textAlign: this.props.textAlign!,
-			},
-			boundingBox: newBoundingBox,
-		};
-
-		// update in messages list so render/diffs use the new value
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? { ...newMessage } : msg
-		// );
-
-		this.setSelectedMessage(newMessage);
-		// this.renderCanvas();
-
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.textManager.updateProperties(
+			message,
+			this.props,
+			(updatedMessage: Message) => this.setSelectedMessage(updatedMessage)
 		);
 	}
 	//* 8.image
