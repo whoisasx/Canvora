@@ -97,6 +97,8 @@ import {
 	ArrowManager,
 	ArrowHelper,
 	PencilManager,
+	ImageManager,
+	ImageHelper,
 } from "./shapes";
 
 type Laser = {
@@ -178,7 +180,6 @@ export class Game {
 	private generator: RoughGenerator | null = null;
 	private previewSeed: number | null = null;
 	private imageSrc: string | null = null;
-	private imageCache = new Map<string, HTMLImageElement>();
 
 	// Shape managers
 	private rectangleManager: RectangleManager | null = null;
@@ -187,6 +188,7 @@ export class Game {
 	private lineManager: LineManager | null = null;
 	private arrowManager: ArrowManager | null = null;
 	private pencilManager: PencilManager | null = null;
+	private imageManager: ImageManager | null = null;
 
 	// add small fields for throttling preview sends
 	private previewMessage: Message[];
@@ -402,6 +404,16 @@ export class Game {
 			this.theme,
 			this.roomId,
 			this.user?.id || ""
+		);
+
+		this.imageManager = new ImageManager(
+			this.ctx,
+			this.generator,
+			this.socket,
+			this.theme,
+			this.roomId,
+			this.user?.id || "",
+			() => this.renderCanvas()
 		);
 
 		this.initHandler();
@@ -958,7 +970,9 @@ export class Game {
 		}
 
 		if (tool === "image") {
-			this.handleImageUpload();
+			this.handleImageUpload().catch((error) => {
+				console.error("Error handling image upload:", error);
+			});
 		}
 	}
 	setUser(user: User) {
@@ -1026,6 +1040,16 @@ export class Game {
 				this.theme,
 				this.roomId,
 				user.id
+			);
+
+			this.imageManager = new ImageManager(
+				this.ctx,
+				this.generator,
+				this.socket,
+				this.theme,
+				this.roomId,
+				user.id,
+				() => this.renderCanvas()
 			);
 		}
 	}
@@ -1682,6 +1706,12 @@ export class Game {
 		if (this.updateTimeout) {
 			clearTimeout(this.updateTimeout);
 		}
+
+		// Clean up shape managers
+		if (this.rectangleManager) this.rectangleManager.cleanup();
+		if (this.rhombusManager) this.rhombusManager.cleanup();
+		if (this.ellipseManager) this.ellipseManager.cleanup();
+		if (this.imageManager) this.imageManager.cleanup();
 	}
 
 	// !rectangle
@@ -2251,84 +2281,50 @@ export class Game {
 		this.ctx.restore();
 	}
 	// !image
-	handleImageUpload() {
+	async handleImageUpload() {
+		if (!this.imageManager) {
+			throw new Error("ImageManager not initialized");
+		}
+
 		this.clicked = true;
-		const input = document.createElement("input");
-		input.type = "file";
-		input.accept = "image/*";
-		input.onchange = (e: Event) => {
-			const target = e.target as HTMLInputElement;
-			const file = target.files?.[0];
-			if (!file) {
-				if (input.parentNode) input.remove();
-				this.setTool("mouse" as Tool);
-				this.setProps("mouse" as Tool);
-				return;
-			}
+		this.imageSrc = await this.imageManager.handleImageUpload();
 
-			const reader = new FileReader();
-			reader.onload = () => {
-				this.imageSrc = reader.result as string;
-			};
-			reader.readAsDataURL(file);
-
-			if (input.parentNode) input.remove();
-			return;
-		};
-		input.click();
+		if (!this.imageSrc) {
+			this.setTool("mouse" as Tool);
+			this.setProps("mouse" as Tool);
+		}
 	}
 	drawMovingImage(pos: { x: number; y: number }) {
-		if (!this.imageSrc) return;
-		const img = new Image();
-		img.src = this.imageSrc;
+		if (!this.imageManager || !this.imageSrc) {
+			console.error("ImageManager not initialized or no image source");
+			return;
+		}
 
-		img.onload = () => {
-			this.ctx.save();
-			this.ctx.globalAlpha = this.props.opacity!;
-
-			this.ctx.drawImage(img, pos.x, pos.y, 150, 150);
-
-			this.ctx.restore();
-		};
+		this.imageManager.renderPreview(pos, this.imageSrc, this.props);
 	}
 	messageImage(pos: { x: number; y: number }) {
-		if (!this.imageSrc) return;
-
-		const dummyPath = `M${pos.x},${pos.y} L${pos.x + 1},${pos.y}`;
-		const dummyShapeData = this.generator!.path(dummyPath, {});
+		if (!this.imageManager || !this.imageSrc) {
+			throw new Error("ImageManager not initialized or no image source");
+		}
 
 		const img = new Image();
 		img.src = this.imageSrc;
-
-		const { opacity, edges } = this.props;
-		const { roomId } = this;
+		const imageSrc = this.imageSrc;
 
 		img.onload = () => {
-			const message: Message = {
-				id: uuidv4(),
-				shape: "image",
-				shapeData: dummyShapeData,
-				opacity,
-				edges,
-				imageData: {
-					src: this.imageSrc!,
-					pos,
-					w: img.naturalWidth,
-					h: img.naturalHeight,
-				},
-				boundingBox: {
-					x: pos.x,
-					y: pos.y,
-					w: img.naturalWidth,
-					h: img.naturalHeight,
-				},
-			};
+			const message = this.imageManager!.createMessage(
+				pos,
+				imageSrc,
+				img.naturalWidth,
+				img.naturalHeight,
+				this.props
+			);
 
 			this.socket.send(
 				JSON.stringify({
 					type: "create-message",
 					message,
-					roomId,
+					roomId: this.roomId,
 					clientId: this.user!.id,
 					previewId: this.previewId,
 				})
@@ -2338,49 +2334,11 @@ export class Game {
 		};
 	}
 	drawImage(message: Message) {
-		const { boundingBox, imageData, opacity, edges } = message;
-		if (!boundingBox || !imageData) return;
-		let img = this.imageCache.get(message.id);
-		if (!img) {
-			img = new Image();
-			img.src = imageData.src;
-			img.onload = () => {
-				this.imageCache.set(message.id, img!);
-				this.renderCanvas();
-			};
+		if (!this.imageManager) {
+			console.error("ImageManager not initialized");
 			return;
 		}
-
-		const { x, y, w, h } = boundingBox;
-
-		this.ctx.save();
-
-		// 1. Apply opacity
-		this.ctx.globalAlpha = opacity ?? 1;
-
-		// 2. Clip for rounded edges
-		if (edges === "round") {
-			const r = 50;
-
-			this.ctx.beginPath();
-			this.ctx.moveTo(x + r, y);
-			this.ctx.lineTo(x + w - r, y);
-			this.ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-			this.ctx.lineTo(x + w, y + h - r);
-			this.ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-			this.ctx.lineTo(x + r, y + h);
-			this.ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-			this.ctx.lineTo(x, y + r);
-			this.ctx.quadraticCurveTo(x, y, x + r, y);
-			this.ctx.closePath();
-
-			this.ctx.clip(); // 👈 clip inside rounded rect
-		}
-
-		// 3. Draw image inside clip
-		this.ctx.drawImage(img, x, y, w, h);
-
-		this.ctx.restore();
+		this.imageManager.render(message);
 	}
 
 	// !eraser
@@ -3576,169 +3534,66 @@ export class Game {
 	}
 	//* 8.image
 	handleImageDrag(message: Message, pos: { x: number; y: number }) {
-		if (!message.boundingBox) return;
-
-		const dx = pos.x - this.prevX;
-		const dy = pos.y - this.prevY;
-
-		const rect = {
-			...message.boundingBox,
-			x: message.boundingBox.x + dx,
-			y: message.boundingBox.y + dy,
-		};
-
-		const newMessage: Message = {
-			...message,
-			boundingBox: rect,
-		};
-
-		this.prevX = pos.x;
-		this.prevY = pos.y;
-
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-		// this.renderCanvas();
-	}
-	handleImageResize(message: Message, pos: { x: number; y: number }) {
-		if (!message.boundingBox) return;
-		if (this.resizeHandler === "none") return;
-
-		const { x, y, w, h } = message.boundingBox;
-		let newRect = { x, y, w, h };
-
-		switch (this.resizeHandler) {
-			case "n": // top edge
-				newRect = {
-					x,
-					y: pos.y,
-					w,
-					h: h + (y - pos.y),
-				};
-				break;
-
-			case "s": // bottom edge
-				newRect = {
-					x,
-					y,
-					w,
-					h: pos.y - y,
-				};
-				break;
-
-			case "w": // left edge
-				newRect = {
-					x: pos.x,
-					y,
-					w: w + (x - pos.x),
-					h,
-				};
-				break;
-
-			case "e": // right edge
-				newRect = {
-					x,
-					y,
-					w: pos.x - x,
-					h,
-				};
-				break;
-
-			case "nw": // top-left corner
-				newRect = {
-					x: pos.x,
-					y: pos.y,
-					w: w + (x - pos.x),
-					h: h + (y - pos.y),
-				};
-				break;
-
-			case "ne": // top-right corner
-				newRect = {
-					x,
-					y: pos.y,
-					w: pos.x - x,
-					h: h + (y - pos.y),
-				};
-				break;
-
-			case "sw": // bottom-left corner
-				newRect = {
-					x: pos.x,
-					y,
-					w: w + (x - pos.x),
-					h: pos.y - y,
-				};
-				break;
-
-			case "se": // bottom-right corner
-				newRect = {
-					x,
-					y,
-					w: pos.x - x,
-					h: pos.y - y,
-				};
-				break;
+		if (!this.imageManager) {
+			console.error("ImageManager not initialized");
+			return;
 		}
 
-		// Optional: lock aspect ratio
-		// const aspect = w / h;
-		// newRect.h = newRect.w / aspect;
-
-		const newMessage: Message = {
-			...message,
-			boundingBox: newRect,
-		};
+		this.imageManager.handleDrag(
+			message,
+			pos,
+			{ x: this.prevX, y: this.prevY },
+			this.setSelectedMessage
+		);
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 
 		this.prevX = pos.x;
 		this.prevY = pos.y;
+	}
+	handleImageResize(message: Message, pos: { x: number; y: number }) {
+		if (!this.imageManager) {
+			console.error("ImageManager not initialized");
+			return;
+		}
 
-		// this.messages = this.messages.map((msg) =>
-		// 	msg.id === message.id ? newMessage : msg
-		// );
-		this.setSelectedMessage(newMessage);
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				flag: "update-preview",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		const result = this.imageManager.handleResize(
+			message,
+			pos,
+			this.resizeHandler,
+			this.setSelectedMessage,
+			(cursor: string) => this.setCursor(cursor),
+			false // Set to true if you want to maintain aspect ratio
 		);
-		// this.renderCanvas();
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
+		this.resizeHandler = result.newHandler;
+		this.prevX = pos.x;
+		this.prevY = pos.y;
 	}
 	handleImagePropsChange(message: Message) {
-		if (!message.boundingBox) return;
+		if (!this.imageManager) {
+			console.error("ImageManager not initialized");
+			return;
+		}
 
-		const newMessage: Message = {
-			...message,
-			opacity: this.props.opacity,
-			edges: this.props.edges,
-		};
-
-		this.setSelectedMessage(newMessage);
-
-		this.socket.send(
-			JSON.stringify({
-				type: "update-message",
-				id: newMessage.id,
-				newMessage,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
+		this.imageManager.updateProperties(
+			message,
+			this.props,
+			this.setSelectedMessage
 		);
 	}
 }
