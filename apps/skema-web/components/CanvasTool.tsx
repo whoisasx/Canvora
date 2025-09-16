@@ -8,6 +8,7 @@ import { useThemeStore } from "@/utils/canvasStore";
 import useToolStore, { useLockStore } from "@/utils/toolStore";
 import { useState } from "react";
 import { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function CanvasTool() {
 	const theme = useThemeStore((state) => state.theme);
@@ -44,83 +45,150 @@ export default function CanvasTool() {
 
 	useEffect(() => {
 		if (!lockClicked) return;
-		setLock(theme === "light" ? "b197fc" : "7950f2");
+		setLock(theme === "light" ? "a78bfa" : "8b5cf6");
 	}, [theme, lockClicked]);
 
+	const toolGroups = [
+		{
+			name: "Navigation",
+			tools: ["hand", "mouse"],
+		},
+		{
+			name: "Shapes",
+			tools: ["rectangle", "rhombus", "arc"],
+		},
+		{
+			name: "Drawing",
+			tools: ["arrow", "line", "pencil"],
+		},
+		{
+			name: "Content",
+			tools: ["text", "image", "eraser"],
+		},
+	];
+
 	return (
-		<div
+		<motion.div
 			ref={containerRef}
-			className="w-full h-full flex items-center justify-between py-2 px-1 gap-1 relative"
+			className="w-full h-full flex items-center justify-between py-2 px-2 gap-2 relative backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border border-canvora-200/50 dark:border-canvora-600/30 rounded-xl shadow-lg"
+			initial={{ opacity: 0, y: 5 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.2 }}
 		>
-			<ButtonTool
-				children={toolsIcon["lock"]}
-				color={lock}
-				onClick={() => {
-					setLockClicked(!lockClicked);
-					if (lock.length > 0) setLock("");
-					else setLock(theme === "light" ? "b197fc" : "7950f2");
-				}}
-			/>
-			<div className="h-[70%] border-r-1 border-r-gray-200 dark:border-gray-600"></div>
-			{[
-				"hand",
-				"mouse",
-				"rectangle",
-				"rhombus",
-				"arc",
-				"arrow",
-				"line",
-				"pencil",
-				"text",
-				"image",
-				"eraser",
-			].map((val, i) => (
+			{/* Lock Button */}
+			<motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
 				<ButtonTool
-					key={i}
-					children={toolsIcon[val]}
-					color={`${val === tool ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-					// className={`${val === tool ? (theme === "light" ? "bg-oc-grape-3" : "bg-oc-grape-6") : ""}`}
+					children={toolsIcon["lock"]}
+					color={lock}
 					onClick={() => {
-						setTool(val as Tool);
-						setProps(val as Tool);
-						setOptionsClicked(false);
+						setLockClicked(!lockClicked);
+						if (lock.length > 0) setLock("");
+						else setLock(theme === "light" ? "a78bfa" : "8b5cf6");
 					}}
 				/>
-			))}
-			<div className="h-[70%] border-r-1 border-r-gray-200 dark:border-gray-600"></div>
-			<ButtonTool
-				children={toolsIcon["options"]}
-				color={`${tool === "web" || tool === "laser" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-				onClick={(e: React.PointerEvent<HTMLButtonElement>) => {
-					e.stopPropagation();
-					setOptionsClicked((prev) => !prev);
-				}}
-			/>
-			{optionsClicked && (
-				<div
-					className="w-50 h-fit py-2 px-2 border-1 border-gray-200 dark:border-0 rounded-lg shadow-lg absolute top-[115%] right-0 z-40 flex flex-col gap-1 justify-center items-start bg-white dark:bg-[#232329]"
-					aria-expanded={optionsClicked}
-				>
-					<ButtonAction
-						children={toolsIcon["web"]}
-						color={`${tool === "web" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-						onClick={() => {
-							setTool("web");
-							setProps("web");
-							setOptionsClicked((prev) => !prev);
+			</motion.div>
+
+			{/* Divider */}
+			<div className="h-8 w-px bg-gradient-to-b from-transparent via-canvora-300/50 to-transparent dark:via-canvora-600/50"></div>
+
+			{/* Main Tools */}
+			<div className="flex items-center gap-1">
+				{[
+					"hand",
+					"mouse",
+					"rectangle",
+					"rhombus",
+					"arc",
+					"arrow",
+					"line",
+					"pencil",
+					"text",
+					"image",
+					"eraser",
+				].map((val, i) => (
+					<motion.div
+						key={i}
+						whileHover={{ scale: 1.02, y: -1 }}
+						whileTap={{ scale: 0.98 }}
+						transition={{
+							type: "spring",
+							stiffness: 500,
+							damping: 25,
 						}}
-					/>
-					<ButtonAction
-						children={toolsIcon["laser"]}
-						color={`${tool === "laser" ? (theme === "light" ? "e0dfff" : "403e6a") : ""}`}
-						onClick={() => {
-							setTool("laser");
-							setProps("laser");
-							setOptionsClicked((prev) => !prev);
-						}}
-					/>
-				</div>
-			)}
-		</div>
+					>
+						<ButtonTool
+							children={toolsIcon[val]}
+							color={`${val === tool ? (theme === "light" ? "c4b5fd" : "4945a9") : ""}`}
+							onClick={() => {
+								setTool(val as Tool);
+								setProps(val as Tool);
+								setOptionsClicked(false);
+							}}
+						/>
+					</motion.div>
+				))}
+			</div>
+
+			{/* Divider */}
+			<div className="h-8 w-px bg-gradient-to-b from-transparent via-canvora-300/50 to-transparent dark:via-canvora-600/50"></div>
+
+			{/* Options Button */}
+			<motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+				<ButtonTool
+					children={toolsIcon["options"]}
+					color={`${tool === "web" || tool === "laser" ? (theme === "light" ? "c4b5fd" : "4945a9") : ""}`}
+					onClick={(e: React.PointerEvent<HTMLButtonElement>) => {
+						e.stopPropagation();
+						setOptionsClicked((prev) => !prev);
+					}}
+				/>
+			</motion.div>
+
+			{/* Options Dropdown */}
+			<AnimatePresence>
+				{optionsClicked && (
+					<motion.div
+						className="w-48 py-3 px-3 border border-canvora-200/50 dark:border-canvora-600/30 rounded-xl shadow-xl absolute top-[120%] right-0 z-50 flex flex-col gap-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md"
+						aria-expanded={optionsClicked}
+						initial={{ opacity: 0, scale: 0.98, y: -5 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.98, y: -5 }}
+						transition={{ type: "spring", duration: 0.15 }}
+					>
+						<div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+							Advanced Tools
+						</div>
+						<motion.div
+							whileHover={{ scale: 1.01 }}
+							whileTap={{ scale: 0.99 }}
+						>
+							<ButtonAction
+								children={toolsIcon["web"]}
+								color={`${tool === "web" ? (theme === "light" ? "c4b5fd" : "4945a9") : ""}`}
+								onClick={() => {
+									setTool("web");
+									setProps("web");
+									setOptionsClicked((prev) => !prev);
+								}}
+							/>
+						</motion.div>
+						<motion.div
+							whileHover={{ scale: 1.01 }}
+							whileTap={{ scale: 0.99 }}
+						>
+							<ButtonAction
+								children={toolsIcon["laser"]}
+								color={`${tool === "laser" ? (theme === "light" ? "c4b5fd" : "4945a9") : ""}`}
+								onClick={() => {
+									setTool("laser");
+									setProps("laser");
+									setOptionsClicked((prev) => !prev);
+								}}
+							/>
+						</motion.div>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</motion.div>
 	);
 }

@@ -22,7 +22,7 @@ export default function ButtonProps({
 						: `#${color}`
 					: "",
 			}}
-			className={`w-7 h-7 rounded-lg border-[0.5px] border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-105 transition-all duration-300 ease-in-out cursor-pointer outline-1 outline-offset-1 ${className} outline-transparent`}
+			className={`w-7 h-7 rounded-lg border-[0.5px] border-canvora-200/50 dark:border-canvora-600/30 flex items-center justify-center hover:scale-105 transition-all duration-200 ease-in-out cursor-pointer outline-1 outline-offset-1 ${className} outline-transparent`}
 			onClick={onClick}
 		>
 			{children}

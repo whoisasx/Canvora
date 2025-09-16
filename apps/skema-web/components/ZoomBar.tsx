@@ -4,9 +4,9 @@ export default function ZoomBar() {
 	const zoom = useZoomStore((state) => state.zoom);
 	const setZoom = useZoomStore((state) => state.setZoom);
 	return (
-		<div className="h-10 w-35 border rounded-lg bg-oc-gray-2 dark:bg-[#232329] border-gray-200 dark:border-0 flex">
+		<div className="h-10 w-35 border rounded-xl bg-white/80 dark:bg-gray-900/80 border-canvora-200/50 dark:border-canvora-600/30 flex shadow-lg backdrop-blur-md hover:shadow-xl transition-all duration-300">
 			<button
-				className="h-full hover:bg-oc-gray-1 flex-1 flex items-center justify-center rounded-l-lg dark:hover:bg-oc-gray-8"
+				className="h-full hover:bg-canvora-100/50 dark:hover:bg-canvora-800/50 flex-1 flex items-center justify-center rounded-l-xl transition-all duration-200"
 				onClick={() => {
 					if (zoom - 5 >= 10) {
 						setZoom(zoom - 5);
@@ -34,14 +34,14 @@ export default function ZoomBar() {
 				</div>
 			</button>
 			<button
-				className="h-full hover:bg-oc-gray-1 flex-2 text-xs dark:hover:bg-oc-gray-8"
+				className="h-full hover:bg-canvora-100/50 dark:hover:bg-canvora-800/50 flex-2 text-xs transition-all duration-200 font-medium"
 				onClick={() => setZoom(100)}
 			>
 				{zoom}
 				{"%"}
 			</button>
 			<button
-				className="h-full hover:bg-oc-gray-1 flex-1 flex items-center justify-center rounded-r-lg dark:hover:bg-oc-gray-8"
+				className="h-full hover:bg-canvora-100/50 dark:hover:bg-canvora-800/50 flex-1 flex items-center justify-center rounded-r-xl transition-all duration-200"
 				onClick={() => {
 					if (zoom + 5 <= 3000) {
 						setZoom(zoom + 5);

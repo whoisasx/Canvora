@@ -53,7 +53,7 @@ export default function ActionCard({
 	}, [resolvedTheme, theme]);
 
 	return (
-		<div ref={actContainerRef} className="h-9 w-9 rounded-lg z-50 relative">
+		<div ref={actContainerRef} className="h-9 w-9 rounded-xl z-50 relative">
 			<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
 				<ButtonTool
 					children={
@@ -84,7 +84,7 @@ export default function ActionCard({
 						</motion.svg>
 					}
 					onClick={() => setClicked((prev) => !prev)}
-					className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300"
+					className="bg-white/80 dark:bg-gray-900/80 hover:bg-white/90 dark:hover:bg-gray-800/90 border border-canvora-200/50 dark:border-canvora-600/30 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-md"
 				/>
 			</motion.div>
 			<AnimatePresence>
@@ -95,216 +95,366 @@ export default function ActionCard({
 						animate={{ opacity: 1, y: 0, scale: 1 }}
 						exit={{ opacity: 0, y: -10, scale: 0.95 }}
 						transition={{ duration: 0.2, ease: "easeOut" }}
-						className="w-60 py-2 border border-gray-200 dark:bg-gray-800 dark:border-gray-600 bg-white shadow-xl absolute top-[110%] flex flex-col gap-2 rounded-lg z-20 max-h-[80vh] overflow-auto custom-scrollbar dark:custom-scrollbar backdrop-blur-sm"
+						className="w-60 py-4 border border-canvora-200/50 dark:border-canvora-600/30 bg-white/90 dark:bg-gray-900/90 shadow-xl absolute top-[110%] flex flex-col gap-1 rounded-xl z-20 max-h-[80vh] overflow-auto custom-scrollbar dark:custom-scrollbar backdrop-blur-md"
 					>
 						<motion.div
-							className="px-2 flex flex-col gap-1"
+							className="px-3 flex flex-col gap-2"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							transition={{ delay: 0.1 }}
 						>
-							<ButtonAction
-								children={actionIcon.cp}
-								onClick={() => console.log("hi")}
-							/>
-							<ButtonAction
-								children={actionIcon.st}
-								onClick={() => console.log("hi")}
-							/>
-							<ButtonAction
-								children={actionIcon.xi}
-								onClick={() => console.log("hi")}
-							/>
-							<ButtonAction
-								children={actionIcon.lc}
-								onClick={() => console.log("hi")}
-							/>
-							<ButtonAction
-								children={actionIcon.rc}
-								onClick={() => {
-									setShowConfirm(true);
-								}}
-							/>
-							<div className="w-full border-t-[0.5px] border-t-gray-300 dark:border-t-gray-600 mx-auto"></div>
-							<Link
-								href="https://www.github.com/whoisasx/Canvora"
-								target="_blank"
-							>
-								<ButtonAction children={actionIcon.gb} />
-							</Link>
-							<Link
-								href={"https://x.com/whoisasx"}
-								target="_blank"
-							>
-								<ButtonAction children={actionIcon.tx} />
-							</Link>
-							<Link
-								href={""} //TODO;add the link to your portfolio
-								target="_blank"
-							>
-								<ButtonAction children={actionIcon.am} />
-							</Link>
-							{session && session.user ? (
-								<ButtonAction
-									children={actionIcon.lo}
-									onClick={() => signOut(redirect("/"))}
-								/>
-							) : (
-								<ButtonAction
-									children={actionIcon.su}
-									onClick={() => redirect("/signup")}
-								/>
-							)}
+							<div className="mb-2">
+								<p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+									Canvas Actions
+								</p>
+								<div className="flex flex-col gap-2">
+									<motion.div
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										<ButtonAction
+											children={actionIcon.cp}
+											onClick={() => console.log("hi")}
+										/>
+									</motion.div>
+									<motion.div
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										<ButtonAction
+											children={actionIcon.st}
+											onClick={() => console.log("hi")}
+										/>
+									</motion.div>
+									<motion.div
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										<ButtonAction
+											children={actionIcon.xi}
+											onClick={() => console.log("hi")}
+										/>
+									</motion.div>
+									<motion.div
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										<ButtonAction
+											children={actionIcon.lc}
+											onClick={() => console.log("hi")}
+										/>
+									</motion.div>
+								</div>
+							</div>
+
+							<div className="mb-2">
+								<p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+									Danger Zone
+								</p>
+								<motion.div
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+								>
+									<ButtonAction
+										children={actionIcon.rc}
+										onClick={() => {
+											setShowConfirm(true);
+										}}
+									/>
+								</motion.div>
+							</div>
+
+							<div className="w-full border-t border-canvora-200/50 dark:border-canvora-600/30 my-2"></div>
+
+							<div className="mb-2">
+								<p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+									Social Links
+								</p>
+								<div className="flex flex-col gap-2">
+									<motion.div
+										whileHover={{ scale: 1.1 }}
+										whileTap={{ scale: 0.95 }}
+									>
+										<Link
+											href="https://www.github.com/whoisasx/Canvora"
+											target="_blank"
+										>
+											<ButtonAction
+												children={actionIcon.gb}
+											/>
+										</Link>
+									</motion.div>
+									<motion.div
+										whileHover={{ scale: 1.1 }}
+										whileTap={{ scale: 0.95 }}
+									>
+										<Link
+											href={"https://x.com/whoisasx"}
+											target="_blank"
+										>
+											<ButtonAction
+												children={actionIcon.tx}
+											/>
+										</Link>
+									</motion.div>
+									<motion.div
+										whileHover={{ scale: 1.1 }}
+										whileTap={{ scale: 0.95 }}
+									>
+										<Link
+											href={""} //TODO;add the link to your portfolio
+											target="_blank"
+										>
+											<ButtonAction
+												children={actionIcon.am}
+											/>
+										</Link>
+									</motion.div>
+								</div>
+							</div>
+
+							<div className="w-full border-t border-canvora-200/50 dark:border-canvora-600/30 my-2"></div>
+
+							<div>
+								<p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+									Account
+								</p>
+								{session && session.user ? (
+									<motion.div
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										<ButtonAction
+											children={actionIcon.lo}
+											onClick={() =>
+												signOut(redirect("/"))
+											}
+										/>
+									</motion.div>
+								) : (
+									<motion.div
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										<ButtonAction
+											children={actionIcon.su}
+											onClick={() => redirect("/signup")}
+										/>
+									</motion.div>
+								)}
+							</div>
 						</motion.div>
-						<div className="w-full border-t-[0.5px] border-t-gray-300 dark:border-t-gray-600 mx-auto mt-15"></div>
+						<div className="w-full border-t border-canvora-200/50 dark:border-canvora-600/30 my-2"></div>
 						<motion.div
-							className="px-2"
+							className="px-3"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							transition={{ delay: 0.2 }}
 						>
-							<div className="w-full h-10 flex justify-between items-center border rounded-lg border-gray-200 dark:border-gray-600 px-1 py-1.5 bg-gray-50 dark:bg-gray-700">
-								<p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-									Theme
+							<div className="mb-4">
+								<p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+									Appearance
 								</p>
-								<div className="w-auto px-1 flex gap-1.5 py-1 rounded-xl">
-									{["light", "dark", "system"].map(
-										(val, i) => (
-											<motion.button
-												key={i}
-												whileHover={{ scale: 1.1 }}
-												whileTap={{ scale: 0.95 }}
-												className={`w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer border border-gray-200 dark:border-gray-600 transition-all duration-200 ${
-													theme === val
-														? "bg-canvora-500 dark:bg-canvora-600 text-white shadow-lg"
-														: "bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-												}`}
-												onClick={() => {
-													setTheme(val);
-												}}
-											>
-												{val === "light" && (
-													<svg
-														aria-hidden="true"
-														focusable="false"
-														role="img"
-														viewBox="0 0 20 20"
-														className="w-4 h-4"
-														fill="none"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="1.5"
-													>
-														<g
-															stroke="currentColor"
-															strokeLinejoin="round"
-														>
-															<path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM10 4.167V2.5M14.167 5.833l1.166-1.166M15.833 10H17.5M14.167 14.167l1.166 1.166M10 15.833V17.5M5.833 14.167l-1.166 1.166M5 10H3.333M5.833 5.833 4.667 4.667"></path>
-														</g>
-													</svg>
-												)}
-												{val === "dark" && (
-													<svg
-														aria-hidden="true"
-														focusable="false"
-														role="img"
-														viewBox="0 0 20 20"
-														className="w-4 h-4"
-														fill="none"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-													>
-														<path
-															clipRule="evenodd"
-															d="M10 2.5h.328a6.25 6.25 0 0 0 6.6 10.372A7.5 7.5 0 1 1 10 2.493V2.5Z"
-															stroke="currentColor"
-														></path>
-													</svg>
-												)}
-												{val === "system" && (
-													<svg
-														aria-hidden="true"
-														focusable="false"
-														role="img"
-														viewBox="0 0 24 24"
-														className="w-4 h-4"
-														fill="none"
-														strokeWidth="1.5"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-													>
-														<g stroke="currentColor">
-															<path
-																stroke="none"
-																d="M0 0h24v24H0z"
+								<div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200/50 dark:border-gray-600/30">
+									<div className="flex justify-between items-center mb-3">
+										<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+											Theme Mode
+										</span>
+									</div>
+									<div className="grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+										{["light", "dark", "system"].map(
+											(val, i) => (
+												<motion.button
+													key={i}
+													whileHover={{ scale: 1.02 }}
+													whileTap={{ scale: 0.98 }}
+													className={`relative py-2 px-3 rounded-md flex flex-col items-center justify-center gap-1 transition-all duration-200 text-xs font-medium ${
+														theme === val
+															? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm ring-1 ring-canvora-200 dark:ring-canvora-600"
+															: "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+													}`}
+													onClick={() =>
+														setTheme(val)
+													}
+												>
+													<div className="w-4 h-4">
+														{val === "light" && (
+															<svg
+																className="w-full h-full"
 																fill="none"
-															></path>
-															<path d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-16a1 1 0 0 1-1-1v-10zM7 20h10M9 16v4M15 16v4"></path>
-														</g>
-													</svg>
-												)}
-											</motion.button>
-										)
-									)}
+																stroke="currentColor"
+																strokeWidth="2"
+																viewBox="0 0 20 20"
+															>
+																<path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM10 4.167V2.5M14.167 5.833l1.166-1.166M15.833 10H17.5M14.167 14.167l1.166 1.166M10 15.833V17.5M5.833 14.167l-1.166 1.166M5 10H3.333M5.833 5.833 4.667 4.667" />
+															</svg>
+														)}
+														{val === "dark" && (
+															<svg
+																className="w-full h-full"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																viewBox="0 0 20 20"
+															>
+																<path d="M10 2.5h.328a6.25 6.25 0 0 0 6.6 10.372A7.5 7.5 0 1 1 10 2.493V2.5Z" />
+															</svg>
+														)}
+														{val === "system" && (
+															<svg
+																className="w-full h-full"
+																fill="none"
+																stroke="currentColor"
+																strokeWidth="2"
+																viewBox="0 0 24 24"
+															>
+																<path d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-16a1 1 0 0 1-1-1v-10zM7 20h10M9 16v4M15 16v4" />
+															</svg>
+														)}
+													</div>
+													<span className="capitalize">
+														{val}
+													</span>
+													{theme === val && (
+														<motion.div
+															className="absolute inset-0 rounded-md border-2 border-canvora-400 dark:border-canvora-500"
+															initial={{
+																scale: 0.8,
+																opacity: 0,
+															}}
+															animate={{
+																scale: 1,
+																opacity: 1,
+															}}
+															transition={{
+																duration: 0.2,
+															}}
+														/>
+													)}
+												</motion.button>
+											)
+										)}
+									</div>
 								</div>
 							</div>
 						</motion.div>
 						<motion.div
-							className="w-full flex flex-col gap-1 px-2"
+							className="px-3 pb-2"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							transition={{ delay: 0.3 }}
 						>
-							<p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-								Canvas Background
-							</p>
-							<div className="w-full h-10 flex gap-1 items-center">
-								{backgrounds.map((val, i) => (
-									<motion.button
-										key={i}
-										whileHover={{ scale: 1.1 }}
-										whileTap={{ scale: 0.95 }}
-										className={`w-8 h-8 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-600 transition-all duration-200 ${
-											background === val
-												? "ring-2 ring-canvora-500 shadow-lg"
-												: "hover:shadow-md"
-										}`}
-										style={{
-											backgroundColor: `#${val}`,
-										}}
-										onClick={() => setBackground(val)}
-									>
-										<span className="sr-only">
-											Background color {val}
-										</span>
-									</motion.button>
-								))}
-								<div className="h-[60%] border-r-1 border-r-gray-300 dark:border-r-gray-600 mx-0.5"></div>
-								<div
-									className="w-8 h-8 ring-2 ring-canvora-500 rounded-lg shadow-md"
-									style={{
-										backgroundColor: `#${background}`,
-									}}
-								></div>
-							</div>
-							<div className="flex flex-col gap-1">
-								<p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-									Hex Code
-								</p>
-								<div className="group focus-within:border-canvora-500 dark:focus-within:border-canvora-400 w-full h-full border border-gray-200 dark:border-gray-600 rounded-lg flex py-1 bg-white dark:bg-gray-700 transition-all duration-200">
-									<div className="px-2 font-semibold text-gray-600 dark:text-gray-400">
-										{"#"}
+							<div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200/50 dark:border-gray-600/30">
+								<div className="mb-3">
+									<p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+										Canvas Background
+									</p>
+									<p className="text-xs text-gray-400 dark:text-gray-500">
+										Choose a background color for your
+										canvas
+									</p>
+								</div>
+
+								<div className="space-y-3">
+									<div>
+										<p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+											Quick Colors
+										</p>
+										<div className="grid grid-cols-5 gap-1.5">
+											{backgrounds.map((val, i) => (
+												<motion.button
+													key={i}
+													whileHover={{
+														scale: 1.1,
+														y: -2,
+													}}
+													whileTap={{ scale: 0.95 }}
+													className={`relative w-7 h-7 rounded-lg cursor-pointer border-2 transition-all duration-200 shadow-sm hover:shadow-md ${
+														background === val
+															? "border-canvora-400 dark:border-canvora-500 ring-2 ring-canvora-200 dark:ring-canvora-600"
+															: "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
+													}`}
+													style={{
+														backgroundColor: `#${val}`,
+													}}
+													onClick={() =>
+														setBackground(val)
+													}
+													title={`Background color #${val}`}
+												>
+													{background === val && (
+														<motion.div
+															className="absolute inset-0 rounded-md flex items-center justify-center"
+															initial={{
+																scale: 0,
+																rotate: -90,
+															}}
+															animate={{
+																scale: 1,
+																rotate: 0,
+															}}
+															transition={{
+																duration: 0.2,
+															}}
+														>
+															<svg
+																className="w-4 h-4 text-white drop-shadow-sm"
+																fill="currentColor"
+																viewBox="0 0 20 20"
+															>
+																<path
+																	fillRule="evenodd"
+																	d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+																	clipRule="evenodd"
+																/>
+															</svg>
+														</motion.div>
+													)}
+												</motion.button>
+											))}
+										</div>
 									</div>
-									<input
-										className="appearance-none outline-none border-none px-1 w-full flex items-center text-sm bg-transparent text-gray-900 dark:text-gray-100"
-										type="text"
-										value={background}
-										onChange={handleOnChange}
-										placeholder="ffffff"
-									/>
+
+									<div className="flex items-center gap-3">
+										<div className="h-px bg-gray-200 dark:bg-gray-600 flex-1"></div>
+										<span className="text-xs text-gray-400">
+											or
+										</span>
+										<div className="h-px bg-gray-200 dark:bg-gray-600 flex-1"></div>
+									</div>
+
+									<div>
+										<p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+											Custom Color
+										</p>
+										<div className="flex items-center gap-2">
+											<div
+												className="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 shadow-inner relative overflow-hidden flex-shrink-0"
+												style={{
+													backgroundColor: `#${background}`,
+												}}
+											>
+												<div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/10"></div>
+											</div>
+											<div className="flex-1 min-w-0">
+												<div className="relative">
+													<div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-mono text-xs">
+														#
+													</div>
+													<input
+														className="w-full h-8 pl-6 pr-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-mono transition-all duration-200 focus:ring-1 focus:ring-canvora-200 dark:focus:ring-canvora-600 focus:border-canvora-400 dark:focus:border-canvora-500 outline-none text-gray-900 dark:text-gray-100"
+														type="text"
+														value={background}
+														onChange={
+															handleOnChange
+														}
+														placeholder="ffffff"
+														maxLength={6}
+													/>
+												</div>
+											</div>
+										</div>
+									</div>
 								</div>
 							</div>
 						</motion.div>
@@ -314,30 +464,77 @@ export default function ActionCard({
 			<AnimatePresence>
 				{showConfirm && (
 					<motion.div
-						className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 backdrop-blur-sm"
+						className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 backdrop-blur-sm p-4"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 					>
 						<motion.div
-							className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl text-center border border-gray-200 dark:border-gray-600 max-w-md mx-4"
+							className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl text-center border border-gray-200 dark:border-gray-700 max-w-md w-full mx-4 relative overflow-hidden"
 							initial={{ scale: 0.9, opacity: 0, y: 20 }}
 							animate={{ scale: 1, opacity: 1, y: 0 }}
 							exit={{ scale: 0.9, opacity: 0, y: 20 }}
 							transition={{ duration: 0.2 }}
 						>
-							<h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+							{/* Decorative gradient */}
+							<div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-400 via-red-500 to-red-600"></div>
+
+							{/* Warning Icon */}
+							<motion.div
+								className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center"
+								initial={{ scale: 0, rotate: -180 }}
+								animate={{ scale: 1, rotate: 0 }}
+								transition={{ delay: 0.1, duration: 0.3 }}
+							>
+								<svg
+									className="w-8 h-8 text-red-500 dark:text-red-400"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M12 9v2m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z"
+									/>
+								</svg>
+							</motion.div>
+
+							<motion.h3
+								className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100"
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.2 }}
+							>
 								Reset Canvas
-							</h3>
-							<p className="mb-6 text-gray-600 dark:text-gray-400">
-								Are you sure you want to reset the canvas? This
-								will delete all messages in this room.
-							</p>
-							<div className="flex gap-3 justify-center">
+							</motion.h3>
+
+							<motion.p
+								className="mb-6 text-gray-600 dark:text-gray-400 leading-relaxed"
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.3 }}
+							>
+								This action cannot be undone. All drawings,
+								messages, and data in this room will be
+								permanently deleted.
+							</motion.p>
+
+							<motion.div
+								className="flex gap-3 justify-center"
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.4 }}
+							>
 								<motion.button
-									whileHover={{ scale: 1.05 }}
+									whileHover={{
+										scale: 1.05,
+										boxShadow:
+											"0 8px 25px rgba(239, 68, 68, 0.3)",
+									}}
 									whileTap={{ scale: 0.95 }}
-									className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors duration-200 shadow-lg"
+									className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg flex items-center gap-2"
 									onClick={async () => {
 										try {
 											const res = await axios.delete(
@@ -377,17 +574,30 @@ export default function ActionCard({
 										}
 									}}
 								>
-									Confirm
+									<svg
+										className="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+										/>
+									</svg>
+									Reset Canvas
 								</motion.button>
 								<motion.button
 									whileHover={{ scale: 1.05 }}
 									whileTap={{ scale: 0.95 }}
-									className="px-6 py-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg font-medium transition-colors duration-200"
+									className="px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-semibold transition-all duration-200 border border-gray-200 dark:border-gray-600"
 									onClick={() => setShowConfirm(false)}
 								>
 									Cancel
 								</motion.button>
-							</div>
+							</motion.div>
 						</motion.div>
 					</motion.div>
 				)}

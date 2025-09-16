@@ -13,7 +13,7 @@ export default function ButtonAction({
 }: IButtonAction) {
 	return (
 		<button
-			className="w-full h-8 rounded-lg hover:bg-oc-violet-1 cursor-pointer dark:hover:bg-oc-gray-8"
+			className="w-full h-8 rounded-lg hover:bg-canvora-100/50 dark:hover:bg-canvora-800/50 cursor-pointer transition-all duration-200"
 			onClick={onClick}
 			style={{
 				backgroundColor: color

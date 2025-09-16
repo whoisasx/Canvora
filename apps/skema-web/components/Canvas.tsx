@@ -16,6 +16,7 @@ import { Button } from "@/ui/Button";
 import Link from "next/link";
 import { excali } from "@/app/font";
 import { CanvoraIcon, CanvoraTitle } from "@/ui/Canvora";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function Canvas({
 	roomId,
@@ -240,147 +241,190 @@ export default function Canvas({
 					</Link>
 				</div>
 			)}
-			{showIntro && (
-				<div className="h-screen w-screen fixed inset-0 flex flex-col gap-5 items-center justify-center pointer-events-none">
-					<div className="text-center">
-						<div className="flex items-center justify-center gap-2">
-							<CanvoraIcon className="w-15 h-15" />
-							<h1
-								className={`text-7xl font-extrabold font-excali ${excali.variable} dark:text-canvora-300 text-canvora-600`}
+			<AnimatePresence>
+				{showIntro && (
+					<motion.div
+						className="h-screen w-screen fixed inset-0 flex flex-col gap-6 items-center justify-center pointer-events-none backdrop-blur-[1px] bg-black/5 dark:bg-black/20"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.3 }}
+					>
+						<motion.div
+							className="text-center"
+							initial={{ opacity: 0, y: 30 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.5, delay: 0.2 }}
+						>
+							<div className="flex items-center justify-center gap-3 mb-2">
+								<motion.div
+									initial={{ rotate: -10, scale: 0.8 }}
+									animate={{ rotate: 0, scale: 1 }}
+									transition={{ duration: 0.5, delay: 0.3 }}
+								>
+									<CanvoraIcon className="w-16 h-16" />
+								</motion.div>
+								<motion.h1
+									className={`text-7xl font-extrabold font-excali ${excali.variable} dark:text-canvora-300 text-canvora-600`}
+									initial={{ opacity: 0, x: 20 }}
+									animate={{ opacity: 1, x: 0 }}
+									transition={{ duration: 0.5, delay: 0.4 }}
+								>
+									Canvora
+								</motion.h1>
+							</div>
+							<motion.div
+								className={`font-excali ${excali.variable} text-lg text-gray-600 dark:text-gray-400`}
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								transition={{ duration: 0.3, delay: 0.6 }}
 							>
-								Canvora
-							</h1>
-						</div>
-					</div>
+								All your data is saved automatically.
+							</motion.div>
+						</motion.div>
 
-					<div className={`font-excali ${excali.variable}`}>
-						All your data is saved.
-					</div>
-
-					<div className="flex flex-col gap-3 w-80 text-xs opacity-60">
-						<button
-							type="button"
-							className="flex justify-between items-center opacity-70 hover:opacity-100 transition-opacity"
+						<motion.div
+							className="flex flex-col gap-3 w-80 text-sm bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-xl p-4 border border-canvora-200/30 dark:border-canvora-600/30"
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.4, delay: 0.7 }}
 						>
-							<div className="size-8">
-								<svg
-									className="size-8"
-									viewBox="0 0 20 20"
-									fill="none"
-									stroke="currentColor"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth="1.25"
-								>
-									<path d="m9.257 6.351.183.183H15.819c.34 0 .727.182 1.051.506.323.323.505.708.505 1.05v5.819c0 .316-.183.7-.52 1.035-.337.338-.723.522-1.037.522H4.182c-.352 0-.74-.181-1.058-.5-.318-.318-.499-.705-.499-1.057V5.182c0-.351.181-.736.5-1.054.32-.321.71-.503 1.057-.503H6.53l2.726 2.726Z" />
-								</svg>
+							<button
+								type="button"
+								className="flex justify-between items-center p-2 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-all duration-200"
+							>
+								<div className="size-8">
+									<svg
+										className="size-8"
+										viewBox="0 0 20 20"
+										fill="none"
+										stroke="currentColor"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="1.25"
+									>
+										<path d="m9.257 6.351.183.183H15.819c.34 0 .727.182 1.051.506.323.323.505.708.505 1.05v5.819c0 .316-.183.7-.52 1.035-.337.338-.723.522-1.037.522H4.182c-.352 0-.74-.181-1.058-.5-.318-.318-.499-.705-.499-1.057V5.182c0-.351.181-.736.5-1.054.32-.321.71-.503 1.057-.503H6.53l2.726 2.726Z" />
+									</svg>
+								</div>
+								<div className="font-mono text-xs text-gray-500 dark:text-gray-400">
+									Cmd+O
+								</div>
+							</button>
+
+							<button
+								type="button"
+								className="flex justify-between items-center p-2 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-all duration-200"
+							>
+								<div className="size-8">
+									<svg
+										className="size-8"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="1.25"
+									>
+										<g>
+											<path
+												stroke="none"
+												d="M0 0h24v24H0z"
+												fill="none"
+											/>
+											<circle cx="9" cy="7" r="4" />
+											<path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+											<path d="M16 3.13a4 4 0 0 1 0 7.75" />
+											<path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+										</g>
+									</svg>
+								</div>
+								<div className="text-gray-600 dark:text-gray-300">
+									Live collaboration...
+								</div>
+							</button>
+
+							<a
+								href="#"
+								className="flex items-center justify-between p-2 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-all duration-200"
+							>
+								<div className="size-8">
+									<svg
+										className="size-8"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="1.25"
+									>
+										<g>
+											<path
+												stroke="none"
+												d="M0 0h24v24H0z"
+												fill="none"
+											/>
+											<path d="M15 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" />
+											<path d="M21 12h-13l3 -3" />
+											<path d="M11 15l-3 -3" />
+										</g>
+									</svg>
+								</div>
+								<div className="text-gray-600 dark:text-gray-300">
+									Sign up
+								</div>
+							</a>
+						</motion.div>
+
+						<motion.div
+							className={`absolute top-16 left-10 text-xl text-gray-500 dark:text-gray-400 flex items-center gap-3 font-excali ${excali.variable} flex items-baseline-last`}
+							initial={{ opacity: 0, x: -30 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.4, delay: 0.8 }}
+						>
+							<svg
+								className="w-16 h-16 text-gray-400"
+								viewBox="0 0 100 100"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M90 90 Q40 70 20 20" />
+								<polygon
+									points="14,24 20,18 26,24"
+									fill="currentColor"
+								/>
+							</svg>
+							<span className="mt-12 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md px-3 py-1 rounded-lg">
+								Export, preferences, languages…
+							</span>
+						</motion.div>
+						<motion.div
+							className={`absolute top-16 left-1/2 text-xl text-gray-500 dark:text-gray-400 flex flex-col items-start font-excali ${excali.variable} flex items-baseline-last w-auto`}
+							initial={{ opacity: 0, x: 30 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.4, delay: 0.9 }}
+						>
+							<svg
+								className="w-16 h-16 text-gray-400 "
+								viewBox="0 0 100 100"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+							>
+								<path d="M90 90 Q40 70 20 20" />
+								<polygon
+									points="14,24 20,18 26,24"
+									fill="currentColor"
+								/>
+							</svg>
+							<div className="ml-16 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md px-3 py-2 rounded-lg">
+								<p>Pick a tool &</p>
+								<p> start drawing!</p>
 							</div>
-							<div>Cmd+O</div>
-						</button>
-
-						<button
-							type="button"
-							className="flex justify-between items-center opacity-70 hover:opacity-100 transition-opacity"
-						>
-							<div className="size-8">
-								<svg
-									className="size-8"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth="1.25"
-								>
-									<g>
-										<path
-											stroke="none"
-											d="M0 0h24v24H0z"
-											fill="none"
-										/>
-										<circle cx="9" cy="7" r="4" />
-										<path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-										<path d="M16 3.13a4 4 0 0 1 0 7.75" />
-										<path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-									</g>
-								</svg>
-							</div>
-							<div>Live collaboration...</div>
-						</button>
-
-						<a
-							href="#"
-							className="flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity"
-						>
-							<div className="size-8">
-								<svg
-									className="size-8"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth="1.25"
-								>
-									<g>
-										<path
-											stroke="none"
-											d="M0 0h24v24H0z"
-											fill="none"
-										/>
-										<path d="M15 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" />
-										<path d="M21 12h-13l3 -3" />
-										<path d="M11 15l-3 -3" />
-									</g>
-								</svg>
-							</div>
-							<div>Sign up</div>
-						</a>
-					</div>
-
-					<div
-						className={`absolute top-15 left-10 text-xl text-gray-400 flex items-center gap-3 font-excali ${excali.variable} flex items-baseline-last`}
-					>
-						<svg
-							className="w-16 h-16 text-gray-400"
-							viewBox="0 0 100 100"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-						>
-							<path d="M90 90 Q40 70 20 20" />
-							<polygon
-								points="14,24 20,18 26,24"
-								fill="currentColor"
-							/>
-						</svg>
-						<span className="mt-12">
-							Export, preferences, languages…
-						</span>
-					</div>
-					<div
-						className={`absolute top-15 left-1/2 text-xl text-gray-400 flex flex-col items-start font-excali ${excali.variable} flex items-baseline-last w-auto`}
-					>
-						<svg
-							className="w-16 h-16 text-gray-400 "
-							viewBox="0 0 100 100"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-						>
-							<path d="M90 90 Q40 70 20 20" />
-							<polygon
-								points="14,24 20,18 26,24"
-								fill="currentColor"
-							/>
-						</svg>
-						<div className="ml-16">
-							<p>Pick a tool &</p>
-							<p> start drawing!</p>
-						</div>
-					</div>
-				</div>
-			)}
+						</motion.div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 			<canvas
 				ref={canvasRef}
 				height={window.innerHeight}
@@ -394,31 +438,64 @@ export default function Canvas({
 			<div
 				className={`w-full px-4 absolute top-3 flex items-center justify-between pointer-events-none z-60`}
 			>
-				<div className="pointer-events-auto rounded-lg z-50">
+				<motion.div
+					className="pointer-events-auto rounded-lg z-50"
+					initial={{ opacity: 0, x: -20 }}
+					animate={{ opacity: 1, x: 0 }}
+					transition={{ duration: 0.3, ease: "easeOut" }}
+				>
 					<ActionCard roomId={roomId} game={game} />
-				</div>
-				<div className="pointer-events-auto">
-					<div className="w-xl h-12 border border-gray-200 dark:border-0 rounded-lg shadow-md z-40 bg-white dark:bg-[#232329]">
+				</motion.div>
+				<motion.div
+					className="pointer-events-auto"
+					initial={{ opacity: 0, y: -20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 }}
+				>
+					<div className="w-xl h-12 border border-canvora-200/50 dark:border-canvora-600/30 rounded-xl shadow-lg backdrop-blur-md z-40 bg-white/80 dark:bg-gray-900/80 hover:shadow-xl transition-all duration-300">
 						<CanvasTool />
 					</div>
-				</div>
-				<div className="pointer-events-auto z-40">
+				</motion.div>
+				<motion.div
+					className="pointer-events-auto z-40"
+					initial={{ opacity: 0, x: 20 }}
+					animate={{ opacity: 1, x: 0 }}
+					transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
+				>
 					<ShareCard />
-				</div>
+				</motion.div>
 			</div>
-			<div className="w-auto flex gap-2 pointer-events-none absolute bottom-4 px-3">
-				<div className="pointer-events-auto">
+			<div className="w-auto flex gap-3 pointer-events-none absolute bottom-4 px-3">
+				<motion.div
+					className="pointer-events-auto"
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.3, ease: "easeOut", delay: 0.3 }}
+				>
 					<ZoomBar />
-				</div>
-				<div className="pointer-events-auto">
+				</motion.div>
+				<motion.div
+					className="pointer-events-auto"
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.3, ease: "easeOut", delay: 0.4 }}
+				>
 					<UndoRedo game={game} />
-				</div>
+				</motion.div>
 			</div>
-			{propsSize > 0 && (
-				<div className="w-55 max-h-[70vh] overflow-auto border border-gray-200 dark:border-0 fixed top-20 left-3 rounded-lg shadow-xl z-40 flex flex-col custom-scrollbar dark:custom-scrollbar bg-oc-white dark:bg-[#232329]">
-					<CanvasOpt />
-				</div>
-			)}
+			<AnimatePresence>
+				{propsSize > 0 && (
+					<motion.div
+						className="w-55 max-h-[70vh] overflow-auto border border-canvora-200/50 dark:border-canvora-600/30 fixed top-20 left-3 rounded-xl shadow-xl backdrop-blur-md z-40 flex flex-col custom-scrollbar dark:custom-scrollbar bg-white/90 dark:bg-gray-900/90"
+						initial={{ opacity: 0, x: -20, scale: 0.95 }}
+						animate={{ opacity: 1, x: 0, scale: 1 }}
+						exit={{ opacity: 0, x: -20, scale: 0.95 }}
+						transition={{ duration: 0.2, ease: "easeOut" }}
+					>
+						<CanvasOpt />
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }
