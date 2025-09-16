@@ -85,26 +85,26 @@ export function Sidebar() {
 							damping: 30,
 							stiffness: 300,
 						}}
-						className="fixed lg:static inset-y-0 left-0 z-50 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex flex-col"
+						className="fixed lg:static inset-y-0 left-0 z-50 w-80 bg-canvora-50/50 dark:bg-gray-800/50 backdrop-blur-md border-r border-canvora-200 dark:border-canvora-600 flex flex-col shadow-xl shadow-canvora-100 dark:shadow-canvora-800"
 					>
 						{/* Header */}
-						<div className="flex items-center justify-between p-7 border-b border-slate-200 dark:border-slate-700">
+						<div className="flex items-center justify-between p-7 border-b border-canvora-200 dark:border-canvora-600">
 							<Link
 								href="/"
 								className="flex items-center space-x-3"
 							>
-								<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+								<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-canvora-400 to-canvora-600 dark:from-canvora-600 dark:to-canvora-800 flex items-center justify-center shadow-lg">
 									<span className="text-white font-bold text-sm">
 										<CanvoraIcon className="w-5 h-5" />
 									</span>
 								</div>
-								<span className="text-2xl font-extrabold text-slate-900 dark:text-white">
+								<span className="text-2xl font-extrabold text-canvora-900 dark:text-white">
 									Canvora
 								</span>
 							</Link>
 							<button
 								onClick={toggleSidebar}
-								className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+								className="lg:hidden p-2 rounded-lg hover:bg-canvora-100 dark:hover:bg-canvora-800 transition-colors"
 							>
 								<svg
 									className="w-5 h-5"
@@ -122,9 +122,9 @@ export function Sidebar() {
 							</button>
 						</div>
 						{/* Search */}
-						<div className="p-6 border-b border-slate-200 dark:border-slate-700">
+						<div className="p-6 border-b border-canvora-200 dark:border-canvora-600">
 							<div className="relative">
-								<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+								<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-canvora-400" />
 								<input
 									type="text"
 									placeholder="Search projects..."
@@ -132,7 +132,7 @@ export function Sidebar() {
 									onChange={(e) =>
 										setSearchQuery(e.target.value)
 									}
-									className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+									className="w-full pl-10 pr-4 py-2 bg-canvora-50/80 dark:bg-canvora-800/50 border border-canvora-200 dark:border-canvora-600 rounded-lg focus:ring-2 focus:ring-canvora-500 focus:border-transparent transition-all backdrop-blur-sm"
 								/>
 							</div>
 						</div>
@@ -147,8 +147,8 @@ export function Sidebar() {
 									}
 									className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-all ${
 										selectedFilter === item.filter
-											? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-											: "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+											? "bg-canvora-500 dark:bg-canvora-600 text-white shadow-lg"
+											: "text-canvora-600 dark:text-canvora-400 hover:bg-canvora-100 dark:hover:bg-canvora-800 hover:text-canvora-900 dark:hover:text-white"
 									}`}
 									whileHover={{ x: 4 }}
 									whileTap={{ scale: 0.98 }}
@@ -162,18 +162,18 @@ export function Sidebar() {
 						</nav>
 
 						{/* View Controls */}
-						<div className="p-6 border-t border-slate-200 dark:border-slate-700">
+						<div className="p-6 border-t border-canvora-200 dark:border-canvora-600">
 							<div className="flex items-center justify-between mb-4">
-								<span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+								<span className="text-sm font-medium text-canvora-600 dark:text-canvora-400">
 									View Mode
 								</span>
-								<div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+								<div className="flex bg-canvora-100 dark:bg-canvora-800 rounded-lg p-1">
 									<button
 										onClick={() => setViewMode("grid")}
 										className={`p-1.5 rounded-md transition-all ${
 											viewMode === "grid"
-												? "bg-white dark:bg-slate-700 shadow-sm"
-												: "hover:bg-slate-200 dark:hover:bg-slate-700"
+												? "bg-white dark:bg-canvora-700 shadow-sm"
+												: "hover:bg-canvora-200 dark:hover:bg-canvora-700"
 										}`}
 									>
 										<svg
@@ -221,8 +221,8 @@ export function Sidebar() {
 										onClick={() => setViewMode("list")}
 										className={`p-1.5 rounded-md transition-all ${
 											viewMode === "list"
-												? "bg-white dark:bg-slate-700 shadow-sm"
-												: "hover:bg-slate-200 dark:hover:bg-slate-700"
+												? "bg-white dark:bg-canvora-700 shadow-sm"
+												: "hover:bg-canvora-200 dark:hover:bg-canvora-700"
 										}`}
 									>
 										<svg
@@ -247,7 +247,7 @@ export function Sidebar() {
 							<div className="space-y-3">
 								<motion.button
 									onClick={() => setCreateModalOpen(true)}
-									className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2.5 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all"
+									className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-canvora-500 to-canvora-600 text-white py-2.5 rounded-lg font-medium hover:from-canvora-600 hover:to-canvora-700 transition-all shadow-lg hover:shadow-xl"
 									whileHover={{ scale: 1.02 }}
 									whileTap={{ scale: 0.98 }}
 								>
@@ -257,7 +257,7 @@ export function Sidebar() {
 
 								<motion.button
 									onClick={() => setJoinModalOpen(true)}
-									className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2.5 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all"
+									className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-canvora-400 to-canvora-500 text-white py-2.5 rounded-lg font-medium hover:from-canvora-500 hover:to-canvora-600 transition-all shadow-lg hover:shadow-xl"
 									whileHover={{ scale: 1.02 }}
 									whileTap={{ scale: 0.98 }}
 								>
@@ -268,12 +268,12 @@ export function Sidebar() {
 						</div>
 
 						{/* Footer */}
-						<div className="p-6 border-t border-slate-200 dark:border-slate-700">
+						<div className="p-6 border-t border-canvora-200 dark:border-canvora-600">
 							<div className="flex items-center justify-between">
 								<ThemeToggle />
 								<button
 									onClick={() => signOut(redirect("/"))}
-									className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+									className="flex items-center space-x-2 text-canvora-600 dark:text-canvora-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
 								>
 									<svg
 										className="w-4 h-4"

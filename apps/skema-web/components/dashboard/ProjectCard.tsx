@@ -60,7 +60,7 @@ export function ProjectCard({
 				animate={{ opacity: 1, y: 0 }}
 				exit={{ opacity: 0, y: -20 }}
 				transition={{ duration: 0.2 }}
-				className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-lg transition-all duration-300 group"
+				className="bg-canvora-50/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl border border-canvora-200 dark:border-canvora-600 p-4 shadow-md hover:shadow-xl transition-all duration-300 group"
 			>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-4 flex-1">
@@ -71,20 +71,20 @@ export function ProjectCard({
 							{project.name.charAt(0).toUpperCase()}
 						</div>
 						<div className="flex-1 min-w-0">
-							<h3 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
+							<h3 className="text-lg font-semibold text-canvora-900 dark:text-white truncate">
 								{project.name}
 							</h3>
-							<p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+							<p className="text-sm text-canvora-500 dark:text-canvora-400 truncate">
 								{project.description || "No description"}
 							</p>
 							<div className="flex items-center space-x-4 mt-1">
-								<span className="text-xs text-slate-400 dark:text-slate-500">
+								<span className="text-xs text-canvora-400 dark:text-canvora-500">
 									{project.participants} participants
 								</span>
-								<span className="text-xs text-slate-400 dark:text-slate-500">
+								<span className="text-xs text-canvora-400 dark:text-canvora-500">
 									{project.category}
 								</span>
-								<span className="text-xs text-slate-400 dark:text-slate-500">
+								<span className="text-xs text-canvora-400 dark:text-canvora-500">
 									{new Date(
 										project.lastActivity
 									).toLocaleDateString()}
@@ -95,31 +95,31 @@ export function ProjectCard({
 					<div className="flex items-center space-x-2">
 						<button
 							onClick={() => setIsFavorited(!isFavorited)}
-							className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+							className="p-2 rounded-lg hover:bg-canvora-100 dark:hover:bg-canvora-700 transition-colors"
 						>
 							{isFavorited ? (
 								<StarSolidIcon className="w-4 h-4 text-yellow-500" />
 							) : (
-								<StarIcon className="w-4 h-4 text-slate-400" />
+								<StarIcon className="w-4 h-4 text-canvora-400" />
 							)}
 						</button>
 						<div className="relative">
 							<button
 								onClick={() => setShowMenu(!showMenu)}
-								className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+								className="p-2 rounded-lg hover:bg-canvora-100 dark:hover:bg-canvora-700 transition-colors"
 							>
-								<EllipsisVerticalIcon className="w-4 h-4 text-slate-400" />
+								<EllipsisVerticalIcon className="w-4 h-4 text-canvora-400" />
 							</button>
 							{showMenu && (
 								<motion.div
 									initial={{ opacity: 0, scale: 0.95 }}
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
-									className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-20"
+									className="absolute right-0 top-full mt-2 w-48 bg-canvora-50/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg shadow-lg border border-canvora-200 dark:border-canvora-600 py-1 z-20"
 								>
 									<button
 										onClick={handleToggleActive}
-										className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2"
+										className="w-full px-4 py-2 text-left text-sm text-canvora-700 dark:text-canvora-300 hover:bg-canvora-100 dark:hover:bg-canvora-700 flex items-center space-x-2"
 									>
 										{project.isActive ? (
 											<>
@@ -162,7 +162,7 @@ export function ProjectCard({
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.9 }}
 			transition={{ duration: 0.2 }}
-			className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-xl transition-all duration-300 group"
+			className="bg-canvora-50/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl border border-canvora-200 dark:border-canvora-600 overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group"
 		>
 			{/* Header */}
 			<div
@@ -206,11 +206,11 @@ export function ProjectCard({
 									initial={{ opacity: 0, scale: 0.95 }}
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
-									className="z-10 absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1"
+									className="z-10 absolute right-0 top-full mt-2 w-48 bg-canvora-50/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg shadow-lg border border-canvora-200 dark:border-canvora-600 py-1"
 								>
 									<button
 										onClick={handleToggleActive}
-										className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2"
+										className="w-full px-4 py-2 text-left text-sm text-canvora-700 dark:text-canvora-300 hover:bg-canvora-100 dark:hover:bg-canvora-700 flex items-center space-x-2"
 									>
 										{project.isActive ? (
 											<>
@@ -255,12 +255,12 @@ export function ProjectCard({
 
 			{/* Content */}
 			<Link href={`/canvas/${project.slug}`} target="_blank">
-				<div className="p-4 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-300 ease-in-out">
+				<div className="p-4 hover:bg-canvora-100 dark:hover:bg-canvora-700 transition-colors duration-300 ease-in-out">
 					<div className="flex items-center justify-between mb-3">
-						<span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+						<span className="text-xs font-medium text-canvora-500 dark:text-canvora-400 uppercase tracking-wide">
 							{project.category}
 						</span>
-						<div className="flex items-center space-x-1 text-slate-400">
+						<div className="flex items-center space-x-1 text-canvora-400">
 							<EyeIcon className="w-4 h-4" />
 							<span className="text-sm">
 								{project.participants}
@@ -269,7 +269,7 @@ export function ProjectCard({
 					</div>
 
 					<div className="flex items-center justify-between">
-						<span className="text-xs text-slate-500 dark:text-slate-400">
+						<span className="text-xs text-canvora-500 dark:text-canvora-400">
 							{new Date(
 								project.lastActivity
 							).toLocaleDateString()}
@@ -278,7 +278,7 @@ export function ProjectCard({
 							className={`px-2 py-1 rounded-full text-xs font-medium ${
 								project.isActive
 									? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400"
-									: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+									: "bg-canvora-100 dark:bg-canvora-700 text-canvora-600 dark:text-canvora-400"
 							}`}
 						>
 							{project.isActive ? "Active" : "Inactive"}

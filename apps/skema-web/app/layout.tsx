@@ -48,7 +48,6 @@ export default function RootLayout({
 			<body className={`font-nunito ${nunito.variable}`}>
 				<ThemeWrapper>
 					{children}
-					<FloatingThemeToggle />
 					<Toaster position="top-center" reverseOrder={false} />
 				</ThemeWrapper>
 			</body>

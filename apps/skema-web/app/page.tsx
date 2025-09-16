@@ -1,4 +1,5 @@
 "use client";
+import FloatingThemeToggle from "@/components/FloatingThemeToggle";
 import Footer from "@/components/Footer";
 import MainSection from "@/components/MainSection";
 import NavBar from "@/components/NavBar";
@@ -12,6 +13,7 @@ export default function Home() {
 
 	return (
 		<div className="min-h-screen min-w-screen scroll-none transition-colors duration-500">
+			<FloatingThemeToggle />
 			<div className="min-h-screen min-w-screen p-5 relative bg-gradient-to-br from-canvora-50 via-canvora-100 to-canvora-200 dark:from-gray-900 dark:via-gray-800 dark:to-canvora-900">
 				<NavBar />
 				<MainSection />

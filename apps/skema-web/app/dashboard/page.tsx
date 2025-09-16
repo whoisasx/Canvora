@@ -162,27 +162,27 @@ export default function DemoDashboard() {
 	}
 
 	return (
-		<div className="h-screen w-screen bg-slate-50 dark:bg-slate-900 flex">
+		<div className="h-screen w-screen bg-gradient-to-br from-canvora-50 via-canvora-100 to-canvora-200 dark:from-gray-900 dark:via-gray-800 dark:to-canvora-900 flex transition-colors duration-500">
 			{/* Sidebar */}
 			<Sidebar />
 
 			{/* Main Content */}
 			<div className="flex-1 flex flex-col overflow-hidden">
 				{/* Header */}
-				<header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+				<header className="bg-canvora-50/50 dark:bg-gray-800/50 backdrop-blur-md border-b border-canvora-200 dark:border-canvora-600 px-6 py-4 shadow-md shadow-canvora-100 dark:shadow-canvora-800">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center space-x-4">
 							<button
 								onClick={toggleSidebar}
-								className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+								className="lg:hidden p-2 rounded-lg hover:bg-canvora-100 dark:hover:bg-canvora-700 transition-colors"
 							>
-								<Bars3Icon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+								<Bars3Icon className="w-5 h-5 text-canvora-600 dark:text-canvora-400" />
 							</button>
 							<div>
-								<h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+								<h1 className="text-2xl font-bold text-canvora-900 dark:text-white">
 									Projects
 								</h1>
-								<p className="text-slate-500 dark:text-slate-400">
+								<p className="text-canvora-500 dark:text-canvora-400">
 									{filteredProjects.length} Project
 									{filteredProjects.length !== 1 ? "s" : ""}
 								</p>
@@ -192,7 +192,7 @@ export default function DemoDashboard() {
 						<div className="flex items-center space-x-3">
 							{/* Search */}
 							<div className="hidden md:block relative">
-								<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+								<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-canvora-400" />
 								<input
 									type="text"
 									placeholder="Search projects..."
@@ -202,7 +202,7 @@ export default function DemoDashboard() {
 											.getState()
 											.setSearchQuery(e.target.value)
 									}
-									className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-64"
+									className="pl-10 pr-4 py-2 bg-canvora-50/80 dark:bg-canvora-700/50 border border-canvora-200 dark:border-canvora-600 rounded-lg focus:ring-2 focus:ring-canvora-500 focus:border-transparent transition-all w-64 backdrop-blur-sm"
 								/>
 							</div>
 
@@ -212,7 +212,7 @@ export default function DemoDashboard() {
 							{/* Join Session Button */}
 							<motion.button
 								onClick={() => setJoinModalOpen(true)}
-								className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all font-medium"
+								className="flex items-center space-x-2 bg-gradient-to-r from-canvora-400 to-canvora-500 text-white px-4 py-2 rounded-lg hover:from-canvora-500 hover:to-canvora-600 transition-all font-medium shadow-lg hover:shadow-xl"
 								whileHover={{ scale: 1.02 }}
 								whileTap={{ scale: 0.98 }}
 							>
@@ -225,7 +225,7 @@ export default function DemoDashboard() {
 							{/* Create Button */}
 							<motion.button
 								onClick={() => setCreateModalOpen(true)}
-								className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all font-medium"
+								className="flex items-center space-x-2 bg-gradient-to-r from-canvora-500 to-canvora-600 text-white px-4 py-2 rounded-lg hover:from-canvora-600 hover:to-canvora-700 transition-all font-medium shadow-lg hover:shadow-xl"
 								whileHover={{ scale: 1.02 }}
 								whileTap={{ scale: 0.98 }}
 							>
@@ -246,20 +246,20 @@ export default function DemoDashboard() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.1 }}
-							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+							className="bg-canvora-50/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 border border-canvora-200 dark:border-canvora-600 hover-lift shadow-lg hover:shadow-xl transition-all duration-300"
 						>
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm text-slate-500 dark:text-slate-400">
+									<p className="text-sm text-canvora-500 dark:text-canvora-400">
 										Total Projects
 									</p>
-									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+									<p className="text-2xl font-bold text-canvora-900 dark:text-white">
 										{rooms.length}
 									</p>
 								</div>
-								<div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+								<div className="w-12 h-12 bg-gradient-to-br from-canvora-400 to-canvora-600 dark:from-canvora-600 dark:to-canvora-800 rounded-lg flex items-center justify-center shadow-lg">
 									<svg
-										className="w-6 h-6 text-blue-500"
+										className="w-6 h-6 text-white"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -279,20 +279,20 @@ export default function DemoDashboard() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.2 }}
-							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+							className="bg-canvora-50/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 border border-canvora-200 dark:border-canvora-600 hover-lift shadow-lg hover:shadow-xl transition-all duration-300"
 						>
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm text-slate-500 dark:text-slate-400">
+									<p className="text-sm text-canvora-500 dark:text-canvora-400">
 										Active Sessions
 									</p>
-									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+									<p className="text-2xl font-bold text-canvora-900 dark:text-white">
 										{rooms.filter((p) => p.isActive).length}
 									</p>
 								</div>
-								<div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+								<div className="w-12 h-12 bg-gradient-to-br from-canvora-300 to-canvora-500 dark:from-canvora-500 dark:to-canvora-700 rounded-lg flex items-center justify-center shadow-lg">
 									<svg
-										className="w-6 h-6 text-green-500"
+										className="w-6 h-6 text-white"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -312,23 +312,23 @@ export default function DemoDashboard() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.3 }}
-							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+							className="bg-canvora-50/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 border border-canvora-200 dark:border-canvora-600 hover-lift shadow-lg hover:shadow-xl transition-all duration-300"
 						>
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm text-slate-500 dark:text-slate-400">
+									<p className="text-sm text-canvora-500 dark:text-canvora-400">
 										Total Participants
 									</p>
-									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+									<p className="text-2xl font-bold text-canvora-900 dark:text-white">
 										{rooms.reduce(
 											(acc, p) => acc + p.participants,
 											0
 										)}
 									</p>
 								</div>
-								<div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+								<div className="w-12 h-12 bg-gradient-to-br from-canvora-200 to-canvora-400 dark:from-canvora-400 dark:to-canvora-600 rounded-lg flex items-center justify-center shadow-lg">
 									<svg
-										className="w-6 h-6 text-purple-500"
+										className="w-6 h-6 text-white"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -348,14 +348,14 @@ export default function DemoDashboard() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.4 }}
-							className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 hover-lift"
+							className="bg-canvora-50/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl p-6 border border-canvora-200 dark:border-canvora-600 hover-lift shadow-lg hover:shadow-xl transition-all duration-300"
 						>
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm text-slate-500 dark:text-slate-400">
+									<p className="text-sm text-canvora-500 dark:text-canvora-400">
 										This Week
 									</p>
-									<p className="text-2xl font-bold text-slate-900 dark:text-white">
+									<p className="text-2xl font-bold text-canvora-900 dark:text-white">
 										{
 											rooms.filter((p) => {
 												const weekAgo = new Date();
@@ -367,9 +367,9 @@ export default function DemoDashboard() {
 										}
 									</p>
 								</div>
-								<div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+								<div className="w-12 h-12 bg-gradient-to-br from-canvora-100 to-canvora-300 dark:from-canvora-300 dark:to-canvora-500 rounded-lg flex items-center justify-center shadow-lg">
 									<svg
-										className="w-6 h-6 text-orange-500"
+										className="w-6 h-6 text-white"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -389,7 +389,7 @@ export default function DemoDashboard() {
 					{/* Projects Grid/List */}
 					<div className="space-y-6">
 						<div className="flex items-center justify-between">
-							<h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+							<h2 className="text-lg font-semibold text-canvora-900 dark:text-white">
 								{selectedFilter === "all"
 									? "All Projects"
 									: selectedFilter === "recent"
@@ -399,8 +399,8 @@ export default function DemoDashboard() {
 											: "Trash"}
 							</h2>
 							<div className="flex items-center space-x-2">
-								<FunnelIcon className="w-4 h-4 text-slate-400" />
-								<span className="text-sm text-slate-500 dark:text-slate-400">
+								<FunnelIcon className="w-4 h-4 text-canvora-400" />
+								<span className="text-sm text-canvora-500 dark:text-canvora-400">
 									{filteredProjects.length} project
 									{filteredProjects.length !== 1 ? "s" : ""}
 								</span>
