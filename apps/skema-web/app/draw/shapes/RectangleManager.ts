@@ -16,7 +16,7 @@ type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | "none";
 const MIN_SIZE = 1;
 const MAX_DIMENSION = 10000;
 // Performance optimization constants
-const THROTTLE_MS = 16; // Match main render throttle (~60fps)
+const THROTTLE_MS = 33; //ender throttle (~30fps)
 
 export class RectangleHelper {
 	/**
@@ -179,17 +179,6 @@ export class RectangleManager {
 		const rect = normalizeCoords(startX, startY, w, h);
 
 		// Performance optimization: throttle and deduplicate
-		const now = Date.now();
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
-			return;
-		}
 
 		try {
 			this.ctx.save();
@@ -211,6 +200,18 @@ export class RectangleManager {
 
 			this.rc.draw(shapeData);
 			this.ctx.restore();
+
+			const now = Date.now();
+			if (
+				this.lastPreviewRect &&
+				this.lastPreviewRect.x === rect.x &&
+				this.lastPreviewRect.y === rect.y &&
+				this.lastPreviewRect.w === rect.w &&
+				this.lastPreviewRect.h === rect.h &&
+				now - this.lastPreviewSend < THROTTLE_MS
+			) {
+				return;
+			}
 
 			// Update throttling state
 			this.lastPreviewSend = now;

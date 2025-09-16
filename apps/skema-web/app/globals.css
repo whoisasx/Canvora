@@ -476,7 +476,7 @@
 	}
 
 	.dark .custom-slider {
-		@apply bg-oc-gray-9;
+		@apply w-full appearance-none;
 	}
 
 	.dark .custom-slider::-webkit-slider-thumb {

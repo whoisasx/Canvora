@@ -10,7 +10,7 @@ import { Handle } from "../assist";
 type Point = { x: number; y: number };
 
 // Performance optimization constants
-const THROTTLE_MS = 16; // Match main render throttle (~60fps)
+const THROTTLE_MS = 33; // Match main render throttle (~60fps)
 
 /**
  * Helper class for line-specific utility functions
@@ -206,17 +206,6 @@ export class LineManager {
 			const now = Date.now();
 			const currentLineData = { x1: startX, y1: startY, x2, y2 };
 
-			if (
-				this.lastPreviewLineData &&
-				this.lastPreviewLineData.x1 === currentLineData.x1 &&
-				this.lastPreviewLineData.y1 === currentLineData.y1 &&
-				this.lastPreviewLineData.x2 === currentLineData.x2 &&
-				this.lastPreviewLineData.y2 === currentLineData.y2 &&
-				now - this.lastPreviewSend < THROTTLE_MS
-			) {
-				return;
-			}
-
 			this.lastPreviewSend = now;
 			this.lastPreviewLineData = currentLineData;
 
@@ -238,6 +227,17 @@ export class LineManager {
 
 			this.rc.draw(shapeData);
 			this.ctx.restore();
+
+			if (
+				this.lastPreviewLineData &&
+				this.lastPreviewLineData.x1 === currentLineData.x1 &&
+				this.lastPreviewLineData.y1 === currentLineData.y1 &&
+				this.lastPreviewLineData.x2 === currentLineData.x2 &&
+				this.lastPreviewLineData.y2 === currentLineData.y2 &&
+				now - this.lastPreviewSend < THROTTLE_MS
+			) {
+				return;
+			}
 
 			// Send preview to other clients
 			const previewMessage = this.createMessage(

@@ -212,7 +212,7 @@ export class Game {
 
 	// Performance optimization fields
 	private lastRenderTime: number = 0;
-	private renderThrottleMs: number = 16; // ~60fps max
+	private renderThrottleMs: number = 33; // ~30fps max
 	private pendingRender: boolean = false;
 	private lastPreviewSendTime: number = 0;
 	private previewThrottleMs: number = 16; // ~60fps max for preview messages
@@ -689,7 +689,7 @@ export class Game {
 						(m, i, arr) => arr.findIndex((x) => x.id === m.id) === i
 					);
 
-					this.renderCanvas();
+					this.throttledRender();
 					break;
 				}
 
@@ -774,7 +774,7 @@ export class Game {
 						this.selectedMessage = msg as Message;
 						this.setSelectedMessage(this.selectedMessage);
 					}
-					this.renderCanvas();
+					this.throttledRender();
 					// Notify about message changes
 					if (this.onMessageChange) {
 						this.onMessageChange();
@@ -801,7 +801,7 @@ export class Game {
 						this.selectedMessage = null;
 					}
 					this.layerManager.setMessages(this.messages);
-					this.renderCanvas();
+					this.throttledRender();
 					// Notify about message changes
 					if (this.onMessageChange) {
 						this.onMessageChange();
@@ -811,6 +811,17 @@ export class Game {
 				case "update": {
 					const id = parsedData.id;
 					const newMessage = parsedData.newMessage;
+					const senderId = parsedData.clientId;
+					const flag = parsedData.flag;
+
+					if (
+						flag &&
+						this.user &&
+						senderId &&
+						this.user.id === senderId
+					) {
+						return;
+					}
 					if (
 						typeof id !== "string" ||
 						!newMessage ||
@@ -836,7 +847,7 @@ export class Game {
 						this.setSelectedMessage(this.selectedMessage);
 					}
 					this.layerManager.setMessages(this.messages);
-					this.renderCanvas();
+					this.throttledRender();
 					// Notify about message changes
 					if (this.onMessageChange) {
 						this.onMessageChange();
@@ -1087,15 +1098,6 @@ export class Game {
 			this.renderCanvas();
 		});
 	};
-
-	// Smart render method that throttles mouse operations but allows immediate rendering for other events
-	private smartRender = (immediate: boolean = false) => {
-		if (immediate) {
-			this.renderCanvas();
-		} else {
-			this.throttledRender();
-		}
-	};
 	renderCanvas() {
 		// Clear with proper bounds and transform
 		this.ctx.save();
@@ -1130,10 +1132,10 @@ export class Game {
 		// Render preview messages (always render during drawing)
 		if (this.previewMessage.length > 0) this.renderCanvasPreview();
 
-		// Render local preview for current user's drawing
-		if (this.clicked && this.localPreview) {
-			this.renderLocalPreview();
-		}
+		// // Render local preview for current user's drawing
+		// if (this.clicked && this.localPreview) {
+		// 	this.renderLocalPreview();
+		// }
 
 		// Render UI elements
 		if (this.selectedMessage) {
@@ -1482,7 +1484,10 @@ export class Game {
 		}
 		if (this.tool === "mouse") {
 			if (this.selectedMessage) {
-				this.debouncedUpdateMessage(this.selectedMessage);
+				this.socketHelper.sendUpdateMessage(
+					this.selectedMessage.id,
+					this.selectedMessage
+				);
 			}
 			this.isDragging = false;
 			this.isResizing = false;
@@ -1570,10 +1575,10 @@ export class Game {
 				this.canvas.style.cursor = this.resizeHandler + "-resize";
 			else if (this.isDragging) this.canvas.style.cursor = "move";
 			this.handleMouseDrag(pos);
-			this.throttledRender(); // Add throttled rendering for drag/resize operations
+			this.throttledRender();
 			return;
 		}
-		this.throttledRender();
+		this.renderCanvas();
 		if (this.tool === "eraser") {
 			this.eraseDrawing(pos);
 			return;
@@ -1706,41 +1711,15 @@ export class Game {
 			return;
 		}
 
-		// Update local preview state for immediate rendering
-		this.localPreview = {
-			tool: "rectangle",
-			startX: this.startX,
-			startY: this.startY,
+		this.rectangleManager.renderPreview(
+			this.startX,
+			this.startY,
 			w,
 			h,
-			props: this.props,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		};
-
-		// Send preview to other clients (throttled)
-		const now = Date.now();
-		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
-			this.lastPreviewSendTime = now;
-
-			const previewMessage = this.rectangleManager.createMessage(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				this.props,
-				this.previewSeed ?? Math.floor(Math.random() * 1000000)
-			);
-			previewMessage.id = this.previewId;
-
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.user?.id,
-					message: previewMessage,
-				})
-			);
-		}
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	// !rhombus
 	messageRhombus(w: number, h: number): Message {
@@ -1769,41 +1748,15 @@ export class Game {
 			return;
 		}
 
-		// Update local preview state for immediate rendering
-		this.localPreview = {
-			tool: "rhombus",
-			startX: this.startX,
-			startY: this.startY,
+		this.rhombusManager.renderPreview(
+			this.startX,
+			this.startY,
 			w,
 			h,
-			props: this.props,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		};
-
-		// Send preview to other clients (throttled)
-		const now = Date.now();
-		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
-			this.lastPreviewSendTime = now;
-
-			const previewMessage = this.rhombusManager.createMessage(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				this.props,
-				this.previewSeed ?? Math.floor(Math.random() * 1000000)
-			);
-			previewMessage.id = this.previewId;
-
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.user?.id,
-					message: previewMessage,
-				})
-			);
-		}
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	// !ellipse
 	messageEllipse(w: number, h: number): Message {
@@ -1833,41 +1786,15 @@ export class Game {
 			return;
 		}
 
-		// Update local preview state for immediate rendering
-		this.localPreview = {
-			tool: "arc",
-			startX: this.startX,
-			startY: this.startY,
+		this.ellipseManager.renderPreview(
+			this.startX,
+			this.startY,
 			w,
 			h,
-			props: this.props,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		};
-
-		// Send preview to other clients (throttled)
-		const now = Date.now();
-		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
-			this.lastPreviewSendTime = now;
-
-			const previewMessage = this.ellipseManager.createMessage(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				this.props,
-				this.previewSeed ?? Math.floor(Math.random() * 1000000)
-			);
-			previewMessage.id = this.previewId;
-
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.user?.id,
-					message: previewMessage,
-				})
-			);
-		}
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	// !line
 	messageLine(w: number, h: number): Message {
@@ -1896,41 +1823,15 @@ export class Game {
 			return;
 		}
 
-		// Update local preview state for immediate rendering
-		this.localPreview = {
-			tool: "line",
-			startX: this.startX,
-			startY: this.startY,
+		this.lineManager.renderPreview(
+			this.startX,
+			this.startY,
 			w,
 			h,
-			props: this.props,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		};
-
-		// Send preview to other clients (throttled)
-		const now = Date.now();
-		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
-			this.lastPreviewSendTime = now;
-
-			const previewMessage = this.lineManager.createMessage(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				this.props,
-				this.previewSeed ?? Math.floor(Math.random() * 1000000)
-			);
-			previewMessage.id = this.previewId;
-
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.user?.id,
-					message: previewMessage,
-				})
-			);
-		}
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	// !arrow
 	messageArrow(w: number, h: number): Message {
@@ -1959,41 +1860,15 @@ export class Game {
 			return;
 		}
 
-		// Update local preview state for immediate rendering
-		this.localPreview = {
-			tool: "arrow",
-			startX: this.startX,
-			startY: this.startY,
+		this.arrowManager.renderPreview(
+			this.startX,
+			this.startY,
 			w,
 			h,
-			props: this.props,
-			seed: this.previewSeed ?? Math.floor(Math.random() * 1000000),
-		};
-
-		// Send preview to other clients (throttled)
-		const now = Date.now();
-		if (now - this.lastPreviewSendTime >= this.previewThrottleMs) {
-			this.lastPreviewSendTime = now;
-
-			const previewMessage = this.arrowManager.createMessage(
-				this.startX,
-				this.startY,
-				w,
-				h,
-				this.props,
-				this.previewSeed ?? Math.floor(Math.random() * 1000000)
-			);
-			previewMessage.id = this.previewId;
-
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.user?.id,
-					message: previewMessage,
-				})
-			);
-		}
+			this.props,
+			this.previewId,
+			this.previewSeed ?? Math.floor(Math.random() * 1000000)
+		);
 	}
 	// !pencil
 	messagePencil(): Message {
@@ -2006,7 +1881,6 @@ export class Game {
 			this.previewSeed ?? Math.floor(Math.random() * 1000000)
 		);
 	}
-
 	drawPencil(message: Message) {
 		if (!this.pencilManager) {
 			console.error("PencilManager not initialized");
@@ -2014,7 +1888,6 @@ export class Game {
 		}
 		this.pencilManager.render(message);
 	}
-
 	drawMovingPencil(options: Options) {
 		if (!this.pencilManager) {
 			console.error("PencilManager not initialized");
@@ -2091,7 +1964,7 @@ export class Game {
 		let span: HTMLSpanElement | null = null;
 		let width = 0;
 		let height = 0;
-		const THROTTLE_MS = 100;
+		const THROTTLE_MS = 60;
 
 		const resize = () => {
 			if (this.tool === "mouse") return;
@@ -2611,8 +2484,7 @@ export class Game {
 		}
 		return boundingBox;
 	}
-	// Remove the old pointNearLine method as it's now in HitTestHelper
-	// Remove the old pointNearEllipse method as it's now in HitTestHelper
+
 	// !laser
 	drawMovingLaser() {
 		if (this.laserPoints.length < 2) return;
@@ -3078,6 +2950,15 @@ export class Game {
 			this.setSelectedMessage.bind(this)
 		);
 
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
@@ -3099,6 +2980,15 @@ export class Game {
 				this.canvas.style.cursor = cursor;
 			}
 		);
+
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 
 		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
@@ -3132,6 +3022,15 @@ export class Game {
 			this.setSelectedMessage.bind(this)
 		);
 
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
@@ -3153,6 +3052,15 @@ export class Game {
 				this.canvas.style.cursor = cursor;
 			}
 		);
+
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 
 		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
@@ -3186,6 +3094,15 @@ export class Game {
 			this.setSelectedMessage.bind(this)
 		);
 
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
@@ -3202,6 +3119,14 @@ export class Game {
 				this.canvas.style.cursor = cursor;
 			}
 		);
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
 		this.prevY = pos.y;
@@ -3230,6 +3155,15 @@ export class Game {
 			this.setSelectedMessage.bind(this)
 		);
 
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
@@ -3251,6 +3185,15 @@ export class Game {
 			this.setSelectedMessage.bind(this),
 			this.setCursor.bind(this)
 		);
+
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 
 		// Update resize handler if changed
 		this.resizeHandler = result.newHandler;
@@ -3286,6 +3229,15 @@ export class Game {
 			this.setSelectedMessage.bind(this)
 		);
 
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
@@ -3307,6 +3259,15 @@ export class Game {
 				this.canvas.style.cursor = cursor;
 			}
 		);
+
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 
 		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
@@ -3340,6 +3301,15 @@ export class Game {
 			this.setSelectedMessage.bind(this)
 		);
 
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
+
 		this.prevX = pos.x;
 		this.prevY = pos.y;
 	}
@@ -3361,6 +3331,15 @@ export class Game {
 				this.canvas.style.cursor = cursor;
 			}
 		);
+
+		if (this.selectedMessage) {
+			this.messages = this.messages.map((msg) => {
+				if (msg.id === this.selectedMessage!.id!) {
+					return { ...(this.selectedMessage as Message) };
+				}
+				return { ...msg };
+			});
+		}
 
 		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;

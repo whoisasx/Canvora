@@ -174,19 +174,6 @@ export class RhombusManager {
 	): void {
 		const rect = normalizeCoords(startX, startY, w, h);
 
-		// Performance optimization: throttle and deduplicate
-		const now = Date.now();
-		if (
-			this.lastPreviewRect &&
-			this.lastPreviewRect.x === rect.x &&
-			this.lastPreviewRect.y === rect.y &&
-			this.lastPreviewRect.w === rect.w &&
-			this.lastPreviewRect.h === rect.h &&
-			now - this.lastPreviewSend < THROTTLE_MS
-		) {
-			return;
-		}
-
 		try {
 			this.ctx.save();
 			this.ctx.globalAlpha = props.opacity ?? 1;
@@ -207,6 +194,19 @@ export class RhombusManager {
 
 			this.rc.draw(shapeData);
 			this.ctx.restore();
+
+			// Performance optimization: throttle and deduplicate
+			const now = Date.now();
+			if (
+				this.lastPreviewRect &&
+				this.lastPreviewRect.x === rect.x &&
+				this.lastPreviewRect.y === rect.y &&
+				this.lastPreviewRect.w === rect.w &&
+				this.lastPreviewRect.h === rect.h &&
+				now - this.lastPreviewSend < THROTTLE_MS
+			) {
+				return;
+			}
 
 			// Update throttling state
 			this.lastPreviewSend = now;

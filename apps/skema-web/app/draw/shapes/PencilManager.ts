@@ -197,6 +197,7 @@ export class PencilManager {
 			);
 
 			this.rc.draw(drawable);
+			this.ctx.restore();
 
 			// Calculate bounding box for throttling
 			const rect = PencilHelper.calculateBoundingBox(points);

@@ -82,11 +82,21 @@ export class MessageHandlers {
 
 		// Send to other users, not back to sender
 		for (let user of this.users) {
-			if (user.rooms.includes(roomId)) {
+			if (user.ws === ws) {
+				console.log("user");
+				continue;
+			}
+			if (user.rooms.includes(roomId) && user.ws !== ws) {
 				try {
 					if (data.flag === "text-preview" && user.ws === ws)
 						continue;
-					user.ws.send(JSON.stringify({ type: "draw", message }));
+					user.ws.send(
+						JSON.stringify({
+							type: "draw",
+							message,
+							clientId: userId,
+						})
+					);
 				} catch (err) {
 					// ignore send errors
 				}
@@ -223,6 +233,7 @@ export class MessageHandlers {
 		const id = data.id;
 		const newMessage = data.newMessage;
 		const roomId = data.roomId;
+		const flag = data.flag;
 
 		if (!id || !newMessage) {
 			ws.send(
@@ -247,28 +258,31 @@ export class MessageHandlers {
 		const msgIndex = roomMsgs.findIndex((msg) => msg.id === id);
 
 		if (msgIndex !== -1) {
-			const prevMessage = { ...roomMsgs[msgIndex] };
-			roomMsgs[msgIndex] = newMessage;
+			//only if preview flag is not there.
+			if (!flag) {
+				const prevMessage = { ...roomMsgs[msgIndex] };
+				roomMsgs[msgIndex] = newMessage;
 
-			// Add to history
-			const hist = this.historyByRoom.get(roomId)!;
-			hist.push({
-				type: "update",
-				userId: data.clientId!,
-				id,
-				prevMessage,
-				newMessage,
-			});
+				// Add to history
+				const hist = this.historyByRoom.get(roomId)!;
+				hist.push({
+					type: "update",
+					userId: data.clientId!,
+					id,
+					prevMessage,
+					newMessage,
+				});
 
-			// Limit history size
-			if (hist.length > this.config.maxHistorySize) {
-				hist.splice(0, hist.length - this.config.maxHistorySize);
+				// Limit history size
+				if (hist.length > this.config.maxHistorySize) {
+					hist.splice(0, hist.length - this.config.maxHistorySize);
+				}
+				this.historyByRoom.set(roomId, hist);
+
+				// Clear redo stacks
+				const roomRedo = this.redoByRoomUser.get(roomId)!;
+				roomRedo.clear();
 			}
-			this.historyByRoom.set(roomId, hist);
-
-			// Clear redo stacks
-			const roomRedo = this.redoByRoomUser.get(roomId)!;
-			roomRedo.clear();
 
 			// Broadcast to all users in the room
 			for (let user of this.users) {
@@ -277,8 +291,10 @@ export class MessageHandlers {
 						user.ws.send(
 							JSON.stringify({
 								type: "update",
+								flag,
 								id,
 								newMessage,
+								clientId: data.clientId,
 							})
 						);
 					} catch (err) {
@@ -288,10 +304,12 @@ export class MessageHandlers {
 			}
 
 			// Persist to database
-			try {
-				await updateMessage(newMessage, id);
-			} catch (error) {
-				Logger.error("Failed to update message:", error);
+			if (!flag) {
+				try {
+					await updateMessage(newMessage, id);
+				} catch (error) {
+					Logger.error("Failed to update message:", error);
+				}
 			}
 		}
 	}

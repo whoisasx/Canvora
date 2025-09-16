@@ -12,7 +12,7 @@ import { Handle } from "../assist";
 type Point = { x: number; y: number };
 
 // Performance optimization constants
-const THROTTLE_MS = 16; // Match main render throttle (~60fps)
+const THROTTLE_MS = 33; // Match main render throttle (~60fps)
 
 /**
  * Helper class for arrow-specific utility functions
@@ -248,17 +248,6 @@ export class ArrowManager {
 			const now = Date.now();
 			const currentArrowData = { x1: startX, y1: startY, x2, y2 };
 
-			if (
-				this.lastPreviewArrowData &&
-				this.lastPreviewArrowData.x1 === currentArrowData.x1 &&
-				this.lastPreviewArrowData.y1 === currentArrowData.y1 &&
-				this.lastPreviewArrowData.x2 === currentArrowData.x2 &&
-				this.lastPreviewArrowData.y2 === currentArrowData.y2 &&
-				now - this.lastPreviewSend < THROTTLE_MS
-			) {
-				return;
-			}
-
 			this.lastPreviewSend = now;
 			this.lastPreviewArrowData = currentArrowData;
 
@@ -290,6 +279,17 @@ export class ArrowManager {
 			}
 
 			this.ctx.restore();
+
+			if (
+				this.lastPreviewArrowData &&
+				this.lastPreviewArrowData.x1 === currentArrowData.x1 &&
+				this.lastPreviewArrowData.y1 === currentArrowData.y1 &&
+				this.lastPreviewArrowData.x2 === currentArrowData.x2 &&
+				this.lastPreviewArrowData.y2 === currentArrowData.y2 &&
+				now - this.lastPreviewSend < THROTTLE_MS
+			) {
+				return;
+			}
 
 			// Send preview to other clients
 			const previewMessage = this.createMessage(
