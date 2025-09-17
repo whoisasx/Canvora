@@ -81,7 +81,7 @@ import {
 	TextManager,
 } from "./shapes";
 
-type Laser = {
+export type Laser = {
 	x: number;
 	y: number;
 	alpha: number;
@@ -249,45 +249,6 @@ export class Game {
 	private coordinateHelper: CoordinateHelper;
 	private shapeCreator: ShapeCreator;
 
-	// Throttled socket message sending for preview updates
-	private lastSocketSendTime: number = 0;
-	private sendDrawMessage = (message: Message) => {
-		const now = Date.now();
-		if (now - this.lastSocketSendTime < this.socketSendThrottleMs) {
-			return; // Skip this message
-		}
-
-		this.lastSocketSendTime = now;
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				message,
-				roomId: this.roomId,
-				clientId: this.user!.id,
-			})
-		);
-	};
-
-	// Debounced update for drag operations
-	private updateTimeout: NodeJS.Timeout | null = null;
-	private debouncedUpdateMessage = (message: Message) => {
-		if (this.updateTimeout) {
-			clearTimeout(this.updateTimeout);
-		}
-
-		this.updateTimeout = setTimeout(() => {
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: message.id,
-					newMessage: message,
-					roomId: this.roomId,
-					clientId: this.user!.id,
-				})
-			);
-		}, 100);
-	};
-
 	constructor(
 		socket: WebSocket,
 		canvas: HTMLCanvasElement,
@@ -299,7 +260,6 @@ export class Game {
 		this.canvas = canvas;
 		this.roomId = roomId;
 		this.ctx = canvas.getContext("2d")!;
-		this.roomId = roomId;
 		this.authenticated = authenticated;
 		this.isActive = isActive;
 
@@ -501,10 +461,6 @@ export class Game {
 			useFrontArrowStore.getState().setFrontArrowType;
 		this.setBackArrowHead = useBackArrowStore.getState().setBackArrowType;
 	}
-
-	/**
-	 * Handles manager initialization errors consistently
-	 */
 	private handleManagerError(managerName: string): boolean {
 		console.error(`${managerName} not initialized`);
 		return false;
@@ -517,9 +473,6 @@ export class Game {
 		this.socketHelper.sendRedo();
 	}
 
-	/**
-	 * Sets the cursor style for the canvas
-	 */
 	setCursor(cursor: string): void {
 		this.canvas.style.cursor = cursor;
 	}
@@ -1054,7 +1007,7 @@ export class Game {
 
 	// Viewport culling methods
 	private getViewportBounds() {
-		const padding = 100; // Extra padding for smooth scrolling
+		const padding = 150; // Extra padding for smooth scrolling
 		return {
 			left: (-this.offsetX - padding) / this.scale,
 			top: (-this.offsetY - padding) / this.scale,
@@ -1197,14 +1150,10 @@ export class Game {
 					this.drawEllipse(message);
 					break;
 				case "line":
-					if (this.lineManager) {
-						this.lineManager.render(message);
-					}
+					this.drawLine(message);
 					break;
 				case "arrow":
-					if (this.arrowManager) {
-						this.arrowManager.render(message);
-					}
+					this.drawArrow(message);
 					break;
 				case "pencil":
 					this.drawPencil(message);
@@ -1534,11 +1483,6 @@ export class Game {
 
 		if (this.cursorInterval !== null) {
 			clearInterval(this.cursorInterval);
-		}
-
-		// Clean up timeout to prevent memory leaks
-		if (this.updateTimeout) {
-			clearTimeout(this.updateTimeout);
 		}
 
 		// Clean up shape managers
