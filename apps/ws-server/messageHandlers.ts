@@ -39,6 +39,10 @@ export class MessageHandlers {
 		if (!this.redoByRoomUser.has(roomId))
 			this.redoByRoomUser.set(roomId, new Map());
 
+		if (data.userRole === "creator") {
+			const messages = data.messages;
+			this.messagesByRoom.set(roomId, messages ? messages : []);
+		}
 		const current = this.messagesByRoom.get(roomId) || [];
 		ws.send(JSON.stringify({ type: "sync", messages: current }));
 
@@ -120,6 +124,7 @@ export class MessageHandlers {
 		const message = data.message;
 		const roomId = data.roomId;
 		const userId = data.clientId;
+		const authflag = data.authflag;
 
 		if (!validateUserId(userId)) {
 			ws.send(
@@ -163,6 +168,7 @@ export class MessageHandlers {
 							type: "create",
 							message: message,
 							previewId: data.previewId,
+							authflag,
 						})
 					);
 				} catch (err) {
@@ -171,6 +177,7 @@ export class MessageHandlers {
 			}
 		}
 
+		if (authflag === "freehand") return;
 		// Persist to database
 		try {
 			await createMessage(message, userId, roomId);
@@ -182,6 +189,7 @@ export class MessageHandlers {
 	async handleDeleteMessage(ws: WebSocket, data: MessageData) {
 		const id = data.id;
 		const roomId = data.roomId;
+		const authflag = data.authflag;
 
 		if (!id) {
 			ws.send(JSON.stringify({ type: "error", message: "missing id" }));
@@ -225,13 +233,16 @@ export class MessageHandlers {
 			for (let user of this.users) {
 				if (user.rooms.includes(roomId)) {
 					try {
-						user.ws.send(JSON.stringify({ type: "delete", id }));
+						user.ws.send(
+							JSON.stringify({ type: "delete", id, authflag })
+						);
 					} catch (err) {
 						// ignore send errors
 					}
 				}
 			}
 
+			if (authflag === "freehand") return;
 			// Persist to database
 			try {
 				await deleteMessage(id);
@@ -246,6 +257,7 @@ export class MessageHandlers {
 		const newMessage = data.newMessage;
 		const roomId = data.roomId;
 		const flag = data.flag;
+		const authflag = data.authflag;
 
 		if (!id || !newMessage) {
 			ws.send(
@@ -307,6 +319,7 @@ export class MessageHandlers {
 								id,
 								newMessage,
 								clientId: data.clientId,
+								authflag,
 							})
 						);
 					} catch (err) {
@@ -315,6 +328,7 @@ export class MessageHandlers {
 				}
 			}
 
+			if (authflag === "freehand") return;
 			// Persist to database
 			if (!flag) {
 				try {
@@ -355,7 +369,10 @@ export class MessageHandlers {
 
 		if (!validateRoomId(roomId)) {
 			ws.send(
-				JSON.stringify({ type: "error", message: "missing roomId" })
+				JSON.stringify({
+					type: "error",
+					message: "missing roomId",
+				})
 			);
 			return;
 		}

@@ -105,9 +105,9 @@ export class PencilManager {
 		private ctx: CanvasRenderingContext2D,
 		private rc: any, // RoughCanvas
 		private generator: RoughGenerator,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private userId: string
 	) {}
 
@@ -236,14 +236,15 @@ export class PencilManager {
 				pencilPoints: points.slice(),
 			};
 
-			this.socket.send(
-				JSON.stringify({
-					type: "draw-message",
-					message,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "draw-message",
+						message,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error rendering pencil preview:", error);
 		} finally {
@@ -319,16 +320,17 @@ export class PencilManager {
 			const now = Date.now();
 			if (now - this.lastDragUpdate >= THROTTLE_MS) {
 				this.lastDragUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 		} catch (error) {
 			console.error("Error during pencil drag:", error);
@@ -477,16 +479,17 @@ export class PencilManager {
 			const now = Date.now();
 			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
 				this.lastResizeUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 
 			return { newHandler: resizeHandler };
@@ -504,7 +507,7 @@ export class PencilManager {
 		message: Message,
 		currentProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | void {
 		if (!message.pencilPoints || Array.isArray(message.shapeData)) return;
 
 		try {
@@ -528,15 +531,19 @@ export class PencilManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error during pencil properties update:", error);
 		}

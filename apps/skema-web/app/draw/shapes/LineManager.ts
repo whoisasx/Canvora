@@ -93,9 +93,9 @@ export class LineManager {
 		private ctx: CanvasRenderingContext2D,
 		private rc: RoughCanvas,
 		private generator: RoughGenerator,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private clientId: string
 	) {}
 
@@ -250,167 +250,20 @@ export class LineManager {
 			);
 			previewMessage.id = previewId;
 
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.clientId,
-					message: previewMessage,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "preview",
+						roomId: this.roomId,
+						clientId: this.clientId,
+						message: previewMessage,
+					})
+				);
 		} catch (error) {
 			console.error("Error rendering line preview:", error);
 			this.ctx.restore();
 		}
 	}
-
-	/**
-	 * Handles dragging of an entire line
-	 * Performance optimized with throttling
-	 */
-	// handleDrag(
-	// 	message: Message,
-	// 	deltaX: number,
-	// 	deltaY: number,
-	// 	clientX: number,
-	// 	clientY: number
-	// ): void {
-	// 	try {
-	// 		if (!message.lineData) return;
-
-	// 		const newX1 = message.lineData.x1 + deltaX;
-	// 		const newY1 = message.lineData.y1 + deltaY;
-	// 		const newX2 = message.lineData.x2 + deltaX;
-	// 		const newY2 = message.lineData.y2 + deltaY;
-
-	// 		// Update line data
-	// 		const updatedLineData = {
-	// 			x1: newX1,
-	// 			y1: newY1,
-	// 			x2: newX2,
-	// 			y2: newY2,
-	// 		};
-
-	// 		this.socket.send(
-	// 			JSON.stringify({
-	// 				type: "update",
-	// 				roomId: this.roomId,
-	// 				clientId: this.clientId,
-	// 				messageId: message.id,
-	// 				updateData: { lineData: updatedLineData },
-	// 			})
-	// 		);
-	// 	} catch (error) {
-	// 		console.error("Error handling line drag:", error);
-	// 	}
-	// }
-
-	/**
-	 * Handles resizing of line endpoints
-	 */
-	// handleResize(
-	// 	message: Message,
-	// 	newX: number,
-	// 	newY: number,
-	// 	handle: string
-	// ): void {
-	// 	try {
-	// 		if (!message.lineData) return;
-
-	// 		let updateData: any = {};
-
-	// 		if (handle === "start") {
-	// 			updateData = {
-	// 				lineData: {
-	// 					...message.lineData,
-	// 					x1: newX,
-	// 					y1: newY,
-	// 				},
-	// 			};
-	// 		} else if (handle === "end") {
-	// 			updateData = {
-	// 				lineData: {
-	// 					...message.lineData,
-	// 					x2: newX,
-	// 					y2: newY,
-	// 				},
-	// 			};
-	// 		}
-
-	// 		// Regenerate shapeData with new coordinates using existing options
-	// 		const updatedLineData = updateData.lineData;
-	// 		const existingOptions = Array.isArray(message.shapeData)
-	// 			? {}
-	// 			: message.shapeData.options;
-
-	// 		const newShapeData = LineHelper.generateShapeData(
-	// 			this.generator,
-	// 			updatedLineData.x1,
-	// 			updatedLineData.y1,
-	// 			updatedLineData.x2,
-	// 			updatedLineData.y2,
-	// 			existingOptions
-	// 		);
-
-	// 		updateData.shapeData = newShapeData;
-	// 		updateData.boundingBox = LineHelper.getBoundingBox(
-	// 			updatedLineData.x1,
-	// 			updatedLineData.y1,
-	// 			updatedLineData.x2,
-	// 			updatedLineData.y2
-	// 		);
-
-	// 		this.socket.send(
-	// 			JSON.stringify({
-	// 				type: "update",
-	// 				roomId: this.roomId,
-	// 				clientId: this.clientId,
-	// 				messageId: message.id,
-	// 				updateData,
-	// 			})
-	// 		);
-	// 	} catch (error) {
-	// 		console.error("Error handling line resize:", error);
-	// 	}
-	// }
-
-	/**
-	 * Updates line properties (stroke, opacity, etc.)
-	 */
-	// updateProperties(
-	// 	message: Message,
-	// 	newProps: Partial<CommonPropsGame>
-	// ): void {
-	// 	try {
-	// 		if (!message.lineData) return;
-
-	// 		const options = roughOptions(newProps);
-
-	// 		const newShapeData = LineHelper.generateShapeData(
-	// 			this.generator,
-	// 			message.lineData.x1,
-	// 			message.lineData.y1,
-	// 			message.lineData.x2,
-	// 			message.lineData.y2,
-	// 			options
-	// 		);
-
-	// 		this.socket.send(
-	// 			JSON.stringify({
-	// 				type: "update",
-	// 				roomId: this.roomId,
-	// 				clientId: this.clientId,
-	// 				messageId: message.id,
-	// 				updateData: {
-	// 					...newProps,
-	// 					shapeData: newShapeData,
-	// 				},
-	// 			})
-	// 		);
-	// 	} catch (error) {
-	// 		console.error("Error updating line properties:", error);
-	// 	}
-	// }
 
 	/**
 	 * Standardized drag method matching RectangleManager and PencilManager pattern
@@ -468,16 +321,17 @@ export class LineManager {
 			const now = Date.now();
 			if (now - this.lastDragUpdate >= THROTTLE_MS) {
 				this.lastDragUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.clientId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.clientId,
+						})
+					);
 			}
 		} catch (error) {
 			console.error("Error during line drag:", error);
@@ -564,16 +418,17 @@ export class LineManager {
 			const now = Date.now();
 			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
 				this.lastResizeUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.clientId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.clientId,
+						})
+					);
 			}
 
 			return { newHandler: resizeHandler };
@@ -591,7 +446,7 @@ export class LineManager {
 		message: Message,
 		currentProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | void {
 		if (!message.lineData || Array.isArray(message.shapeData)) return;
 
 		try {
@@ -621,15 +476,19 @@ export class LineManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.clientId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.clientId,
+					})
+				);
 		} catch (error) {
 			console.error("Error during line properties update:", error);
 		}

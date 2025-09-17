@@ -83,9 +83,9 @@ export class EllipseManager {
 		private ctx: CanvasRenderingContext2D,
 		private rc: any, // RoughCanvas
 		private generator: RoughGenerator,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private userId: string
 	) {}
 
@@ -219,14 +219,15 @@ export class EllipseManager {
 				boundingBox: rect,
 			};
 
-			this.socket.send(
-				JSON.stringify({
-					type: "draw-message",
-					message,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "draw-message",
+						message,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error rendering ellipse preview:", error);
 			this.ctx.restore();
@@ -287,16 +288,17 @@ export class EllipseManager {
 			const now = Date.now();
 			if (now - this.lastDragUpdate >= THROTTLE_MS) {
 				this.lastDragUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 		} catch (error) {
 			console.error("Error during ellipse drag:", error);
@@ -367,16 +369,17 @@ export class EllipseManager {
 			const now = Date.now();
 			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
 				this.lastResizeUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 
 			return { newHandler: flipResult.newHandler };
@@ -394,7 +397,7 @@ export class EllipseManager {
 		message: Message,
 		newProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | void {
 		if (Array.isArray(message.shapeData)) return;
 
 		try {
@@ -419,15 +422,19 @@ export class EllipseManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error updating ellipse properties:", error);
 		}

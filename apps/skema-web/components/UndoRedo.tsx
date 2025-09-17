@@ -1,16 +1,18 @@
 "use client";
 import { Game } from "@/app/draw/draw";
+import { FreeGame } from "@/app/freehand/freedraw/freedraw";
 import { useEffect } from "react";
 
-export default function UndoRedo({ game }: { game: Game | undefined }) {
-	useEffect(() => {
-		if (!game) return;
-	}, [game]);
+export default function UndoRedo({
+	game,
+}: {
+	game: Game | FreeGame | undefined;
+}) {
 	return (
 		<div className="h-10 w-20 border rounded-xl bg-white/80 dark:bg-gray-900/80 border-canvora-200/50 dark:border-canvora-600/30 flex shadow-lg backdrop-blur-md hover:shadow-xl transition-all duration-300">
 			<button
 				className="h-full hover:bg-canvora-100/50 dark:hover:bg-canvora-800/50 flex-1 flex items-center justify-center rounded-l-xl transition-all duration-200"
-				onClick={() => (game !== undefined ? game.undo() : "")}
+				onClick={() => game && game.undo()}
 			>
 				<div
 					className="w-full h-full flex items-center justify-center"
@@ -38,7 +40,7 @@ export default function UndoRedo({ game }: { game: Game | undefined }) {
 
 			<button
 				className="h-full hover:bg-canvora-100/50 dark:hover:bg-canvora-800/50 flex-1 flex items-center justify-center rounded-r-xl transition-all duration-200"
-				onClick={() => (game !== undefined ? game.redo() : "")}
+				onClick={() => game && game.redo()}
 			>
 				<div
 					className="w-full h-full flex items-center justify-center"

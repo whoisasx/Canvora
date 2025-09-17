@@ -5,8 +5,15 @@ import Canvas from "./Canvas";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { Message } from "@/app/draw/draw";
 
-export default function RoomCanvas({ roomId }: { roomId: string }) {
+export default function RoomCanvas({
+	roomId,
+	creatorflag,
+}: {
+	roomId: string;
+	creatorflag: boolean;
+}) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const router = useRouter();
 	const { data: session, status } = useSession();
@@ -40,9 +47,27 @@ export default function RoomCanvas({ roomId }: { roomId: string }) {
 					`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}`
 				);
 
-				ws.onopen = () => {
+				ws.onopen = async () => {
 					setSocket(ws);
-					ws.send(JSON.stringify({ type: "join-room", roomId }));
+					if (creatorflag) {
+						let messages: Message[];
+						const response = await axios.get(
+							`/api/get-chats/${roomId}`
+						);
+						if (response.status === 200) {
+							messages = response.data.messages;
+						} else {
+							messages = [];
+						}
+						ws.send(
+							JSON.stringify({
+								type: "join-room",
+								roomId,
+								messages,
+							})
+						);
+					} else
+						ws.send(JSON.stringify({ type: "join-room", roomId }));
 					// toast.success("Connected to room 🎉");
 				};
 

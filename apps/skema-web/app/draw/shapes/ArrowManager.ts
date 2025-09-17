@@ -129,9 +129,9 @@ export class ArrowManager {
 		private ctx: CanvasRenderingContext2D,
 		private rc: RoughCanvas,
 		private generator: RoughGenerator,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private clientId: string
 	) {}
 
@@ -302,191 +302,21 @@ export class ArrowManager {
 			);
 			previewMessage.id = previewId;
 
-			this.socket.send(
-				JSON.stringify({
-					type: "preview",
-					roomId: this.roomId,
-					clientId: this.clientId,
-					message: previewMessage,
-				})
-			);
+			if (this.socket) {
+				this.socket.send(
+					JSON.stringify({
+						type: "preview",
+						roomId: this.roomId,
+						clientId: this.clientId,
+						message: previewMessage,
+					})
+				);
+			}
 		} catch (error) {
 			console.error("Error rendering arrow preview:", error);
 			this.ctx.restore();
 		}
 	}
-
-	/**
-	 * Handles dragging of an entire arrow
-	 * Performance optimized with throttling
-	 */
-	// handleDrag(
-	// 	message: Message,
-	// 	deltaX: number,
-	// 	deltaY: number,
-	// 	clientX: number,
-	// 	clientY: number
-	// ): void {
-	// 	try {
-	// 		if (!message.lineData) return;
-
-	// 		const newX1 = message.lineData.x1 + deltaX;
-	// 		const newY1 = message.lineData.y1 + deltaY;
-	// 		const newX2 = message.lineData.x2 + deltaX;
-	// 		const newY2 = message.lineData.y2 + deltaY;
-
-	// 		// Update line data and bounding box
-	// 		const updatedLineData = {
-	// 			x1: newX1,
-	// 			y1: newY1,
-	// 			x2: newX2,
-	// 			y2: newY2,
-	// 		};
-
-	// 		const newBoundingBox = ArrowHelper.getBoundingBox(
-	// 			newX1,
-	// 			newY1,
-	// 			newX2,
-	// 			newY2
-	// 		);
-
-	// 		this.socket.send(
-	// 			JSON.stringify({
-	// 				type: "update",
-	// 				roomId: this.roomId,
-	// 				clientId: this.clientId,
-	// 				messageId: message.id,
-	// 				updateData: {
-	// 					lineData: updatedLineData,
-	// 					boundingBox: newBoundingBox,
-	// 				},
-	// 			})
-	// 		);
-	// 	} catch (error) {
-	// 		console.error("Error handling arrow drag:", error);
-	// 	}
-	// }
-
-	/**
-	 * Handles resizing of arrow endpoints
-	 */
-	// handleResize(
-	// 	message: Message,
-	// 	newX: number,
-	// 	newY: number,
-	// 	handle: string
-	// ): void {
-	// 	try {
-	// 		if (!message.lineData || !Array.isArray(message.shapeData)) return;
-
-	// 		let updateData: any = {};
-
-	// 		if (handle === "start") {
-	// 			updateData = {
-	// 				lineData: {
-	// 					...message.lineData,
-	// 					x1: newX,
-	// 					y1: newY,
-	// 				},
-	// 			};
-	// 		} else if (handle === "end") {
-	// 			updateData = {
-	// 				lineData: {
-	// 					...message.lineData,
-	// 					x2: newX,
-	// 					y2: newY,
-	// 				},
-	// 			};
-	// 		}
-
-	// 		// Regenerate shapeData with new coordinates using existing options
-	// 		const updatedLineData = updateData.lineData;
-	// 		const existingOptions = message.shapeData[0]?.options || {};
-
-	// 		const front = message.arrowHead?.front || "none";
-	// 		const back = message.arrowHead?.back || "none";
-	// 		const arrowType = message.arrowType || "sharp";
-
-	// 		const newShapeData = ArrowHelper.generateShapeData(
-	// 			this.generator,
-	// 			updatedLineData.x1,
-	// 			updatedLineData.y1,
-	// 			updatedLineData.x2,
-	// 			updatedLineData.y2,
-	// 			existingOptions,
-	// 			front,
-	// 			back,
-	// 			arrowType
-	// 		);
-
-	// 		updateData.shapeData = newShapeData;
-	// 		updateData.boundingBox = ArrowHelper.getBoundingBox(
-	// 			updatedLineData.x1,
-	// 			updatedLineData.y1,
-	// 			updatedLineData.x2,
-	// 			updatedLineData.y2
-	// 		);
-
-	// 		this.socket.send(
-	// 			JSON.stringify({
-	// 				type: "update",
-	// 				roomId: this.roomId,
-	// 				clientId: this.clientId,
-	// 				messageId: message.id,
-	// 				updateData,
-	// 			})
-	// 		);
-	// 	} catch (error) {
-	// 		console.error("Error handling arrow resize:", error);
-	// 	}
-	// }
-
-	/**
-	 * Updates arrow properties (stroke, opacity, arrowheads, etc.)
-	 */
-	// updateProperties(
-	// 	message: Message,
-	// 	newProps: Partial<CommonPropsGame>
-	// ): void {
-	// 	try {
-	// 		if (!message.lineData) return;
-
-	// 		const options = roughOptions(newProps);
-	// 		const front =
-	// 			newProps.arrowHead?.front || message.arrowHead?.front || "none";
-	// 		const back =
-	// 			newProps.arrowHead?.back || message.arrowHead?.back || "none";
-	// 		const arrowType =
-	// 			newProps.arrowType || message.arrowType || "sharp";
-
-	// 		const newShapeData = ArrowHelper.generateShapeData(
-	// 			this.generator,
-	// 			message.lineData.x1,
-	// 			message.lineData.y1,
-	// 			message.lineData.x2,
-	// 			message.lineData.y2,
-	// 			options,
-	// 			front,
-	// 			back,
-	// 			arrowType
-	// 		);
-
-	// 		this.socket.send(
-	// 			JSON.stringify({
-	// 				type: "update",
-	// 				roomId: this.roomId,
-	// 				clientId: this.clientId,
-	// 				messageId: message.id,
-	// 				updateData: {
-	// 					...newProps,
-	// 					shapeData: newShapeData,
-	// 				},
-	// 			})
-	// 		);
-	// 	} catch (error) {
-	// 		console.error("Error updating arrow properties:", error);
-	// 	}
-	// }
 
 	/**
 	 * Standardized drag method matching RectangleManager and PencilManager pattern
@@ -555,19 +385,21 @@ export class ArrowManager {
 			setSelectedMessage(newMessage);
 
 			// Throttle socket messages during drag operations
-			const now = Date.now();
-			if (now - this.lastDragUpdate >= THROTTLE_MS) {
-				this.lastDragUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.clientId,
-					})
-				);
+			if (this.socket) {
+				const now = Date.now();
+				if (now - this.lastDragUpdate >= THROTTLE_MS) {
+					this.lastDragUpdate = now;
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.clientId,
+						})
+					);
+				}
 			}
 		} catch (error) {
 			console.error("Error during arrow drag:", error);
@@ -665,19 +497,21 @@ export class ArrowManager {
 			setSelectedMessage(newMessage);
 
 			// Throttle socket messages during resize operations
-			const now = Date.now();
-			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
-				this.lastResizeUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.clientId,
-					})
-				);
+			if (this.socket) {
+				const now = Date.now();
+				if (now - this.lastResizeUpdate >= THROTTLE_MS) {
+					this.lastResizeUpdate = now;
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.clientId,
+						})
+					);
+				}
 			}
 
 			return { newHandler: resizeHandler };
@@ -695,7 +529,7 @@ export class ArrowManager {
 		message: Message,
 		currentProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | void {
 		if (!message.lineData || !Array.isArray(message.shapeData)) return;
 
 		try {
@@ -744,15 +578,20 @@ export class ArrowManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.clientId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+			if (this.socket) {
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.clientId,
+					})
+				);
+			}
 		} catch (error) {
 			console.error("Error during arrow properties update:", error);
 		}

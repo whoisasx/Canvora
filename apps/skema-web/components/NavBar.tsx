@@ -50,7 +50,7 @@ export default function NavBar() {
 	}, []);
 
 	const handleFreeBoard = async () => {
-		window.open("/free-board", "_blank");
+		window.open("/freehand", "_blank");
 	};
 
 	const handleSignIn = () => {

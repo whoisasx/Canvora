@@ -27,7 +27,11 @@ export const GET = auth(async function GET(req: NextAuthRequest) {
 			);
 		}
 
-		const token = jwt.sign(req.auth.user, secret, { expiresIn: "1h" });
+		const token = jwt.sign(
+			{ id: req.auth.user.id, username: req.auth.user.username },
+			secret,
+			{ expiresIn: "1h" }
+		);
 
 		return res.json(
 			{

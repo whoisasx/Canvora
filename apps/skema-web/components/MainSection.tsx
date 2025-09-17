@@ -171,7 +171,9 @@ export default function MainSection() {
 							<Button
 								size="large"
 								level="primary"
-								onClick={() => router.push("/free-board")}
+								onClick={() =>
+									window.open("/freehand", "_blank")
+								}
 								className="group"
 							>
 								<span className="flex items-center gap-2">

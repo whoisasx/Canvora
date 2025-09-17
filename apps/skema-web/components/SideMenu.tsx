@@ -612,7 +612,7 @@ export default function SideMenu() {
 									size="large"
 									level="primary"
 									onClick={() =>
-										window.open("/free-board", "_blank")
+										window.open("/freehand", "_blank")
 									}
 								/>
 							</motion.div>

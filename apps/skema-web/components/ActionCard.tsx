@@ -15,13 +15,17 @@ import { useState } from "react";
 import { ChangeEvent } from "react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "motion/react";
+import { IndexDB } from "@/lib/indexdb";
+import { SessionData } from "./freehand/FreeRoomCanvas";
 
 export default function ActionCard({
-	roomId,
-	game,
+	sessionData,
+	indexdb,
+	authenticated,
 }: {
-	roomId: string;
-	game: Game | undefined;
+	sessionData?: SessionData;
+	indexdb?: IndexDB;
+	authenticated: boolean;
 }) {
 	const { data: session } = useSession();
 
@@ -536,41 +540,72 @@ export default function ActionCard({
 									whileTap={{ scale: 0.95 }}
 									className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg flex items-center gap-2"
 									onClick={async () => {
-										try {
-											const res = await axios.delete(
-												"/api/reset-room",
-												{ data: { roomId } }
-											);
-											if (res.status !== 200) {
-												if (res.status === 404) {
-													toast.error(
-														"Only admin is permitted."
-													);
-													return;
+										if (sessionData) {
+											try {
+												if (authenticated) {
+													const res =
+														await axios.delete(
+															"/api/reset-room",
+															{
+																data: {
+																	roomId: sessionData.roomId,
+																},
+															}
+														);
+													if (res.status !== 200) {
+														if (
+															res.status === 404
+														) {
+															toast.error(
+																"Only admin is permitted."
+															);
+															return;
+														}
+														toast.error(
+															"Failed to reset canvas"
+														);
+													} else {
+														toast.success(
+															"Canvas reset successful!"
+														);
+														sessionData.socket.send(
+															JSON.stringify({
+																type: "reset-canvas",
+																roomId: sessionData.roomId,
+															})
+														);
+														window.location.reload();
+														toast.success(
+															"Canvas reset successfully. ✅"
+														);
+													}
+												} else {
+													//TODO: fix here
 												}
+											} catch (err) {
 												toast.error(
-													"Failed to reset canvas"
+													"Failed to reset canvas. ❌"
 												);
-											} else {
-												toast.success(
-													"Canvas reset successful!"
-												);
-												console.log("command");
-												console.log(game?.socket);
-												game?.socket.send(
-													JSON.stringify({
-														type: "reset-canvas",
-														roomId: roomId,
-													})
-												);
-												window.location.reload();
+											} finally {
+												setShowConfirm(false);
 											}
-										} catch (err) {
-											toast.error(
-												"Failed to reset canvas."
-											);
-										} finally {
-											setShowConfirm(false);
+											return;
+										}
+										if (indexdb) {
+											try {
+												await indexdb.clearCanvas();
+												window.location.reload();
+												toast.success(
+													"Canvas reset successfully. ✅"
+												);
+											} catch (err) {
+												toast.error(
+													"Failed to reset canvas. ❌"
+												);
+											} finally {
+												setShowConfirm(false);
+											}
+											return;
 										}
 									}}
 								>

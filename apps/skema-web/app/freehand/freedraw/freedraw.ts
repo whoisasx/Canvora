@@ -1,12 +1,23 @@
-import { v4 as uuidv4 } from "uuid";
 import {
-	useCanvasBgStore,
-	useSelectedMessageStore,
-	useThemeStore,
-	useZoomStore,
-} from "@/utils/canvasStore";
+	Handle,
+	SocketHelper,
+	CoordinateHelper,
+	ShapeCreator,
+	HitTestHelper,
+} from "@/app/draw/assist";
+import { User, Message, Laser } from "@/app/draw/draw";
+import { LayerManager } from "@/app/draw/render/layerManager";
 import {
-	arrowHead,
+	RectangleManager,
+	RhombusManager,
+	EllipseManager,
+	LineManager,
+	ArrowManager,
+	PencilManager,
+	ImageManager,
+	TextManager,
+} from "@/app/draw/shapes";
+import {
 	arrowType,
 	backArrow,
 	edges,
@@ -15,32 +26,20 @@ import {
 	fontSize,
 	frontArrow,
 	layers,
+	Props,
 	slopiness,
 	strokeStyle,
 	strokeWidth,
 	textAlign,
 	Tool,
-} from "./types";
-import rough from "roughjs";
-import { RoughCanvas } from "roughjs/bin/canvas";
-import { RoughGenerator } from "roughjs/bin/generator";
-import { Drawable, Options } from "roughjs/bin/core";
+} from "@/app/draw/types";
+import { SessionData } from "@/components/freehand/FreeRoomCanvas";
 import {
-	roughOptions,
-	normalizeWheelDelta,
-	getResizeHandleAndCursor,
-} from "./render";
-import {
-	chilanka,
-	excali,
-	firaCode,
-	ibm,
-	monospace,
-	nunito,
-	comic,
-	mononoki,
-} from "../font";
-import useToolStore, { useLockStore } from "@/utils/toolStore";
+	useThemeStore,
+	useCanvasBgStore,
+	useSelectedMessageStore,
+	useZoomStore,
+} from "@/utils/canvasStore";
 import {
 	CommonPropsGame,
 	useArrowTypeStore,
@@ -60,78 +59,35 @@ import {
 	useStrokeWidthStore,
 	useTextAlignStore,
 } from "@/utils/propsStore";
-import { makeCircleCursor } from "./render/eraser";
-import { LayerManager } from "./render/layerManager";
-import { getExistingMessages } from "./server";
+import { RoughCanvas } from "roughjs/bin/canvas";
+import { RoughGenerator } from "roughjs/bin/generator";
+import rough from "roughjs";
+import useToolStore, { useLockStore } from "@/utils/toolStore";
+import { makeCircleCursor } from "@/app/draw/render/eraser";
+import { getExistingMessages } from "@/app/draw/server";
 import {
-	SocketHelper,
-	CoordinateHelper,
-	HitTestHelper,
-	ShapeCreator,
-	Handle,
-} from "./assist";
+	getResizeHandleAndCursor,
+	normalizeWheelDelta,
+	roughOptions,
+} from "@/app/draw/render";
+import { Options } from "roughjs/bin/core";
+import { v4 } from "uuid";
 import {
-	RectangleManager,
-	RhombusManager,
-	EllipseManager,
-	LineManager,
-	ArrowManager,
-	PencilManager,
-	ImageManager,
-	TextManager,
-} from "./shapes";
+	chilanka,
+	comic,
+	excali,
+	firaCode,
+	ibm,
+	monospace,
+	nunito,
+} from "@/app/font";
+import { getExistingMessagesLocal } from "./freeserver";
+import { IndexDB } from "@/lib/indexdb";
 
-export type Laser = {
-	x: number;
-	y: number;
-	alpha: number;
-	width?: number;
-};
-export interface ITextData {
-	text: string;
-	fontSize: string;
-	fontFamily: string;
-	textColor: string;
-	textAlign: string;
-	pos: {
-		x: number;
-		y: number;
-	};
-}
-export interface IIMageData {
-	src: string;
-	pos: {
-		x: number;
-		y: number;
-	};
-	w: number;
-	h: number;
-}
-export interface User {
-	id: string;
-	username: string;
-}
-
-type BoundingBox = { x: number; y: number; w: number; h: number };
-
-export type Message = {
-	id: string;
-	shape: Tool;
-	shapeData: Drawable | Drawable[];
-	opacity?: number;
-	edges?: edges;
-	arrowType?: arrowType;
-	arrowHead?: arrowHead;
-	textData?: ITextData;
-	imageData?: IIMageData;
-	boundingBox: BoundingBox;
-	pencilPoints?: { x: number; y: number }[];
-	lineData?: { x1: number; y1: number; x2: number; y2: number };
-};
-
-export class Game {
+export class FreeGame {
 	private canvas: HTMLCanvasElement;
-	private roomId: string;
+	private roomId: string | undefined;
+	private sessionData: SessionData | undefined;
 	private ctx: CanvasRenderingContext2D;
 	private user: User | null = null;
 	private clicked: boolean = false;
@@ -140,8 +96,8 @@ export class Game {
 	private scale: number = 1;
 	private offsetX: number = 0;
 	private offsetY: number = 0;
-	private authenticated: boolean;
 	private isActive: boolean | undefined;
+	private indexdb: IndexDB;
 
 	private prevX: number = 0;
 	private prevY: number = 0;
@@ -171,22 +127,9 @@ export class Game {
 	private imageManager: ImageManager | null = null;
 	private textManager: TextManager | null = null;
 
-	// add small fields for throttling preview sends
 	private previewMessage: Message[];
 	private previewId: string = "";
 
-	// Local preview state for current user's drawing
-	private localPreview: {
-		tool: Tool;
-		startX: number;
-		startY: number;
-		w: number;
-		h: number;
-		props: CommonPropsGame;
-		seed: number;
-	} | null = null;
-
-	// Performance optimization fields
 	private lastRenderTime: number = 0;
 	private renderThrottleMs: number = 33; // ~30fps max
 	private pendingRender: boolean = false;
@@ -238,30 +181,29 @@ export class Game {
 		{ pos: { x: number; y: number }; lastSeen: Number }
 	>();
 
-	socket: WebSocket;
+	socket: WebSocket | undefined;
 
 	private unsubscribeLayer: () => void;
 	private setLayers: (val: layers) => void;
 	private layerManager: LayerManager;
 
-	// Helper instances
 	private socketHelper: SocketHelper;
 	private coordinateHelper: CoordinateHelper;
 	private shapeCreator: ShapeCreator;
 
 	constructor(
-		socket: WebSocket,
+		sessionData: SessionData | undefined,
 		canvas: HTMLCanvasElement,
-		roomId: string,
-		authenticated: boolean,
-		isActive: boolean | undefined
+		indexdb: IndexDB
 	) {
-		this.socket = socket;
+		if (sessionData) {
+			this.roomId = sessionData.roomId;
+			this.socket = sessionData.socket;
+			this.sessionData = sessionData;
+		}
+		this.indexdb = indexdb;
 		this.canvas = canvas;
-		this.roomId = roomId;
 		this.ctx = canvas.getContext("2d")!;
-		this.authenticated = authenticated;
-		this.isActive = isActive;
 
 		this.messages = [];
 		this.previewMessage = [];
@@ -461,11 +403,15 @@ export class Game {
 			useFrontArrowStore.getState().setFrontArrowType;
 		this.setBackArrowHead = useBackArrowStore.getState().setBackArrowType;
 	}
+
+	/* ---------------------------------------------------------------------- */
+
 	private handleManagerError(managerName: string): boolean {
 		console.error(`${managerName} not initialized`);
 		return false;
 	}
 
+	//TODO: implemet undo redo
 	undo() {
 		this.socketHelper.sendUndo();
 	}
@@ -475,385 +421,6 @@ export class Game {
 
 	setCursor(cursor: string): void {
 		this.canvas.style.cursor = cursor;
-	}
-
-	/** ------------------------------------------------------------------- */
-	async initHandler() {
-		this.messages = await getExistingMessages(
-			this.roomId,
-			this.authenticated,
-			this.isActive
-		);
-
-		if (this.onMessageChange) {
-			this.onMessageChange();
-		}
-		this.throttledRender();
-		window.addEventListener("keydown", (e) => {
-			// Delete selected message
-			if (e.key === "Backspace") {
-				if (this.selectedMessage) {
-					this.socketHelper.sendDeleteMessage(
-						this.selectedMessage.id
-					);
-				}
-				this.selectedMessage = null;
-				this.preSelectedMessage = null;
-				this.canvas.style.cursor = "default";
-			}
-			// Undo shortcut (Ctrl/Cmd + Z)
-			if (
-				(e.ctrlKey || e.metaKey) &&
-				e.key.toLowerCase() === "z" &&
-				!e.shiftKey
-			) {
-				e.preventDefault();
-				this.undo();
-			}
-			// Redo shortcut (Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z)
-			if (
-				(e.ctrlKey || e.metaKey) &&
-				(e.key.toLowerCase() === "y" ||
-					(e.shiftKey && e.key.toLowerCase() === "z"))
-			) {
-				e.preventDefault();
-				this.redo();
-			}
-			if (
-				this.tool !== "text" &&
-				!(
-					document.activeElement instanceof HTMLTextAreaElement ||
-					document.activeElement instanceof HTMLInputElement ||
-					(document.activeElement instanceof HTMLElement &&
-						document.activeElement.isContentEditable)
-				)
-			) {
-				if (e.key === "1") {
-					this.setTool("mouse" as Tool);
-					this.setProps("mouse" as Tool);
-				}
-				if (e.key === "2") {
-					this.setTool("rectangle" as Tool);
-					this.setProps("rectangle" as Tool);
-				}
-				if (e.key === "3") {
-					this.setTool("rhombus" as Tool);
-					this.setProps("rhombus" as Tool);
-				}
-				if (e.key === "4") {
-					this.setTool("arc" as Tool);
-					this.setProps("arc" as Tool);
-				}
-				if (e.key === "5") {
-					this.setTool("arrow" as Tool);
-					this.setProps("arrow" as Tool);
-				}
-				if (e.key === "6") {
-					this.setTool("line" as Tool);
-					this.setProps("line" as Tool);
-				}
-				if (e.key === "7") {
-					this.setTool("pencil" as Tool);
-					this.setProps("pencil" as Tool);
-				}
-				if (e.key === "8") {
-					this.setTool("text" as Tool);
-					this.setProps("text" as Tool);
-				}
-				//9.image
-				if (e.key === "9") {
-					this.setTool("image" as Tool);
-					this.setProps("image" as Tool);
-				}
-				//0.eraser
-				if (e.key === "0") {
-					this.setTool("eraser" as Tool);
-					this.setProps("eraser" as Tool);
-				}
-				//W.web (map to hand/pan)
-				if (e.key.toLowerCase() === "w") {
-					this.setTool("web" as Tool);
-					this.setProps("web" as Tool);
-				}
-				//L.laser
-				if (e.key.toLowerCase() === "l") {
-					this.setTool("laser" as Tool);
-					this.setProps("laser" as Tool);
-				}
-			}
-		});
-	}
-	initSocketHandler() {
-		// on every message received, validate and safely apply updates to local state
-		this.socket.onmessage = (e: MessageEvent) => {
-			let parsedData: any;
-			try {
-				parsedData = JSON.parse(e.data);
-			} catch (err) {
-				console.warn("socket: received invalid JSON", err);
-				return;
-			}
-			if (!parsedData) {
-				return;
-			}
-
-			switch (parsedData.type) {
-				case "draw": {
-					const message = parsedData.message as Message;
-					const senderId = parsedData.clientId as string | undefined;
-
-					if (this.user && senderId && this.user.id === senderId) {
-						return;
-					}
-
-					let updated = false;
-					this.previewMessage = this.previewMessage.map((msg) => {
-						if (msg.id === message.id) {
-							updated = true;
-							return { ...message };
-						}
-						return msg;
-					});
-					if (!updated) {
-						this.previewMessage.push(message);
-					}
-
-					this.previewMessage = this.previewMessage.filter(
-						(m, i, arr) => arr.findIndex((x) => x.id === m.id) === i
-					);
-
-					this.throttledRender();
-					break;
-				}
-
-				case "create": {
-					const msg = parsedData.message as Message;
-					const previewId = parsedData.previewId as
-						| string
-						| undefined;
-
-					if (
-						!msg ||
-						typeof msg.id !== "string" ||
-						typeof msg.shape !== "string"
-					) {
-						console.warn(
-							"socket: invalid shape payload",
-							parsedData
-						);
-						return;
-					}
-
-					if (msg.boundingBox) {
-						const bb = msg.boundingBox;
-						if (
-							typeof bb.x !== "number" ||
-							typeof bb.y !== "number" ||
-							typeof bb.w !== "number" ||
-							typeof bb.h !== "number"
-						) {
-							console.warn(
-								"socket: invalid boundingBox",
-								parsedData
-							);
-							return;
-						}
-					}
-
-					// avoid duplicates
-					if (!this.messages.find((m) => m.id === msg.id)) {
-						this.messages.push(msg as Message);
-						this.layerManager.setMessages(this.messages);
-					}
-
-					// 1) preferred: clear preview by previewId (if server forwarded it)
-					if (previewId && typeof previewId === "string") {
-						this.previewMessage = this.previewMessage.filter(
-							(pm) => pm.id !== previewId
-						);
-					}
-
-					// 2) defensive: always remove any preview with the same final id (edge cases)
-					this.previewMessage = this.previewMessage.filter(
-						(pm) => pm.id !== msg.id
-					);
-
-					// 3) fallback: for text shapes, remove previews that match by text content + approx position
-					if (msg.shape === "text" && msg.textData) {
-						this.previewMessage = this.previewMessage.filter(
-							(pm) => {
-								if (pm.shape !== "text" || !pm.textData)
-									return true;
-								const sameText =
-									pm.textData.text === msg.textData!.text;
-								const sameX =
-									Math.abs(
-										pm.textData.pos.x - msg.textData!.pos.x
-									) < 0.0001;
-								const sameY =
-									Math.abs(
-										pm.textData.pos.y - msg.textData!.pos.y
-									) < 0.0001;
-								return !(sameText && sameX && sameY);
-							}
-						);
-					}
-
-					// keep selection in sync
-					if (
-						this.selectedMessage &&
-						this.selectedMessage.id === msg.id
-					) {
-						this.selectedMessage = msg as Message;
-						this.setSelectedMessage(this.selectedMessage);
-					}
-					this.throttledRender();
-					// Notify about message changes
-					if (this.onMessageChange) {
-						this.onMessageChange();
-					}
-					break;
-				}
-
-				case "delete": {
-					const id = parsedData.id;
-					if (typeof id !== "string") {
-						console.warn(
-							"socket: invalid delete payload",
-							parsedData
-						);
-						return;
-					}
-					this.messages = this.messages.filter(
-						(message) => id !== message.id
-					);
-					if (
-						this.selectedMessage &&
-						this.selectedMessage.id === id
-					) {
-						this.selectedMessage = null;
-					}
-					this.layerManager.setMessages(this.messages);
-					this.throttledRender();
-					// Notify about message changes
-					if (this.onMessageChange) {
-						this.onMessageChange();
-					}
-					break;
-				}
-				case "update": {
-					const id = parsedData.id;
-					const newMessage = parsedData.newMessage;
-					const senderId = parsedData.clientId;
-					const flag = parsedData.flag;
-
-					if (
-						flag &&
-						this.user &&
-						senderId &&
-						this.user.id === senderId
-					) {
-						return;
-					}
-					if (
-						typeof id !== "string" ||
-						!newMessage ||
-						typeof newMessage.id !== "string"
-					) {
-						console.warn(
-							"socket: invalid update payload",
-							parsedData
-						);
-						return;
-					}
-					this.messages = this.messages.map((message) => {
-						if (message.id === id) {
-							return { ...newMessage } as Message;
-						}
-						return message;
-					});
-					if (
-						this.selectedMessage &&
-						this.selectedMessage.id === id
-					) {
-						this.selectedMessage = { ...newMessage } as Message;
-						this.setSelectedMessage(this.selectedMessage);
-					}
-					this.layerManager.setMessages(this.messages);
-					this.throttledRender();
-					// Notify about message changes
-					if (this.onMessageChange) {
-						this.onMessageChange();
-					}
-					break;
-				}
-				case "cursor": {
-					const username = parsedData.username;
-					const pos = parsedData.pos;
-					if (!username || !pos) return;
-
-					this.otherUsers.set(username, {
-						pos: pos,
-						lastSeen: Date.now(),
-					});
-					this.throttledRender();
-					break;
-				}
-				case "cursors-batch": {
-					const cursors = parsedData.cursors;
-					if (!Array.isArray(cursors)) return;
-
-					// Clear old cursors and update with new batch
-					this.otherUsers.clear();
-
-					for (const cursor of cursors) {
-						if (cursor.username && cursor.pos && cursor.lastSeen) {
-							this.otherUsers.set(cursor.username, {
-								pos: cursor.pos,
-								lastSeen: cursor.lastSeen,
-							});
-						}
-					}
-
-					this.throttledRender();
-					break;
-				}
-				case "sync": {
-					this.messages = parsedData.messages;
-					this.layerManager.setMessages(this.messages);
-					// keep selectedMessage in sync with server state (or clear if removed)
-					if (this.selectedMessage) {
-						const found = this.messages.find(
-							(m: Message) => m.id === this.selectedMessage!.id
-						);
-						if (found) {
-							this.selectedMessage = found;
-							+this.setSelectedMessage(found);
-						} else {
-							this.selectedMessage = null;
-							this.setSelectedMessage(null);
-						}
-					}
-					this.throttledRender();
-					// Notify about message changes
-					if (this.onMessageChange) {
-						this.onMessageChange();
-					}
-					break;
-				}
-				case "reload": {
-					this.throttledRender();
-					// Notify about message changes (canvas was reset)
-					if (this.onMessageChange) {
-						this.onMessageChange();
-					}
-					break;
-				}
-				default: {
-					return;
-				}
-			}
-		};
 	}
 
 	applyTransform() {
@@ -870,7 +437,6 @@ export class Game {
 			this.offsetX,
 			this.offsetY
 		);
-		// Note: Rendering is now handled by throttledRender() calls in viewport change handlers
 	}
 
 	selectTool(tool: Tool, props: CommonPropsGame) {
@@ -1006,9 +572,8 @@ export class Game {
 		return this.coordinateHelper.getMousePos(e);
 	};
 
-	// Viewport culling methods
 	private getViewportBounds() {
-		const padding = 150; // Extra padding for smooth scrolling
+		const padding = 150;
 		return {
 			left: (-this.offsetX - padding) / this.scale,
 			top: (-this.offsetY - padding) / this.scale,
@@ -1020,23 +585,416 @@ export class Game {
 	private isMessageInViewport(message: Message): boolean {
 		const viewport = this.getViewportBounds();
 		const bb = message.boundingBox;
-
-		// AABB (Axis-Aligned Bounding Box) intersection test
 		return !(
 			bb.x + bb.w < viewport.left || // Shape is completely to the left
 			bb.x > viewport.right || // Shape is completely to the right
 			bb.y + bb.h < viewport.top || // Shape is completely above
 			bb.y > viewport.bottom
-		); // Shape is completely below
+		);
 	}
 
 	private getVisibleMessages(): Message[] {
 		return this.messages.filter((message) =>
 			this.isMessageInViewport(message)
 		);
+	} /* ----------------------------------------------------------------------- */
+
+	async initHandler() {
+		this.messages = await getExistingMessagesLocal(
+			this.roomId,
+			this.socket,
+			this.indexdb
+		);
+
+		if (this.onMessageChange) {
+			this.onMessageChange();
+		}
+		this.throttledRender();
+		window.addEventListener("keydown", (e) => {
+			// Delete selected message
+			if (e.key === "Backspace") {
+				if (this.selectedMessage) {
+					if (!this.socket && !this.roomId) {
+						this.messages = this.messages.filter(
+							(msg) => msg.id !== this.selectedMessage!.id
+						);
+						this.throttledRender();
+						this.indexdb.deleteMessage(this.selectedMessage.id);
+					}
+					this.socketHelper.sendDeleteMessage(
+						this.selectedMessage.id
+					);
+				}
+				this.selectedMessage = null;
+				this.preSelectedMessage = null;
+				this.canvas.style.cursor = "default";
+			}
+			// Undo shortcut (Ctrl/Cmd + Z)
+			if (
+				(e.ctrlKey || e.metaKey) &&
+				e.key.toLowerCase() === "z" &&
+				!e.shiftKey
+			) {
+				e.preventDefault();
+				this.undo();
+			}
+			// Redo shortcut (Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z)
+			if (
+				(e.ctrlKey || e.metaKey) &&
+				(e.key.toLowerCase() === "y" ||
+					(e.shiftKey && e.key.toLowerCase() === "z"))
+			) {
+				e.preventDefault();
+				this.redo();
+			}
+			if (
+				this.tool !== "text" &&
+				!(
+					document.activeElement instanceof HTMLTextAreaElement ||
+					document.activeElement instanceof HTMLInputElement ||
+					(document.activeElement instanceof HTMLElement &&
+						document.activeElement.isContentEditable)
+				)
+			) {
+				if (e.key === "1") {
+					this.setTool("mouse" as Tool);
+					this.setProps("mouse" as Tool);
+				}
+				if (e.key === "2") {
+					this.setTool("rectangle" as Tool);
+					this.setProps("rectangle" as Tool);
+				}
+				if (e.key === "3") {
+					this.setTool("rhombus" as Tool);
+					this.setProps("rhombus" as Tool);
+				}
+				if (e.key === "4") {
+					this.setTool("arc" as Tool);
+					this.setProps("arc" as Tool);
+				}
+				if (e.key === "5") {
+					this.setTool("arrow" as Tool);
+					this.setProps("arrow" as Tool);
+				}
+				if (e.key === "6") {
+					this.setTool("line" as Tool);
+					this.setProps("line" as Tool);
+				}
+				if (e.key === "7") {
+					this.setTool("pencil" as Tool);
+					this.setProps("pencil" as Tool);
+				}
+				if (e.key === "8") {
+					this.setTool("text" as Tool);
+					this.setProps("text" as Tool);
+				}
+				//9.image
+				if (e.key === "9") {
+					this.setTool("image" as Tool);
+					this.setProps("image" as Tool);
+				}
+				//0.eraser
+				if (e.key === "0") {
+					this.setTool("eraser" as Tool);
+					this.setProps("eraser" as Tool);
+				}
+				//W.web (map to hand/pan)
+				if (e.key.toLowerCase() === "w") {
+					this.setTool("web" as Tool);
+					this.setProps("web" as Tool);
+				}
+				//L.laser
+				if (e.key.toLowerCase() === "l") {
+					this.setTool("laser" as Tool);
+					this.setProps("laser" as Tool);
+				}
+			}
+		});
+	}
+	initSocketHandler() {
+		if (!this.socket) return;
+		this.socket.onmessage = (e: MessageEvent) => {
+			let parsedData: any;
+			try {
+				parsedData = JSON.parse(e.data);
+			} catch (err) {
+				console.warn("socket: received invalid JSON", err);
+				return;
+			}
+			if (!parsedData) {
+				return;
+			}
+
+			switch (parsedData.type) {
+				case "draw": {
+					const message = parsedData.message as Message;
+					const senderId = parsedData.clientId as string | undefined;
+
+					if (this.user && senderId && this.user.id === senderId) {
+						return;
+					}
+
+					let updated = false;
+					this.previewMessage = this.previewMessage.map((msg) => {
+						if (msg.id === message.id) {
+							updated = true;
+							return { ...message };
+						}
+						return msg;
+					});
+					if (!updated) {
+						this.previewMessage.push(message);
+					}
+
+					this.previewMessage = this.previewMessage.filter(
+						(m, i, arr) => arr.findIndex((x) => x.id === m.id) === i
+					);
+
+					this.throttledRender();
+					break;
+				}
+
+				case "create": {
+					const msg = parsedData.message as Message;
+					const previewId = parsedData.previewId as
+						| string
+						| undefined;
+
+					if (
+						!msg ||
+						typeof msg.id !== "string" ||
+						typeof msg.shape !== "string"
+					) {
+						console.warn(
+							"socket: invalid shape payload",
+							parsedData
+						);
+						return;
+					}
+
+					if (msg.boundingBox) {
+						const bb = msg.boundingBox;
+						if (
+							typeof bb.x !== "number" ||
+							typeof bb.y !== "number" ||
+							typeof bb.w !== "number" ||
+							typeof bb.h !== "number"
+						) {
+							console.warn(
+								"socket: invalid boundingBox",
+								parsedData
+							);
+							return;
+						}
+					}
+
+					// avoid duplicates
+					if (!this.messages.find((m) => m.id === msg.id)) {
+						this.messages.push(msg as Message);
+						this.layerManager.setMessages(this.messages);
+						if (parsedData.authflag === "freehand")
+							this.indexdb.addMessage(msg as Message);
+					}
+
+					// 1) preferred: clear preview by previewId (if server forwarded it)
+					if (previewId && typeof previewId === "string") {
+						this.previewMessage = this.previewMessage.filter(
+							(pm) => pm.id !== previewId
+						);
+					}
+
+					// 2) defensive: always remove any preview with the same final id (edge cases)
+					this.previewMessage = this.previewMessage.filter(
+						(pm) => pm.id !== msg.id
+					);
+
+					// 3) fallback: for text shapes, remove previews that match by text content + approx position
+					if (msg.shape === "text" && msg.textData) {
+						this.previewMessage = this.previewMessage.filter(
+							(pm) => {
+								if (pm.shape !== "text" || !pm.textData)
+									return true;
+								const sameText =
+									pm.textData.text === msg.textData!.text;
+								const sameX =
+									Math.abs(
+										pm.textData.pos.x - msg.textData!.pos.x
+									) < 0.0001;
+								const sameY =
+									Math.abs(
+										pm.textData.pos.y - msg.textData!.pos.y
+									) < 0.0001;
+								return !(sameText && sameX && sameY);
+							}
+						);
+					}
+
+					// keep selection in sync
+					if (
+						this.selectedMessage &&
+						this.selectedMessage.id === msg.id
+					) {
+						this.selectedMessage = msg as Message;
+						this.setSelectedMessage(this.selectedMessage);
+					}
+					this.throttledRender();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
+					break;
+				}
+
+				case "delete": {
+					const id = parsedData.id;
+					if (typeof id !== "string") {
+						console.warn(
+							"socket: invalid delete payload",
+							parsedData
+						);
+						return;
+					}
+					this.messages = this.messages.filter(
+						(message) => id !== message.id
+					);
+					if (parsedData.authflag === "freehand")
+						this.indexdb.deleteMessage(id);
+					if (
+						this.selectedMessage &&
+						this.selectedMessage.id === id
+					) {
+						this.selectedMessage = null;
+					}
+					this.layerManager.setMessages(this.messages);
+					this.throttledRender();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
+					break;
+				}
+				case "update": {
+					const id = parsedData.id;
+					const newMessage = parsedData.newMessage;
+					const senderId = parsedData.clientId;
+					const flag = parsedData.flag;
+
+					if (
+						flag &&
+						this.user &&
+						senderId &&
+						this.user.id === senderId
+					) {
+						return;
+					}
+					if (
+						typeof id !== "string" ||
+						!newMessage ||
+						typeof newMessage.id !== "string"
+					) {
+						console.warn(
+							"socket: invalid update payload",
+							parsedData
+						);
+						return;
+					}
+					this.messages = this.messages.map((message) => {
+						if (message.id === id) {
+							return { ...newMessage } as Message;
+						}
+						return message;
+					});
+					if (parsedData.authflag === "freehand")
+						this.indexdb.updateMessage(newMessage);
+					if (
+						this.selectedMessage &&
+						this.selectedMessage.id === id
+					) {
+						this.selectedMessage = { ...newMessage } as Message;
+						this.setSelectedMessage(this.selectedMessage);
+					}
+					this.layerManager.setMessages(this.messages);
+					this.throttledRender();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
+					break;
+				}
+				case "cursor": {
+					const username = parsedData.username;
+					const pos = parsedData.pos;
+					if (!username || !pos) return;
+
+					this.otherUsers.set(username, {
+						pos: pos,
+						lastSeen: Date.now(),
+					});
+					this.throttledRender();
+					break;
+				}
+				case "cursors-batch": {
+					const cursors = parsedData.cursors;
+					if (!Array.isArray(cursors)) return;
+
+					// Clear old cursors and update with new batch
+					this.otherUsers.clear();
+
+					for (const cursor of cursors) {
+						if (cursor.username && cursor.pos && cursor.lastSeen) {
+							this.otherUsers.set(cursor.username, {
+								pos: cursor.pos,
+								lastSeen: cursor.lastSeen,
+							});
+						}
+					}
+
+					this.throttledRender();
+					break;
+				}
+				case "sync": {
+					this.messages = parsedData.messages;
+					if (this.indexdb && this.sessionData) {
+						this.messages.forEach((msg) =>
+							this.indexdb.updateMessage(msg)
+						);
+					}
+					this.layerManager.setMessages(this.messages);
+					// keep selectedMessage in sync with server state (or clear if removed)
+					if (this.selectedMessage) {
+						const found = this.messages.find(
+							(m: Message) => m.id === this.selectedMessage!.id
+						);
+						if (found) {
+							this.selectedMessage = found;
+							+this.setSelectedMessage(found);
+						} else {
+							this.selectedMessage = null;
+							this.setSelectedMessage(null);
+						}
+					}
+					this.throttledRender();
+					// Notify about message changes
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
+					break;
+				}
+				case "reload": {
+					this.throttledRender();
+					// Notify about message changes (canvas was reset)
+					if (this.onMessageChange) {
+						this.onMessageChange();
+					}
+					break;
+				}
+				default: {
+					return;
+				}
+			}
+		};
 	}
 
-	// Throttled render method to prevent excessive rendering
 	private throttledRender = () => {
 		if (this.pendingRender) return;
 
@@ -1057,8 +1015,6 @@ export class Game {
 		this.performRender();
 		this.lastRenderTime = now;
 	};
-
-	// Optimized render method using requestAnimationFrame
 	private performRender = () => {
 		if (this.pendingRender) return;
 
@@ -1066,14 +1022,13 @@ export class Game {
 			this.renderCanvas();
 		});
 	};
+
 	renderCanvas() {
-		// Clear with proper bounds and transform
 		this.ctx.save();
 		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.ctx.restore();
 
-		// Apply transform once
 		this.ctx.setTransform(
 			this.scale,
 			0,
@@ -1116,6 +1071,26 @@ export class Game {
 
 		this.ctx.restore();
 	}
+	renderCanvasPreview() {
+		for (const message of this.previewMessage) {
+			if (!message) return;
+
+			if (message.shape === "rectangle") this.drawRect(message);
+			else if (message.shape === "rhombus") this.drawRhombus(message);
+			else if (message.shape === "arc") this.drawEllipse(message);
+			else if (message.shape === "line") {
+				if (this.lineManager) {
+					this.lineManager.render(message);
+				}
+			} else if (message.shape === "arrow") {
+				if (this.arrowManager) {
+					this.arrowManager.render(message);
+				}
+			} else if (message.shape === "pencil") this.drawPencil(message);
+			else if (message.shape === "text") this.drawText(message);
+			else if (message.shape === "image") this.drawImage(message);
+		}
+	}
 
 	// Group messages by type for batched rendering
 	private groupMessagesByType(messages: Message[]): Map<string, Message[]> {
@@ -1134,7 +1109,6 @@ export class Game {
 		return grouped;
 	}
 
-	// Render a batch of messages of the same type
 	private renderMessageBatch(type: string, messages: Message[]) {
 		// Set common properties for the batch
 		this.ctx.save();
@@ -1170,36 +1144,15 @@ export class Game {
 
 		this.ctx.restore();
 	}
-	renderCanvasPreview() {
-		for (const message of this.previewMessage) {
-			if (!message) return;
 
-			if (message.shape === "rectangle") this.drawRect(message);
-			else if (message.shape === "rhombus") this.drawRhombus(message);
-			else if (message.shape === "arc") this.drawEllipse(message);
-			else if (message.shape === "line") {
-				if (this.lineManager) {
-					this.lineManager.render(message);
-				}
-			} else if (message.shape === "arrow") {
-				if (this.arrowManager) {
-					this.arrowManager.render(message);
-				}
-			} else if (message.shape === "pencil") this.drawPencil(message);
-			else if (message.shape === "text") this.drawText(message);
-			else if (message.shape === "image") this.drawImage(message);
-		}
-	}
-
-	// --------------------------------------------------------- Events
+	/* --------------------------------------------------------------------------------- */
 
 	handleMouseDown = (e: PointerEvent) => {
 		const pos = this.getMousePos(e);
 		this.startX = pos.x;
 		this.startY = pos.y;
 
-		this.previewId = uuidv4();
-		this.localPreview = null; // Clear any existing local preview
+		this.previewId = v4();
 
 		if (this.tool === "mouse") {
 			if (this.selectedMessage) {
@@ -1284,6 +1237,9 @@ export class Game {
 		}
 		if (this.tool === "mouse") {
 			if (this.selectedMessage) {
+				if (!this.socket && !this.roomId) {
+					this.indexdb.updateMessage(this.selectedMessage);
+				}
 				this.socketHelper.sendUpdateMessage(
 					this.selectedMessage.id,
 					this.selectedMessage
@@ -1313,9 +1269,13 @@ export class Game {
 		}
 
 		this.previewSeed = null;
-		this.localPreview = null; // Clear local preview when drawing is complete
 		if (!message) return;
 		this.socketHelper.sendCreateMessage(message, this.previewId);
+		if (!this.socket && !this.roomId) {
+			this.messages.push(message);
+			this.indexdb.addMessage(message);
+			this.throttledRender();
+		}
 
 		if (this.lockClicked) return;
 
@@ -1452,7 +1412,7 @@ export class Game {
 		this.applyTransform();
 	};
 
-	//---------------------------------------------------------------
+	/* ------------------------------------------------------------------------- */
 
 	private boundMouseDown = this.handleMouseDown.bind(this);
 	private boundMouseUp = this.handleMouseUp.bind(this);
@@ -1493,6 +1453,8 @@ export class Game {
 		if (this.imageManager) this.imageManager.cleanup();
 		if (this.textManager) this.textManager.cleanup();
 	}
+
+	/* ----------------------------------------------------------------- */
 
 	// !mouse
 	selectShapeHover(pos: { x: number; y: number }) {
@@ -1987,6 +1949,8 @@ export class Game {
 			this.handleImagePropsChange(this.selectedMessage);
 	}
 
+	/* --------------------------------------------------------- */
+
 	//* Shape drawing
 	// !rectangle
 	messageRect(w: number, h: number): Message {
@@ -2325,7 +2289,7 @@ export class Game {
 			if (messageSend || !this.textManager) return;
 			messageSend = true;
 
-			this.textManager.createTextMessage(
+			const { flag, message } = this.textManager.createTextMessage(
 				textarea.value,
 				pos,
 				width,
@@ -2340,6 +2304,11 @@ export class Game {
 					this.clicked = false;
 				}
 			);
+			if (message && !this.socket && !this.roomId) {
+				this.messages.push(message);
+				this.indexdb.addMessage(message);
+				this.throttledRender();
+			}
 		};
 
 		// initial sizing + initial preview
@@ -2420,15 +2389,22 @@ export class Game {
 				this.props
 			);
 
-			this.socket.send(
-				JSON.stringify({
-					type: "create-message",
-					message,
-					roomId: this.roomId,
-					clientId: this.user!.id,
-					previewId: this.previewId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				this.messages.push(message);
+				this.indexdb.addMessage(message);
+				this.throttledRender();
+			}
+
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "create-message",
+						message,
+						roomId: this.roomId,
+						clientId: this.user!.id,
+						previewId: this.previewId,
+					})
+				);
 
 			this.imageSrc = null;
 		};
@@ -2500,6 +2476,14 @@ export class Game {
 			}
 
 			if (foundMessage) {
+				if (!this.socket && !this.roomId) {
+					this.messages = this.messages.filter(
+						(msg) => msg.id !== message.id
+					);
+					this.throttledRender();
+					this.indexdb.deleteMessage(message.id);
+					return;
+				}
 				this.socketHelper.sendDeleteMessage(message.id);
 				return;
 			}
@@ -2581,6 +2565,8 @@ export class Game {
 		}
 	}
 
+	/* ----------------------------------------------------------------- */
+
 	// !dragging shapes
 	//* 1.rectangle
 	handleRectangleDrag(message: Message, pos: { x: number; y: number }) {
@@ -2648,11 +2634,23 @@ export class Game {
 			return;
 		}
 
-		this.rectangleManager.updateProperties(
+		const newMessage = this.rectangleManager.updateProperties(
 			message,
 			this.props,
 			this.setSelectedMessage.bind(this)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 2.rhombus
 	handleRhombusDrag(message: Message, pos: { x: number; y: number }) {
@@ -2720,11 +2718,23 @@ export class Game {
 			return;
 		}
 
-		this.rhombusManager.updateProperties(
+		const newMessage = this.rhombusManager.updateProperties(
 			message,
 			this.props,
 			this.setSelectedMessage.bind(this)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 3.ellipse
 	handleEllipseDrag(message: Message, pos: { x: number; y: number }) {
@@ -2781,9 +2791,24 @@ export class Game {
 	}
 	handleEllipsePropsChange(message: Message) {
 		if (!this.ellipseManager) return;
-		this.ellipseManager.updateProperties(message, this.props, (msg) =>
-			this.setSelectedMessage(msg)
+
+		const newMessage = this.ellipseManager.updateProperties(
+			message,
+			this.props,
+			(msg) => this.setSelectedMessage(msg)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 4.arrow
 	handleArrowDrag(message: Message, pos: { x: number; y: number }) {
@@ -2855,11 +2880,23 @@ export class Game {
 			return;
 		}
 
-		this.arrowManager.updatePropertiesStandardized(
+		const newMessage = this.arrowManager.updatePropertiesStandardized(
 			message,
 			this.props,
 			this.setSelectedMessage.bind(this)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 5.line
 	handleLineDrag(message: Message, pos: { x: number; y: number }) {
@@ -2927,11 +2964,23 @@ export class Game {
 			return;
 		}
 
-		this.lineManager.updatePropertiesStandardized(
+		const newMessage = this.lineManager.updatePropertiesStandardized(
 			message,
 			this.props,
 			this.setSelectedMessage.bind(this)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 6.pencil
 	handlePencilDrag(message: Message, pos: { x: number; y: number }) {
@@ -2999,11 +3048,23 @@ export class Game {
 			return;
 		}
 
-		this.pencilManager.updateProperties(
+		const newMessage = this.pencilManager.updateProperties(
 			message,
 			this.props,
 			this.setSelectedMessage.bind(this)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 7.text
 	handleTextDrag(message: Message, pos: { x: number; y: number }) {
@@ -3058,11 +3119,23 @@ export class Game {
 	handleTextPropsChange(message: Message) {
 		if (!this.textManager) return;
 
-		this.textManager.updateProperties(
+		const newMessage = this.textManager.updateProperties(
 			message,
 			this.props,
 			(updatedMessage: Message) => this.setSelectedMessage(updatedMessage)
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 	//* 8.image
 	handleImageDrag(message: Message, pos: { x: number; y: number }) {
@@ -3122,10 +3195,22 @@ export class Game {
 			return;
 		}
 
-		this.imageManager.updateProperties(
+		const newMessage = this.imageManager.updateProperties(
 			message,
 			this.props,
 			this.setSelectedMessage
 		);
+
+		if (!this.socket && !this.roomId) {
+			newMessage &&
+				((this.messages = this.messages.map((msg) => {
+					if (msg.id === newMessage.id) {
+						return { ...newMessage };
+					}
+					return { ...msg };
+				})),
+				this.throttledRender(),
+				this.indexdb.updateMessage(newMessage));
+		}
 	}
 }

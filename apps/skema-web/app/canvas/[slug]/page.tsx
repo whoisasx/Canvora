@@ -11,12 +11,12 @@ export default async function ({
 }) {
 	const session = await auth();
 	const slug = (await params).slug;
-	if (!session) {
-		// redirect(`/free-canvas/${slug}`);
+	if (!session?.user) {
 		redirect("/signin");
 	}
 	const user = session.user;
 	let roomId: string;
+	let creatorflag: boolean = false;
 
 	try {
 		const isRoomExist = await prisma.room.findUnique({
@@ -28,6 +28,7 @@ export default async function ({
 			console.log("room not exist");
 			redirect("/dashboard");
 		} else if (isRoomExist.isActive) {
+			if (isRoomExist.adminId === user.id) creatorflag = true;
 			roomId = isRoomExist.id;
 		} else if (isRoomExist.adminId !== user.id) {
 			const room_name = `${isRoomExist.name}-${Math.floor(Math.random() * 1000000).toString()}`;
@@ -68,6 +69,7 @@ export default async function ({
 			redirect(`/canvas/${newRoom.slug}`);
 		} else {
 			roomId = isRoomExist.id;
+			creatorflag = true;
 		}
 	} catch (error) {
 		redirect("/dashboard");
@@ -76,7 +78,7 @@ export default async function ({
 
 	return (
 		<SessionProvider>
-			<RoomCanvas roomId={roomId} />
+			<RoomCanvas roomId={roomId} creatorflag={creatorflag} />
 		</SessionProvider>
 	);
 }

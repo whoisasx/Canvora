@@ -112,19 +112,20 @@ export const FONT_WEIGHT_MAP = {
 // Socket utilities
 export class SocketHelper {
 	constructor(
-		private socket: WebSocket,
-		private roomId: string,
+		private socket: WebSocket | undefined,
+		private roomId: string | undefined,
 		private userId: string
 	) {}
 
 	sendMessage(payload: Omit<SocketMessagePayload, "roomId" | "clientId">) {
-		this.socket.send(
-			JSON.stringify({
-				...payload,
-				roomId: this.roomId,
-				clientId: this.userId,
-			})
-		);
+		this.socket &&
+			this.socket.send(
+				JSON.stringify({
+					...payload,
+					roomId: this.roomId,
+					clientId: this.userId,
+				})
+			);
 	}
 
 	sendDrawMessage(message: Message) {

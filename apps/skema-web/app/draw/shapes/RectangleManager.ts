@@ -6,6 +6,7 @@ import { CommonPropsGame } from "@/utils/propsStore";
 import { Message } from "../draw";
 import { normalizeCoords, roughOptions, normalizeStroke } from "../render";
 import { createRoundedRectPath } from "../render/rectangle";
+import { IndexDB } from "@/lib/indexdb";
 
 // Type definitions
 type BoundingBox = { x: number; y: number; w: number; h: number };
@@ -88,9 +89,9 @@ export class RectangleManager {
 		private ctx: CanvasRenderingContext2D,
 		private rc: any, // RoughCanvas
 		private generator: RoughGenerator,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private userId: string
 	) {}
 
@@ -227,14 +228,15 @@ export class RectangleManager {
 				boundingBox: rect,
 			};
 
-			this.socket.send(
-				JSON.stringify({
-					type: "draw-message",
-					message,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "draw-message",
+						message,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error rendering rectangle preview:", error);
 			this.ctx.restore();
@@ -296,16 +298,17 @@ export class RectangleManager {
 			const now = Date.now();
 			if (now - this.lastDragUpdate >= THROTTLE_MS) {
 				this.lastDragUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 		} catch (error) {
 			console.error("Error during rectangle drag:", error);
@@ -377,16 +380,17 @@ export class RectangleManager {
 			const now = Date.now();
 			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
 				this.lastResizeUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 
 			return { newHandler: flipResult.newHandler };
@@ -404,7 +408,7 @@ export class RectangleManager {
 		message: Message,
 		newProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | undefined {
 		if (Array.isArray(message.shapeData)) return;
 
 		try {
@@ -430,15 +434,21 @@ export class RectangleManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error updating rectangle properties:", error);
 		}

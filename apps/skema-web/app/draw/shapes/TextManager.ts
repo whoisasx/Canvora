@@ -159,9 +159,9 @@ export class TextManager {
 
 	constructor(
 		private ctx: CanvasRenderingContext2D,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private userId: string,
 		private scale: number = 1
 	) {}
@@ -275,16 +275,17 @@ export class TextManager {
 			const now = Date.now();
 			if (now - this.lastDragUpdate >= THROTTLE_MS) {
 				this.lastDragUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 		} catch (error) {
 			console.error("Error during text drag:", error);
@@ -395,16 +396,17 @@ export class TextManager {
 			const now = Date.now();
 			if (now - this.lastResizeUpdate >= THROTTLE_MS) {
 				this.lastResizeUpdate = now;
-				this.socket.send(
-					JSON.stringify({
-						type: "update-message",
-						flag: "update-preview",
-						id: newMessage.id,
-						newMessage,
-						roomId: this.roomId,
-						clientId: this.userId,
-					})
-				);
+				this.socket &&
+					this.socket.send(
+						JSON.stringify({
+							type: "update-message",
+							flag: "update-preview",
+							id: newMessage.id,
+							newMessage,
+							roomId: this.roomId,
+							clientId: this.userId,
+						})
+					);
 			}
 
 			return { newHandler: resizeHandler };
@@ -421,7 +423,7 @@ export class TextManager {
 		message: Message,
 		newProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | void {
 		if (!message.boundingBox || !message.textData) return;
 
 		try {
@@ -458,16 +460,19 @@ export class TextManager {
 			};
 
 			setSelectedMessage(newMessage);
-
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error updating text properties:", error);
 		}
@@ -491,13 +496,13 @@ export class TextManager {
 		props: CommonPropsGame,
 		previewId: string,
 		onCleanup: () => void
-	): boolean {
+	): { flag: boolean; message: Message | undefined } {
 		const text = textValue.trim();
 
 		// If no text, just cleanup and return false
 		if (!text) {
 			onCleanup();
-			return false;
+			return { flag: false, message: undefined };
 		}
 
 		const tempValue = textValue.trim();
@@ -534,19 +539,20 @@ export class TextManager {
 		};
 
 		// Include previewId so server can clear previews for other clients
-		this.socket.send(
-			JSON.stringify({
-				type: "create-message",
-				message,
-				previewId: previewId,
-				roomId: this.roomId,
-				clientId: this.userId,
-			})
-		);
+		this.socket &&
+			this.socket.send(
+				JSON.stringify({
+					type: "create-message",
+					message,
+					previewId: previewId,
+					roomId: this.roomId,
+					clientId: this.userId,
+				})
+			);
 
 		// Call cleanup callback
 		onCleanup();
-		return true;
+		return { flag: true, message: message };
 	}
 
 	/**
@@ -618,15 +624,16 @@ export class TextManager {
 
 		// NOTE: do NOT push this preview into local messages for the local user.
 		// Other clients will receive the preview via the socket and render it.
-		this.socket.send(
-			JSON.stringify({
-				type: "draw-message",
-				flag: "text-preview",
-				message,
-				roomId: this.roomId,
-				clientId: this.userId,
-			})
-		);
+		this.socket &&
+			this.socket.send(
+				JSON.stringify({
+					type: "draw-message",
+					flag: "text-preview",
+					message,
+					roomId: this.roomId,
+					clientId: this.userId,
+				})
+			);
 	}
 
 	/**

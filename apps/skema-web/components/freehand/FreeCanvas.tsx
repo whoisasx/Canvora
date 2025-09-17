@@ -1,13 +1,6 @@
 "use client";
 import { Game } from "@/app/draw/draw";
 import { useEffect, useRef, useState } from "react";
-import CanvasTool from "./CanvasTool";
-import CanvasOpt from "./CanvasOpt";
-import useToolStore from "@/utils/toolStore";
-import ActionCard from "./ActionCard";
-import ShareCard from "./ShareCard";
-import ZoomBar from "./ZoomBar";
-import UndoRedo from "./UndoRedo";
 import { usePropsStore } from "@/utils/propsStore";
 import { useCanvasBgStore, useSelectedMessageStore } from "@/utils/canvasStore";
 import { useSession } from "next-auth/react";
@@ -17,32 +10,39 @@ import Link from "next/link";
 import { excali } from "@/app/font";
 import { CanvoraIcon, CanvoraTitle } from "@/ui/Canvora";
 import { motion, AnimatePresence } from "motion/react";
+import useToolStore from "@/utils/toolStore";
+import ActionCard from "../ActionCard";
+import CanvasTool from "../CanvasTool";
+import ShareCard from "../ShareCard";
+import ZoomBar from "../ZoomBar";
+import UndoRedo from "../UndoRedo";
+import CanvasOpt from "../CanvasOpt";
+import { FreeGame } from "@/app/freehand/freedraw/freedraw";
+import { IndexDB } from "@/lib/indexdb";
+import { localUser } from "@/app/freehand/page";
 
-export default function Canvas({
-	roomId,
-	socket,
+export default function FreeCanvas({
+	sessionData,
 	user,
-	authenticated,
-	isActive,
+	indexdb,
 }: {
-	roomId: string;
-	socket: WebSocket;
-	user?: { username: string; id: string };
-	authenticated: boolean;
-	isActive?: boolean;
+	sessionData?: { roomId: string; socket: WebSocket };
+	user: localUser;
+	indexdb: IndexDB;
 }) {
-	const { data: session } = useSession();
+	const router = useRouter();
 	const background = useCanvasBgStore((state) => state.background);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const [game, setGame] = useState<Game>();
+	const [game, setGame] = useState<FreeGame>();
+	const tool = useToolStore((state) => state.tool);
+	const props = usePropsStore();
+	const propsSize = useToolStore((state) => state.props.length);
 
 	const [dimensions, setDimensions] = useState(() => ({
 		w: typeof window !== "undefined" ? window.innerWidth : 0,
 		h: typeof window !== "undefined" ? window.innerHeight : 0,
 	}));
 
-	const tool = useToolStore((state) => state.tool);
-	const props = usePropsStore();
 	const prevPropsRef = useRef<any>(null);
 	const prevToolRef = useRef<string | null>(null);
 
@@ -77,19 +77,16 @@ export default function Canvas({
 		}
 		return true;
 	};
+
 	const setSelectedMessage = useSelectedMessageStore(
 		(state) => state.setSelectedMessage
 	);
-	const propsSize = useToolStore((state) => state.props.length);
-	const router = useRouter();
 
 	const [showIntro, setShowIntro] = useState(false);
 	const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
 
 	useEffect(() => {
 		if (!game) return;
-
-		// clear selected message when switching away from mouse
 		if (tool !== "mouse") {
 			setSelectedMessage(null);
 		}
@@ -107,34 +104,24 @@ export default function Canvas({
 		}
 	}, [game, tool, props]);
 
-	// Effect to handle intro overlay visibility based on canvas state
 	useEffect(() => {
 		if (!game) return;
-
-		// Check if canvas is empty when game is initialized
 		const checkCanvasEmpty = () => {
 			const messages = game.getMessages ? game.getMessages() : [];
 			const isEmpty = messages.length === 0;
 			setIsCanvasEmpty(isEmpty);
 			setShowIntro(isEmpty);
 		};
-
-		// Check initially
 		checkCanvasEmpty();
 
-		// Listen for message changes to update empty state
 		const handleMessageChange = () => {
 			const messages = game.getMessages ? game.getMessages() : [];
 			const isEmpty = messages.length === 0;
 			setIsCanvasEmpty(isEmpty);
-
-			// Hide intro when user starts drawing (canvas is no longer empty)
 			if (!isEmpty) {
 				setShowIntro(false);
 			}
 		};
-
-		// Set up message change listener
 		game.onMessageChange = handleMessageChange;
 
 		return () => {
@@ -142,7 +129,6 @@ export default function Canvas({
 		};
 	}, [game]);
 
-	// Effect to hide intro when tool is selected
 	useEffect(() => {
 		if (tool !== "mouse" && showIntro) {
 			setShowIntro(false);
@@ -151,17 +137,10 @@ export default function Canvas({
 
 	useEffect(() => {
 		if (canvasRef.current) {
-			// ensure canvas element has current dimensions before creating Game
 			canvasRef.current.width = dimensions.w;
 			canvasRef.current.height = dimensions.h;
 
-			const g = new Game(
-				socket,
-				canvasRef.current,
-				roomId,
-				authenticated,
-				isActive
-			);
+			const g = new FreeGame(sessionData, canvasRef.current, indexdb);
 			setGame(g);
 
 			return () => {
@@ -173,6 +152,7 @@ export default function Canvas({
 	useEffect(() => {
 		let timer: number | null = null;
 		const onResize = () => {
+			if (typeof window === "undefined") return;
 			if (timer) window.clearTimeout(timer);
 			timer = window.setTimeout(() => {
 				const w = window.innerWidth;
@@ -182,16 +162,20 @@ export default function Canvas({
 					canvasRef.current.width = w;
 					canvasRef.current.height = h;
 				}
-			}, 120);
+			}, 300);
 		};
 
-		window.addEventListener("resize", onResize);
-		// run once to sync
-		onResize();
+		if (typeof window !== "undefined") {
+			window.addEventListener("resize", onResize);
+			// run once to sync
+			onResize();
+		}
 
 		return () => {
-			if (timer) window.clearTimeout(timer);
-			window.removeEventListener("resize", onResize);
+			if (typeof window !== "undefined") {
+				if (timer) window.clearTimeout(timer);
+				window.removeEventListener("resize", onResize);
+			}
 		};
 	}, []);
 
@@ -201,23 +185,17 @@ export default function Canvas({
 			game.setUser(user);
 			return;
 		}
-		if (!session) {
-			router.push("/dashboard");
-			return;
-		}
-		game.setUser({ username: session.user.username!, id: session.user.id });
-	}, [session, game, router]);
+	}, [game]);
 
 	useEffect(() => {
-		socket.addEventListener("message", (event) => {
+		sessionData?.socket.addEventListener("message", (event) => {
 			const data = JSON.parse(event.data);
-			if (data.type === "reload" && data.roomId === roomId) {
-				// Show intro overlay when canvas is reset
+			if (data.type === "reload" && data.roomId === sessionData.roomId) {
 				setShowIntro(true);
 				setIsCanvasEmpty(true);
 			}
 		});
-	}, [socket, roomId]);
+	}, [sessionData]);
 
 	if (!canvasRef) {
 		return (
@@ -256,26 +234,6 @@ export default function Canvas({
 
 	return (
 		<div className="min-h-screen min-w-screen relative">
-			{!authenticated && (
-				<div className="w-screen z-50 h-10 absolute bottom-10 pointer-events-none flex items-center justify-center gap-5">
-					<p className="pointer-events-auto text-oc-red-9 dark:text-oc-red-2">
-						Page is under progress. please sign in.
-					</p>
-					<Link
-						href={"/signin"}
-						target="_blank"
-						className="pointer-events-auto"
-					>
-						<Button
-							size="small"
-							level="primary"
-							onClick={() => console.log("sign in")}
-						>
-							Sign in
-						</Button>
-					</Link>
-				</div>
-			)}
 			<AnimatePresence>
 				{showIntro && (
 					<motion.div
@@ -480,8 +438,9 @@ export default function Canvas({
 					transition={{ duration: 0.3, ease: "easeOut" }}
 				>
 					<ActionCard
-						sessionData={{ socket, roomId }}
-						authenticated={true}
+						sessionData={sessionData}
+						indexdb={indexdb}
+						authenticated={false}
 					/>
 				</motion.div>
 				<motion.div

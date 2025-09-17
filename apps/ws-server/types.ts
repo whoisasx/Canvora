@@ -26,6 +26,8 @@ export interface MessageData {
 	pos?: { x: number; y: number };
 	messages?: any[];
 	previewId?: string;
+	authflag?: string;
+	userRole?: string;
 }
 
 export interface User {

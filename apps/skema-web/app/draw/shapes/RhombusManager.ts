@@ -84,9 +84,9 @@ export class RhombusManager {
 		private ctx: CanvasRenderingContext2D,
 		private rc: any, // RoughCanvas
 		private generator: RoughGenerator,
-		private socket: WebSocket,
+		private socket: WebSocket | undefined,
 		private theme: "light" | "dark",
-		private roomId: string,
+		private roomId: string | undefined,
 		private userId: string
 	) {}
 
@@ -222,14 +222,15 @@ export class RhombusManager {
 				boundingBox: rect,
 			};
 
-			this.socket.send(
-				JSON.stringify({
-					type: "draw-message",
-					message,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "draw-message",
+						message,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error rendering rhombus preview:", error);
 			this.ctx.restore();
@@ -286,16 +287,17 @@ export class RhombusManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error during rhombus drag:", error);
 		}
@@ -361,16 +363,17 @@ export class RhombusManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					flag: "update-preview",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						flag: "update-preview",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 
 			return { newHandler: flipResult.newHandler };
 		} catch (error) {
@@ -387,7 +390,7 @@ export class RhombusManager {
 		message: Message,
 		newProps: CommonPropsGame,
 		setSelectedMessage: (msg: Message) => void
-	): void {
+	): Message | undefined {
 		if (Array.isArray(message.shapeData)) return;
 
 		try {
@@ -413,15 +416,19 @@ export class RhombusManager {
 			};
 
 			setSelectedMessage(newMessage);
-			this.socket.send(
-				JSON.stringify({
-					type: "update-message",
-					id: newMessage.id,
-					newMessage,
-					roomId: this.roomId,
-					clientId: this.userId,
-				})
-			);
+			if (!this.socket && !this.roomId) {
+				return newMessage;
+			}
+			this.socket &&
+				this.socket.send(
+					JSON.stringify({
+						type: "update-message",
+						id: newMessage.id,
+						newMessage,
+						roomId: this.roomId,
+						clientId: this.userId,
+					})
+				);
 		} catch (error) {
 			console.error("Error updating rhombus properties:", error);
 		}

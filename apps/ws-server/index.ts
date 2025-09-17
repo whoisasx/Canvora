@@ -151,6 +151,8 @@ const messageHandlers = new MessageHandlers(
 wss.on("connection", (ws, req) => {
 	const newUrl = new URL(req.url!, `http://${req.headers.host}`);
 	const token = newUrl.searchParams.get("token");
+	const authflag = newUrl.searchParams.get("authflag");
+	const roomId = newUrl.searchParams.get("roomId");
 	if (!token) {
 		ws.send("authorisation token is misssing.");
 		ws.close();
@@ -169,12 +171,39 @@ wss.on("connection", (ws, req) => {
 			return;
 		}
 		user = payload;
-		ws.send(
-			JSON.stringify({
-				message: "connected to server.",
-				user: payload,
-			})
-		);
+		if (authflag) {
+			if (authflag === "freehand") {
+				if (!roomId) {
+					ws.send("invalid roomId.");
+					ws.close();
+					return;
+				} else {
+					if (roomId in messagesByRoom) {
+						ws.send(
+							JSON.stringify({
+								message: "connected to server.",
+								user: payload,
+							})
+						);
+					} else {
+						ws.send("invalid roomId.");
+						ws.close();
+						return;
+					}
+				}
+			} else {
+				ws.send("invalid authflag.");
+				ws.close();
+				return;
+			}
+		} else {
+			ws.send(
+				JSON.stringify({
+					message: "connected to server.",
+					user: payload,
+				})
+			);
+		}
 	} catch (error) {
 		ws.send("invalid token.");
 		ws.close();
