@@ -2452,7 +2452,6 @@ export class Game {
 					HitTestHelper.pointNearLine(pos.x, pos.y, x1, y1, x2, y2, 8)
 				) {
 					foundMessage = true;
-					this.socketHelper.sendDeleteMessage(message.id);
 				}
 			} else if (message.shape === "pencil" && message.pencilPoints) {
 				if (
@@ -2464,12 +2463,10 @@ export class Game {
 					)
 				) {
 					foundMessage = true;
-					this.socketHelper.sendDeleteMessage(message.id);
 				}
 			} else if (message.shape === "image" || message.shape === "text") {
 				const { x, y, w, h } = this.getBoundindBox(message);
 				if (HitTestHelper.pointInBounds(pos.x, pos.y, x, y, w, h)) {
-					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			} else if (message.shape === "rectangle") {
@@ -2481,7 +2478,6 @@ export class Game {
 						10
 					)
 				) {
-					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			} else if (message.shape === "rhombus") {
@@ -2493,18 +2489,17 @@ export class Game {
 						10
 					)
 				) {
-					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			} else if (message.shape === "arc") {
 				const rect = message.boundingBox;
 				if (HitTestHelper.testEllipseEdges(pos.x, pos.y, rect, 10)) {
-					this.socketHelper.sendDeleteMessage(message.id);
 					foundMessage = true;
 				}
 			}
 
 			if (foundMessage) {
+				this.socketHelper.sendDeleteMessage(message.id);
 				return;
 			}
 		}
