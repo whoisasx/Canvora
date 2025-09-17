@@ -128,5 +128,5 @@ export default function RoomCanvas({
 		);
 	}
 
-	return <Canvas roomId={roomId} socket={socket} authenticated={true} />;
+	return <Canvas roomId={roomId} socket={socket} />;
 }

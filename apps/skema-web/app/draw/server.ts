@@ -1,10 +1,6 @@
 import axios from "axios";
 
-export async function getExistingMessages(
-	roomId: string,
-	authenticated: boolean,
-	isActive: boolean | undefined
-) {
+export async function getExistingMessages(roomId: string) {
 	try {
 		const response = await axios.get(`/api/get-chats/${roomId}`);
 		if (response.status === 200) {

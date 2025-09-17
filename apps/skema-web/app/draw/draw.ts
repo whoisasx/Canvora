@@ -140,8 +140,6 @@ export class Game {
 	private scale: number = 1;
 	private offsetX: number = 0;
 	private offsetY: number = 0;
-	private authenticated: boolean;
-	private isActive: boolean | undefined;
 
 	private prevX: number = 0;
 	private prevY: number = 0;
@@ -249,19 +247,11 @@ export class Game {
 	private coordinateHelper: CoordinateHelper;
 	private shapeCreator: ShapeCreator;
 
-	constructor(
-		socket: WebSocket,
-		canvas: HTMLCanvasElement,
-		roomId: string,
-		authenticated: boolean,
-		isActive: boolean | undefined
-	) {
+	constructor(socket: WebSocket, canvas: HTMLCanvasElement, roomId: string) {
 		this.socket = socket;
 		this.canvas = canvas;
 		this.roomId = roomId;
 		this.ctx = canvas.getContext("2d")!;
-		this.authenticated = authenticated;
-		this.isActive = isActive;
 
 		this.messages = [];
 		this.previewMessage = [];
@@ -479,11 +469,7 @@ export class Game {
 
 	/** ------------------------------------------------------------------- */
 	async initHandler() {
-		this.messages = await getExistingMessages(
-			this.roomId,
-			this.authenticated,
-			this.isActive
-		);
+		this.messages = await getExistingMessages(this.roomId);
 
 		if (this.onMessageChange) {
 			this.onMessageChange();

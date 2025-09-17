@@ -21,15 +21,9 @@ import { motion, AnimatePresence } from "motion/react";
 export default function Canvas({
 	roomId,
 	socket,
-	user,
-	authenticated,
-	isActive,
 }: {
 	roomId: string;
 	socket: WebSocket;
-	user?: { username: string; id: string };
-	authenticated: boolean;
-	isActive?: boolean;
 }) {
 	const { data: session } = useSession();
 	const background = useCanvasBgStore((state) => state.background);
@@ -155,13 +149,7 @@ export default function Canvas({
 			canvasRef.current.width = dimensions.w;
 			canvasRef.current.height = dimensions.h;
 
-			const g = new Game(
-				socket,
-				canvasRef.current,
-				roomId,
-				authenticated,
-				isActive
-			);
+			const g = new Game(socket, canvasRef.current, roomId);
 			setGame(g);
 
 			return () => {
@@ -197,11 +185,7 @@ export default function Canvas({
 
 	useEffect(() => {
 		if (!game) return;
-		if (user) {
-			game.setUser(user);
-			return;
-		}
-		if (!session) {
+		if (!session?.user) {
 			router.push("/dashboard");
 			return;
 		}
@@ -256,26 +240,6 @@ export default function Canvas({
 
 	return (
 		<div className="min-h-screen min-w-screen relative">
-			{!authenticated && (
-				<div className="w-screen z-50 h-10 absolute bottom-10 pointer-events-none flex items-center justify-center gap-5">
-					<p className="pointer-events-auto text-oc-red-9 dark:text-oc-red-2">
-						Page is under progress. please sign in.
-					</p>
-					<Link
-						href={"/signin"}
-						target="_blank"
-						className="pointer-events-auto"
-					>
-						<Button
-							size="small"
-							level="primary"
-							onClick={() => console.log("sign in")}
-						>
-							Sign in
-						</Button>
-					</Link>
-				</div>
-			)}
 			<AnimatePresence>
 				{showIntro && (
 					<motion.div
@@ -500,7 +464,10 @@ export default function Canvas({
 					animate={{ opacity: 1, x: 0 }}
 					transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
 				>
-					<ShareCard />
+					<ShareCard
+						roomId={roomId}
+						username={session?.user.username}
+					/>
 				</motion.div>
 			</div>
 			<div className="w-auto flex gap-3 pointer-events-none absolute bottom-4 px-3">
