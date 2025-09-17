@@ -9,14 +9,12 @@ import {
 	arrowHead,
 	arrowType,
 	backArrow,
-	CommonProps,
 	edges,
 	fill,
 	fontFamily,
 	fontSize,
 	frontArrow,
 	layers,
-	Props,
 	slopiness,
 	strokeStyle,
 	strokeWidth,
@@ -27,17 +25,11 @@ import rough from "roughjs";
 import { RoughCanvas } from "roughjs/bin/canvas";
 import { RoughGenerator } from "roughjs/bin/generator";
 import { Drawable, Options } from "roughjs/bin/core";
-import { createRoundedRectPath } from "./render/rectangle";
 import {
-	normalizeCoords,
 	roughOptions,
-	normalizeStroke,
 	normalizeWheelDelta,
 	getResizeHandleAndCursor,
 } from "./render";
-import { createEllipsePath } from "./render/ellipse";
-import { createArrowPath } from "./render/arrow";
-import { createPencilPath } from "./render/pencil";
 import {
 	chilanka,
 	excali,
@@ -76,31 +68,17 @@ import {
 	CoordinateHelper,
 	HitTestHelper,
 	ShapeCreator,
-	ResizeHelper,
-	PropertyConverter,
-	ThrottleHelper,
-	BoundingBoxHelper,
-	FontHelper,
 	Handle,
-	FONT_FAMILY_MAP,
-	FONT_WEIGHT_MAP,
 } from "./assist";
 import {
 	RectangleManager,
-	RectangleHelper,
 	RhombusManager,
-	RhombusHelper,
 	EllipseManager,
-	EllipseHelper,
 	LineManager,
-	LineHelper,
 	ArrowManager,
-	ArrowHelper,
 	PencilManager,
 	ImageManager,
-	ImageHelper,
 	TextManager,
-	TextHelper,
 } from "./shapes";
 
 type Laser = {
@@ -261,7 +239,7 @@ export class Game {
 	>();
 
 	socket: WebSocket;
-	//-----------------------
+
 	private unsubscribeLayer: () => void;
 	private setLayers: (val: layers) => void;
 	private layerManager: LayerManager;
@@ -524,6 +502,14 @@ export class Game {
 		this.setBackArrowHead = useBackArrowStore.getState().setBackArrowType;
 	}
 
+	/**
+	 * Handles manager initialization errors consistently
+	 */
+	private handleManagerError(managerName: string): boolean {
+		console.error(`${managerName} not initialized`);
+		return false;
+	}
+
 	undo() {
 		this.socketHelper.sendUndo();
 	}
@@ -550,10 +536,8 @@ export class Game {
 		}
 		this.throttledRender();
 		window.addEventListener("keydown", (e) => {
-			//delete
+			// Delete selected message
 			if (e.key === "Backspace") {
-				// e.preventDefault();
-
 				if (this.selectedMessage) {
 					this.socketHelper.sendDeleteMessage(
 						this.selectedMessage.id
@@ -563,7 +547,7 @@ export class Game {
 				this.preSelectedMessage = null;
 				this.canvas.style.cursor = "default";
 			}
-			// undo
+			// Undo shortcut (Ctrl/Cmd + Z)
 			if (
 				(e.ctrlKey || e.metaKey) &&
 				e.key.toLowerCase() === "z" &&
@@ -572,7 +556,7 @@ export class Game {
 				e.preventDefault();
 				this.undo();
 			}
-			// redo
+			// Redo shortcut (Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z)
 			if (
 				(e.ctrlKey || e.metaKey) &&
 				(e.key.toLowerCase() === "y" ||
@@ -598,32 +582,26 @@ export class Game {
 					this.setTool("rectangle" as Tool);
 					this.setProps("rectangle" as Tool);
 				}
-				//3.rhombus
 				if (e.key === "3") {
 					this.setTool("rhombus" as Tool);
 					this.setProps("rhombus" as Tool);
 				}
-				//4.arc
 				if (e.key === "4") {
 					this.setTool("arc" as Tool);
 					this.setProps("arc" as Tool);
 				}
-				//5.arrow
 				if (e.key === "5") {
 					this.setTool("arrow" as Tool);
 					this.setProps("arrow" as Tool);
 				}
-				//6.line
 				if (e.key === "6") {
 					this.setTool("line" as Tool);
 					this.setProps("line" as Tool);
 				}
-				//7.pencil
 				if (e.key === "7") {
 					this.setTool("pencil" as Tool);
 					this.setProps("pencil" as Tool);
 				}
-				//8.text
 				if (e.key === "8") {
 					this.setTool("text" as Tool);
 					this.setProps("text" as Tool);
@@ -910,7 +888,6 @@ export class Game {
 					break;
 				}
 				case "reload": {
-					console.log("reload");
 					this.throttledRender();
 					// Notify about message changes (canvas was reset)
 					if (this.onMessageChange) {
@@ -919,10 +896,6 @@ export class Game {
 					break;
 				}
 				default: {
-					// console.warn(
-					// 	"socket: unknown message type",
-					// 	parsedData.type
-					// );
 					return;
 				}
 			}
@@ -2086,14 +2059,14 @@ export class Game {
 	}
 	drawRect(message: Message) {
 		if (!this.rectangleManager) {
-			console.error("RectangleManager not initialized");
+			this.handleManagerError("RectangleManager");
 			return;
 		}
 		this.rectangleManager.render(message);
 	}
 	drawMovingRect(w: number, h: number, options: Options) {
 		if (!this.rectangleManager) {
-			console.error("RectangleManager not initialized");
+			this.handleManagerError("RectangleManager");
 			return;
 		}
 
@@ -2123,14 +2096,14 @@ export class Game {
 	}
 	drawRhombus(message: Message) {
 		if (!this.rhombusManager) {
-			console.error("RhombusManager not initialized");
+			this.handleManagerError("RhombusManager");
 			return;
 		}
 		this.rhombusManager.render(message);
 	}
 	drawMovingRhombus(w: number, h: number, options: Options) {
 		if (!this.rhombusManager) {
-			console.error("RhombusManager not initialized");
+			this.handleManagerError("RhombusManager");
 			return;
 		}
 
@@ -2160,7 +2133,7 @@ export class Game {
 	}
 	drawEllipse(message: Message) {
 		if (!this.ellipseManager) {
-			console.error("EllipseManager not initialized");
+			this.handleManagerError("EllipseManager");
 			return;
 		}
 
@@ -2168,7 +2141,7 @@ export class Game {
 	}
 	drawMovingEllipse(w: number, h: number, options: Options) {
 		if (!this.ellipseManager) {
-			console.error("EllipseManager not initialized");
+			this.handleManagerError("EllipseManager");
 			return;
 		}
 
@@ -2198,14 +2171,14 @@ export class Game {
 	}
 	drawLine(message: Message) {
 		if (!this.lineManager) {
-			console.error("LineManager not initialized");
+			this.handleManagerError("LineManager");
 			return;
 		}
 		this.lineManager.render(message);
 	}
 	drawMovingLine(w: number, h: number, options: Options) {
 		if (!this.lineManager) {
-			console.error("LineManager not initialized");
+			this.handleManagerError("LineManager");
 			return;
 		}
 
@@ -2235,14 +2208,14 @@ export class Game {
 	}
 	drawArrow(message: Message) {
 		if (!this.arrowManager) {
-			console.error("ArrowManager not initialized");
+			this.handleManagerError("ArrowManager");
 			return;
 		}
 		this.arrowManager.render(message);
 	}
 	drawMovingArrow(w: number, h: number, options: Options) {
 		if (!this.arrowManager) {
-			console.error("ArrowManager not initialized");
+			this.handleManagerError("ArrowManager");
 			return;
 		}
 
@@ -2269,14 +2242,14 @@ export class Game {
 	}
 	drawPencil(message: Message) {
 		if (!this.pencilManager) {
-			console.error("PencilManager not initialized");
+			this.handleManagerError("PencilManager");
 			return;
 		}
 		this.pencilManager.render(message);
 	}
 	drawMovingPencil(options: Options) {
 		if (!this.pencilManager) {
-			console.error("PencilManager not initialized");
+			this.handleManagerError("PencilManager");
 			return;
 		}
 		this.pencilManager.renderPreview(
@@ -2457,7 +2430,7 @@ export class Game {
 
 	drawText(message: Message) {
 		if (!this.textManager) {
-			console.error("TextManager not initialized");
+			this.handleManagerError("TextManager");
 			return;
 		}
 		this.textManager.render(message);
