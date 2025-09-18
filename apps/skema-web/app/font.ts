@@ -15,40 +15,57 @@ export const firaCode = Fira_Code({
 	variable: "--font-firacode",
 	style: ["normal"],
 	subsets: ["latin"],
+	display: "swap",
+	fallback: ["monospace"],
 });
 export const sourceCode = Source_Code_Pro({
 	weight: ["400"],
 	variable: "--font-sourceCode",
 	style: ["normal"],
 	subsets: ["latin"],
+	display: "swap",
+	fallback: ["monospace"],
 });
 export const nunito = Nunito({
 	weight: ["400"],
 	variable: "--font-nunito",
 	style: ["normal"],
 	subsets: ["latin"],
+	display: "swap",
+	fallback: ["sans-serif"],
 });
 export const inter = Inter({
 	subsets: ["latin"],
 	variable: "--font-inter",
+	display: "swap",
+	fallback: ["sans-serif"],
 });
 export const jakarta = Plus_Jakarta_Sans({
 	subsets: ["latin"],
 	variable: "--font-jakarta",
+	display: "swap",
+	fallback: ["sans-serif"],
 });
 export const ibm = IBM_Plex_Sans({
+	weight: ["400"],
 	subsets: ["latin"],
 	variable: "--font-ibm",
+	display: "swap",
+	fallback: ["sans-serif"],
 });
 export const cutive_mono = Cutive_Mono({
 	weight: ["400"],
 	variable: "--font-cutivemono",
 	subsets: ["latin"],
+	display: "swap",
+	fallback: ["monospace"],
 });
 export const caveat = Caveat({
 	weight: ["400"],
 	variable: "--font-caveat",
 	subsets: ["latin"],
+	display: "swap",
+	fallback: ["cursive"],
 });
 
 export const chilanka = localFont({
