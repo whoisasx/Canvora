@@ -459,7 +459,10 @@ export default function FreeCanvas({
 					animate={{ opacity: 1, x: 0 }}
 					transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
 				>
-					<ShareCard />
+					<ShareCard
+						roomId={sessionData?.roomId || ""}
+						username={user?.username}
+					/>
 				</motion.div>
 			</div>
 			<div className="w-auto flex gap-3 pointer-events-none absolute bottom-4 px-3">
