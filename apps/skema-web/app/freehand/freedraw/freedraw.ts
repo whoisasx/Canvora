@@ -339,6 +339,14 @@ export class FreeGame {
 			(state) => state.theme,
 			(newVal, prevVal) => {
 				this.theme = newVal;
+				// Update theme in all shape managers for proper stroke normalization
+				this.rectangleManager?.updateTheme(newVal);
+				this.rhombusManager?.updateTheme(newVal);
+				this.ellipseManager?.updateTheme(newVal);
+				this.lineManager?.updateTheme(newVal);
+				this.arrowManager?.updateTheme(newVal);
+				this.pencilManager?.updateTheme(newVal);
+				this.textManager?.updateTheme(newVal);
 				this.throttledRender();
 			}
 		);
@@ -377,9 +385,14 @@ export class FreeGame {
 								this.selectedMessage
 							);
 
-						this.socketHelper.sendSyncAll(
-							this.layerManager.getMessages()
-						);
+						!sessionData &&
+							((this.messages = this.layerManager.getMessages()),
+							this.throttledRender());
+
+						sessionData &&
+							this.socketHelper.sendSyncAll(
+								this.layerManager.getMessages()
+							);
 					}
 					this.setLayers("none");
 				}
@@ -551,6 +564,11 @@ export class FreeGame {
 			!this.socket &&
 			this.localHistoryIndex < this.localHistory.length - 1
 		);
+	}
+
+	// Helper method to sync layerManager with current messages
+	private syncLayerManager(): void {
+		this.layerManager.setMessages(this.messages);
 	}
 
 	setCursor(cursor: string): void {
@@ -742,6 +760,7 @@ export class FreeGame {
 			this.indexdb,
 			this.sessiondb
 		);
+		this.layerManager.setMessages(this.messages);
 
 		// Save initial state for local undo/redo
 		if (!this.roomId && !this.socket) {
@@ -762,6 +781,7 @@ export class FreeGame {
 						this.messages = this.messages.filter(
 							(msg) => msg.id !== this.selectedMessage!.id
 						);
+						this.layerManager.setMessages(this.messages);
 						this.throttledRender();
 						this.indexdb.deleteMessage(this.selectedMessage.id);
 					}
@@ -1441,6 +1461,7 @@ export class FreeGame {
 			// Save current state before making changes
 			this.saveToLocalHistory();
 			this.messages.push(message);
+			this.layerManager.setMessages(this.messages);
 			this.indexdb.addMessage(message);
 			this.throttledRender();
 		}
@@ -2476,6 +2497,7 @@ export class FreeGame {
 				// Save current state before making changes
 				this.saveToLocalHistory();
 				this.messages.push(message);
+				this.layerManager.setMessages(this.messages);
 				this.indexdb.addMessage(message);
 				this.throttledRender();
 			}
@@ -2563,6 +2585,7 @@ export class FreeGame {
 				// Save current state before making changes
 				this.saveToLocalHistory();
 				this.messages.push(message);
+				this.layerManager.setMessages(this.messages);
 				this.indexdb.addMessage(message);
 				this.throttledRender();
 			}
@@ -2654,6 +2677,7 @@ export class FreeGame {
 					this.messages = this.messages.filter(
 						(msg) => msg.id !== message.id
 					);
+					this.layerManager.setMessages(this.messages);
 					this.throttledRender();
 					this.indexdb.deleteMessage(message.id);
 					return;
@@ -2765,6 +2789,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 
 		this.prevX = pos.x;
@@ -2796,6 +2821,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 
 		this.resizeHandler = result.newHandler;
@@ -2822,6 +2848,7 @@ export class FreeGame {
 					}
 					return { ...msg };
 				})),
+				this.layerManager.setMessages(this.messages),
 				this.throttledRender(),
 				this.indexdb.updateMessage(newMessage));
 		}
@@ -2849,6 +2876,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 
 		this.prevX = pos.x;
@@ -2880,6 +2908,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 
 		this.resizeHandler = result.newHandler;
@@ -2906,6 +2935,7 @@ export class FreeGame {
 					}
 					return { ...msg };
 				})),
+				this.layerManager.setMessages(this.messages),
 				this.throttledRender(),
 				this.indexdb.updateMessage(newMessage));
 		}
@@ -2933,6 +2963,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 
 		this.prevX = pos.x;
@@ -2958,6 +2989,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 		this.resizeHandler = result.newHandler;
 		this.prevX = pos.x;
@@ -2980,6 +3012,7 @@ export class FreeGame {
 					}
 					return { ...msg };
 				})),
+				this.layerManager.setMessages(this.messages),
 				this.throttledRender(),
 				this.indexdb.updateMessage(newMessage));
 		}
@@ -3009,6 +3042,7 @@ export class FreeGame {
 				}
 				return { ...msg };
 			});
+			this.layerManager.setMessages(this.messages);
 		}
 
 		this.prevX = pos.x;

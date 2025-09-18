@@ -449,6 +449,13 @@ export class EllipseManager {
 		this.lastPreviewSend = 0;
 	}
 
+	/**
+	 * Updates the theme for stroke color normalization
+	 */
+	updateTheme(newTheme: "light" | "dark"): void {
+		this.theme = newTheme;
+	}
+
 	// Private helper methods
 
 	private applyResizeTransformation(

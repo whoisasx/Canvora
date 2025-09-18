@@ -645,4 +645,11 @@ export class TextManager {
 		this.lastPreviewSend = 0;
 		this.lastPreviewRect = null;
 	}
+
+	/**
+	 * Updates the theme for stroke color normalization
+	 */
+	updateTheme(newTheme: "light" | "dark"): void {
+		this.theme = newTheme;
+	}
 }
