@@ -30,10 +30,7 @@ export default function ShareCardFree({
 	const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
 
 	useEffect(() => {
-		console.log("user", user);
 		if (!user) return;
-
-		console.log("ShareCardFree: User data received:", user);
 
 		const storedRoom = localStorage.getItem("localRoom");
 		const currentPath = window.location.pathname;
@@ -58,11 +55,10 @@ export default function ShareCardFree({
 	}, [user]);
 
 	const handleCreateSession = async () => {
-		console.log("handle-user", user);
-		// if (!user) {
-		// 	toast.error("User data not available. Please refresh the page.");
-		// 	return;
-		// }
+		if (!user) {
+			toast.error("User data not available. Please refresh the page.");
+			return;
+		}
 
 		setCreating(true);
 		try {
@@ -119,7 +115,7 @@ export default function ShareCardFree({
 				}
 
 				// Navigate to the session URL
-				router.push(`/freehand/${roomId}`);
+				window.open(`/freehand/${roomId}`, "_blank");
 
 				toast.success("Session created! 🎉");
 			};

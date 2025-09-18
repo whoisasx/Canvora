@@ -41,6 +41,7 @@ export class MessageHandlers {
 
 		if (data.userRole === "creator") {
 			const messages = data.messages;
+			console.log("messages", messages);
 			this.messagesByRoom.set(roomId, messages ? messages : []);
 		}
 		const current = this.messagesByRoom.get(roomId) || [];

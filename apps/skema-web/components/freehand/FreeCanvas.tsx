@@ -498,34 +498,6 @@ export default function FreeCanvas({
 								<p> start drawing!</p>
 							</div>
 						</motion.div>
-
-						{/* End-to-End Encryption Icon */}
-						<motion.div
-							className="absolute bottom-6 right-6 group"
-							initial={{ opacity: 0, scale: 0.8 }}
-							animate={{ opacity: 1, scale: 1 }}
-							transition={{ duration: 0.4, delay: 1.0 }}
-						>
-							<div className="relative">
-								<div className="p-2 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-lg border border-canvora-200/30 dark:border-canvora-600/30 text-green-600 dark:text-green-400">
-									<svg
-										className="w-6 h-6"
-										viewBox="0 0 24 24"
-										fill="currentColor"
-									>
-										<path d="M11.553 22.894a.998.998 0 00.894 0s3.037-1.516 5.465-4.097C19.616 16.987 21 14.663 21 12V5a1 1 0 00-.649-.936l-8-3a.998.998 0 00-.702 0l-8 3A1 1 0 003 5v7c0 2.663 1.384 4.987 3.088 6.797 2.428 2.581 5.465 4.097 5.465 4.097zm-1.303-8.481l6.644-6.644a.856.856 0 111.212 1.212l-7.25 7.25a.856.856 0 01-1.212 0l-3.75-3.75a.856.856 0 111.212-1.212l3.144 3.144z" />
-									</svg>
-								</div>
-
-								{/* Tooltip */}
-								<div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-									<div className="bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-										End-to-end encrypted
-										<div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
-									</div>
-								</div>
-							</div>
-						</motion.div>
 					</motion.div>
 				)}
 			</AnimatePresence>
@@ -612,6 +584,34 @@ export default function FreeCanvas({
 					</motion.div>
 				)}
 			</AnimatePresence>
+
+			{/* Permanent End-to-End Encryption Icon */}
+			<motion.div
+				className="fixed bottom-6 right-6 group pointer-events-auto z-50"
+				initial={{ opacity: 0, scale: 0.8 }}
+				animate={{ opacity: 1, scale: 1 }}
+				transition={{ duration: 0.4, delay: 0.5 }}
+			>
+				<div className="relative">
+					<div className="p-2 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-lg border border-canvora-200/30 dark:border-canvora-600/30 text-green-600 dark:text-green-400 shadow-lg">
+						<svg
+							className="w-6 h-6"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path d="M11.553 22.894a.998.998 0 00.894 0s3.037-1.516 5.465-4.097C19.616 16.987 21 14.663 21 12V5a1 1 0 00-.649-.936l-8-3a.998.998 0 00-.702 0l-8 3A1 1 0 003 5v7c0 2.663 1.384 4.987 3.088 6.797 2.428 2.581 5.465 4.097 5.465 4.097zm-1.303-8.481l6.644-6.644a.856.856 0 111.212 1.212l-7.25 7.25a.856.856 0 01-1.212 0l-3.75-3.75a.856.856 0 111.212-1.212l3.144 3.144z" />
+						</svg>
+					</div>
+
+					{/* Tooltip */}
+					<div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+						<div className="bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+							End-to-end encrypted
+							<div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
+						</div>
+					</div>
+				</div>
+			</motion.div>
 		</div>
 	);
 }
