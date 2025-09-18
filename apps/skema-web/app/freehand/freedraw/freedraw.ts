@@ -82,7 +82,7 @@ import {
 	nunito,
 } from "@/app/font";
 import { getExistingMessagesLocal } from "./freeserver";
-import { IndexDB } from "@/lib/indexdb";
+import { IndexDB, SessionDB } from "@/lib/indexdb";
 
 export class FreeGame {
 	private canvas: HTMLCanvasElement;
@@ -98,6 +98,7 @@ export class FreeGame {
 	private offsetY: number = 0;
 	private isActive: boolean | undefined;
 	private indexdb: IndexDB;
+	private sessiondb: SessionDB;
 
 	private prevX: number = 0;
 	private prevY: number = 0;
@@ -194,7 +195,8 @@ export class FreeGame {
 	constructor(
 		sessionData: SessionData | undefined,
 		canvas: HTMLCanvasElement,
-		indexdb: IndexDB
+		indexdb: IndexDB,
+		sessiondb: SessionDB
 	) {
 		if (sessionData) {
 			this.roomId = sessionData.roomId;
@@ -202,6 +204,7 @@ export class FreeGame {
 			this.sessionData = sessionData;
 		}
 		this.indexdb = indexdb;
+		this.sessiondb = sessiondb;
 		this.canvas = canvas;
 		this.ctx = canvas.getContext("2d")!;
 
@@ -605,7 +608,8 @@ export class FreeGame {
 		this.messages = await getExistingMessagesLocal(
 			this.roomId,
 			this.socket,
-			this.indexdb
+			this.indexdb,
+			this.sessiondb
 		);
 
 		if (this.onMessageChange) {
@@ -795,7 +799,8 @@ export class FreeGame {
 						this.messages.push(msg as Message);
 						this.layerManager.setMessages(this.messages);
 						if (parsedData.authflag === "freehand")
-							this.indexdb.addMessage(msg as Message);
+							console.log("added");
+						this.sessiondb.addMessageToSession(this.roomId!, msg);
 					}
 
 					// 1) preferred: clear preview by previewId (if server forwarded it)
@@ -860,7 +865,8 @@ export class FreeGame {
 						(message) => id !== message.id
 					);
 					if (parsedData.authflag === "freehand")
-						this.indexdb.deleteMessage(id);
+						console.log("deleted");
+					this.sessiondb.removeMessageFromSession(this.roomId!, id);
 					if (
 						this.selectedMessage &&
 						this.selectedMessage.id === id
@@ -907,7 +913,11 @@ export class FreeGame {
 						return message;
 					});
 					if (parsedData.authflag === "freehand")
-						this.indexdb.updateMessage(newMessage);
+						console.log("updated");
+					this.sessiondb.updateMessageInSession(
+						this.roomId!,
+						newMessage
+					);
 					if (
 						this.selectedMessage &&
 						this.selectedMessage.id === id
@@ -957,8 +967,10 @@ export class FreeGame {
 				case "sync": {
 					this.messages = parsedData.messages;
 					if (this.indexdb && this.sessionData) {
-						this.messages.forEach((msg) =>
-							this.indexdb.updateMessage(msg)
+						console.log("syncing");
+						this.sessiondb.updateSession(
+							this.sessionData.roomId,
+							this.messages
 						);
 					}
 					this.layerManager.setMessages(this.messages);

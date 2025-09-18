@@ -19,17 +19,19 @@ import ZoomBar from "../ZoomBar";
 import UndoRedo from "../UndoRedo";
 import CanvasOpt from "../CanvasOpt";
 import { FreeGame } from "@/app/freehand/freedraw/freedraw";
-import { IndexDB } from "@/lib/indexdb";
+import { IndexDB, SessionDB } from "@/lib/indexdb";
 import { localUser } from "@/app/freehand/page";
 
 export default function FreeCanvas({
 	sessionData,
 	indexdb,
 	user,
+	sessiondb,
 }: {
 	sessionData?: { roomId: string; socket: WebSocket };
 	indexdb: IndexDB;
 	user: localUser | null;
+	sessiondb: SessionDB;
 }) {
 	const router = useRouter();
 	const background = useCanvasBgStore((state) => state.background);
@@ -152,7 +154,12 @@ export default function FreeCanvas({
 			canvasRef.current.width = dimensions.w;
 			canvasRef.current.height = dimensions.h;
 
-			const g = new FreeGame(sessionData, canvasRef.current, indexdb);
+			const g = new FreeGame(
+				sessionData,
+				canvasRef.current,
+				indexdb,
+				sessiondb
+			);
 			setGame(g);
 
 			return () => {
@@ -544,6 +551,7 @@ export default function FreeCanvas({
 				>
 					<ShareCardFree
 						indexdb={indexdb}
+						sessiondb={sessiondb}
 						onSessionCreate={(roomId) => {
 							// Handle session creation if needed
 							console.log("Session created:", roomId);

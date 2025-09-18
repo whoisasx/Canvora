@@ -1,16 +1,16 @@
 import { SessionData } from "@/components/freehand/FreeRoomCanvas";
-import { IndexDB } from "@/lib/indexdb";
+import { IndexDB, SessionDB } from "@/lib/indexdb";
 
 export async function getExistingMessagesLocal(
 	roomId: string | undefined,
 	socket: WebSocket | undefined,
-	indexdb: IndexDB
+	indexdb: IndexDB,
+	sessiondb: SessionDB
 ) {
 	try {
 		if (socket && roomId) {
-			await indexdb.clearCanvas();
-			//TODO: pull the messages from websocket server and put it into the indexDb and return the message
-			return [];
+			const messages = await sessiondb.getSessionMessages(roomId);
+			return messages;
 		} else {
 			const messages = await indexdb.getAllMessages();
 			return messages;

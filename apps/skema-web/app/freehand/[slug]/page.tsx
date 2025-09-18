@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { localRoom, localUser } from "../page";
-import { IndexDB } from "@/lib/indexdb";
+import { localUser } from "../page";
+import { IndexDB, SessionDB } from "@/lib/indexdb";
 import { generateUsername } from "unique-username-generator";
 import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -15,10 +15,11 @@ export default function FreehandSlugPage() {
 	const params = useParams();
 	const slug = params.slug as string;
 
-	const [roomId, setRoomId] = useState<localRoom | null>(null);
+	const [roomId, setRoomId] = useState<string | null>(null);
 	const [user, setUser] = useState<localUser | null>(null);
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const [indexdb, setIndexdb] = useState<IndexDB | null>(null);
+	const [sessiondb, setSessiondb] = useState<SessionDB | null>(null);
 	const [mounted, setMounted] = useState(false);
 
 	// Handle client-side mounting
@@ -41,6 +42,10 @@ export default function FreehandSlugPage() {
 		if (!indexdb) {
 			const tempIndexdb = new IndexDB();
 			setIndexdb(tempIndexdb);
+		}
+		if (!sessiondb) {
+			const sdb = new SessionDB();
+			setSessiondb(sdb);
 		}
 
 		const storedUser = localStorage.getItem("user");
@@ -68,11 +73,11 @@ export default function FreehandSlugPage() {
 		}
 
 		setRoomId(slug);
-		localStorage.setItem("localRoom", slug);
+		// localStorage.setItem("localRoom", slug); //FIXME: FIX HERE
 	}, [slug, mounted, indexdb]);
 
 	useEffect(() => {
-		if (!roomId || !indexdb || !mounted || !user) {
+		if (!roomId || !indexdb || !mounted || !user || !sessiondb) {
 			return;
 		}
 
@@ -176,11 +181,12 @@ export default function FreehandSlugPage() {
 					})
 				);
 				ws.close(1000, "User navigated away");
+				sessiondb && sessiondb.deleteSession(roomId);
 			}
 		};
-	}, [roomId, indexdb, router, mounted]);
+	}, [roomId, indexdb, router, mounted, sessiondb]);
 
-	if (!mounted || !indexdb || !roomId || !socket || !user) {
+	if (!mounted || !indexdb || !roomId || !socket || !user || !sessiondb) {
 		return (
 			<div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
 				{/* Animated Logo */}
@@ -220,6 +226,7 @@ export default function FreehandSlugPage() {
 			sessionData={{ roomId, socket }}
 			indexdb={indexdb}
 			user={user}
+			sessiondb={sessiondb}
 		/>
 	);
 }

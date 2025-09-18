@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { localUser } from "@/app/freehand/page";
-import { IndexDB } from "@/lib/indexdb";
+import { IndexDB, SessionDB, StoredSession } from "@/lib/indexdb";
 
 interface LocalSession {
 	id: string;
@@ -18,10 +18,12 @@ export default function ShareCardFree({
 	onSessionCreate,
 	indexdb,
 	user,
+	sessiondb,
 }: {
 	onSessionCreate?: (roomId: string) => void;
 	indexdb: IndexDB;
 	user: localUser;
+	sessiondb: SessionDB;
 }) {
 	const router = useRouter();
 	const [localSession, setLocalSession] = useState<LocalSession | null>(null);
@@ -33,26 +35,30 @@ export default function ShareCardFree({
 	useEffect(() => {
 		if (!user) return;
 
-		const storedRoom = localStorage.getItem("localRoom");
-		const currentPath = window.location.pathname;
-		const freehandMatch = currentPath.match(/^\/freehand\/(.+)$/);
+		async function localSessionSetter() {
+			const sessions = await sessiondb.getAllSessions();
+			// const storedRoom = localStorage.getItem("localRoom");
+			const currentPath = window.location.pathname;
+			const freehandMatch = currentPath.match(/^\/freehand\/(.+)$/);
+			const session =
+				sessions.find(
+					(s) => s.id === (freehandMatch && freehandMatch[1])
+				) || null;
 
-		// If user is on a session URL and has matching localStorage
-		if (
-			freehandMatch &&
-			freehandMatch[1] &&
-			storedRoom === freehandMatch[1]
-		) {
-			setLocalSession({
-				id: storedRoom,
-				isActive: true,
-				username: user.username,
-			});
-		} else if (storedRoom && !freehandMatch) {
-			// User has localStorage but not on session URL - clear localStorage
-			localStorage.removeItem("localRoom");
-			setLocalSession(null);
+			// If user is on a session URL and has matching localStorage
+			if (freehandMatch && freehandMatch[1] && session) {
+				setLocalSession({
+					id: session.id,
+					isActive: true,
+					username: user.username,
+				});
+			} else if (session && session.id && !freehandMatch) {
+				// User has localStorage but not on session URL - clear localStorage
+				// localStorage.removeItem("localRoom");
+				setLocalSession(null);
+			}
 		}
+		localSessionSetter();
 	}, [user]);
 
 	// Cleanup WebSocket on component unmount
@@ -124,8 +130,10 @@ export default function ShareCardFree({
 					})
 				);
 
+				await sessiondb.createSession(roomId, messages);
+				console.log("session created");
 				// Store roomId in localStorage
-				localStorage.setItem("localRoom", roomId);
+				// localStorage.setItem("localRoom", roomId); //FIXME: FIX HERE
 
 				// Update state
 				setLocalSession({
@@ -227,8 +235,10 @@ export default function ShareCardFree({
 				websocket.close(1000, "User left session");
 			}
 
+			localSession && (await sessiondb.deleteSession(localSession.id));
+			console.log("session deleted");
 			// Remove from localStorage
-			localStorage.removeItem("localRoom");
+			// localStorage.removeItem("localRoom"); //FIXME: FIX HERE
 
 			// Clear WebSocket reference
 			setWebsocket(null);
@@ -245,17 +255,6 @@ export default function ShareCardFree({
 			toast.error("Failed to leave session");
 		}
 	};
-
-	// Don't render anything if user is not loaded yet
-	if (!user) {
-		return (
-			<motion.div className="w-15 h-9 rounded-lg bg-gray-300 dark:bg-gray-700 border border-gray-400 dark:border-gray-600 shadow-lg animate-pulse">
-				<div className="w-full h-full flex justify-center items-center text-gray-500 text-sm">
-					Loading...
-				</div>
-			</motion.div>
-		);
-	}
 
 	return (
 		<>

@@ -580,7 +580,9 @@ export default function ActionCard({
 														);
 													}
 												} else {
-													//TODO: fix here
+													toast.error(
+														"Not permitted, ❌. Leave session."
+													);
 												}
 											} catch (err) {
 												toast.error(

@@ -1,7 +1,7 @@
 "use client";
 
 import FreeRoomCanvas from "@/components/freehand/FreeRoomCanvas";
-import { IndexDB } from "@/lib/indexdb";
+import { IndexDB, SessionDB } from "@/lib/indexdb";
 import { useEffect, useState } from "react";
 import { generateUsername } from "unique-username-generator";
 
@@ -9,11 +9,12 @@ export interface localUser {
 	id: string;
 	username: string;
 }
-export type localRoom = string;
+// export type localRoom = string;
 
 export default function () {
 	const [user, setUser] = useState<localUser | null>(null);
 	const [indexdb, setIndexdb] = useState<IndexDB | null>(null);
+	const [sessiondb, setSessiondb] = useState<SessionDB | null>(null);
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -24,7 +25,9 @@ export default function () {
 		if (!mounted) return;
 
 		const db = new IndexDB();
+		const sdb = new SessionDB();
 		setIndexdb(db);
+		setSessiondb(sdb);
 
 		const storedUser = localStorage.getItem("user");
 		if (storedUser) {
@@ -51,7 +54,7 @@ export default function () {
 		}
 	}, [mounted]);
 
-	if (!mounted || !indexdb || !user) {
+	if (!mounted || !indexdb || !user || !sessiondb) {
 		return (
 			<div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
 				{/* Animated Logo */}
@@ -86,5 +89,7 @@ export default function () {
 		);
 	}
 
-	return <FreeRoomCanvas indexdb={indexdb} user={user} />;
+	return (
+		<FreeRoomCanvas indexdb={indexdb} user={user} sessiondb={sessiondb} />
+	);
 }
