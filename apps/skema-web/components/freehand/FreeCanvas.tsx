@@ -84,6 +84,8 @@ export default function FreeCanvas({
 
 	const [showIntro, setShowIntro] = useState(false);
 	const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+	const [hideInstantly, setHideInstantly] = useState(false);
+	const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
 	useEffect(() => {
 		if (!game) return;
@@ -111,6 +113,10 @@ export default function FreeCanvas({
 			const isEmpty = messages.length === 0;
 			setIsCanvasEmpty(isEmpty);
 			setShowIntro(isEmpty);
+			if (isEmpty && !hasUserInteracted) {
+				setHideInstantly(false); // Reset instant hide flag
+				setShowIntro(true);
+			}
 		};
 		checkCanvasEmpty();
 
@@ -119,6 +125,8 @@ export default function FreeCanvas({
 			const isEmpty = messages.length === 0;
 			setIsCanvasEmpty(isEmpty);
 			if (!isEmpty) {
+				setHasUserInteracted(true); // Mark that user has interacted
+				setHideInstantly(true);
 				setShowIntro(false);
 			}
 		};
@@ -131,6 +139,8 @@ export default function FreeCanvas({
 
 	useEffect(() => {
 		if (tool !== "mouse" && showIntro) {
+			setHasUserInteracted(true); // Mark that user has interacted
+			setHideInstantly(true);
 			setShowIntro(false);
 		}
 	}, [tool, showIntro]);
@@ -234,14 +244,17 @@ export default function FreeCanvas({
 
 	return (
 		<div className="min-h-screen min-w-screen relative">
-			<AnimatePresence>
+			<AnimatePresence initial={false}>
 				{showIntro && (
 					<motion.div
 						className="h-screen w-screen fixed inset-0 flex flex-col gap-6 items-center justify-center pointer-events-none backdrop-blur-[1px] bg-black/5 dark:bg-black/20"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
-						transition={{ duration: 0.3 }}
+						transition={{
+							duration: hideInstantly ? 0 : 0.3,
+							ease: "easeOut",
+						}}
 					>
 						<motion.div
 							className="text-center"
@@ -284,7 +297,8 @@ export default function FreeCanvas({
 						>
 							<button
 								type="button"
-								className="flex justify-between items-center p-2 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-all duration-200"
+								className="flex justify-between items-center p-2 rounded-lg opacity-40 cursor-not-allowed transition-all duration-200"
+								disabled
 							>
 								<div className="size-8">
 									<svg
@@ -299,14 +313,15 @@ export default function FreeCanvas({
 										<path d="m9.257 6.351.183.183H15.819c.34 0 .727.182 1.051.506.323.323.505.708.505 1.05v5.819c0 .316-.183.7-.52 1.035-.337.338-.723.522-1.037.522H4.182c-.352 0-.74-.181-1.058-.5-.318-.318-.499-.705-.499-1.057V5.182c0-.351.181-.736.5-1.054.32-.321.71-.503 1.057-.503H6.53l2.726 2.726Z" />
 									</svg>
 								</div>
-								<div className="font-mono text-xs text-gray-500 dark:text-gray-400">
+								<div className="text-gray-400 dark:text-gray-500">
 									Cmd+O
 								</div>
 							</button>
 
 							<button
 								type="button"
-								className="flex justify-between items-center p-2 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-all duration-200"
+								className="flex justify-between items-center p-2 rounded-lg opacity-40 cursor-not-allowed transition-all duration-200"
+								disabled
 							>
 								<div className="size-8">
 									<svg
@@ -331,14 +346,15 @@ export default function FreeCanvas({
 										</g>
 									</svg>
 								</div>
-								<div className="text-gray-600 dark:text-gray-300">
+								<div className="text-gray-400 dark:text-gray-500">
 									Live collaboration...
 								</div>
 							</button>
 
-							<a
-								href="#"
-								className="flex items-center justify-between p-2 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-all duration-200"
+							<button
+								type="button"
+								className="flex items-center justify-between p-2 rounded-lg opacity-40 cursor-not-allowed transition-all duration-200"
+								disabled
 							>
 								<div className="size-8">
 									<svg
@@ -362,10 +378,75 @@ export default function FreeCanvas({
 										</g>
 									</svg>
 								</div>
-								<div className="text-gray-600 dark:text-gray-300">
+								<div className="text-gray-400 dark:text-gray-500">
 									Sign up
 								</div>
-							</a>
+							</button>
+
+							<button
+								type="button"
+								className="flex justify-between items-center p-2 rounded-lg opacity-40 cursor-not-allowed transition-all duration-200"
+								disabled
+							>
+								<div className="size-8">
+									<svg
+										className="size-8"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="1.25"
+									>
+										<g>
+											<path
+												stroke="none"
+												d="M0 0h24v24H0z"
+												fill="none"
+											/>
+											<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" />
+											<path d="M12 12l8 -4.5" />
+											<path d="M12 12l0 9" />
+											<path d="M12 12l-8 -4.5" />
+										</g>
+									</svg>
+								</div>
+								<div className="text-gray-400 dark:text-gray-500">
+									Library...
+								</div>
+							</button>
+
+							<button
+								type="button"
+								className="flex justify-between items-center p-2 rounded-lg opacity-40 cursor-not-allowed transition-all duration-200"
+								disabled
+							>
+								<div className="size-8">
+									<svg
+										className="size-8"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth="1.25"
+									>
+										<g>
+											<path
+												stroke="none"
+												d="M0 0h24v24H0z"
+												fill="none"
+											/>
+											<circle cx="12" cy="12" r="4" />
+											<path d="M12 1v6m0 6v6" />
+											<path d="M21 12h-6m-6 0h-6" />
+										</g>
+									</svg>
+								</div>
+								<div className="text-gray-400 dark:text-gray-500">
+									Help...
+								</div>
+							</button>
 						</motion.div>
 
 						<motion.div
@@ -375,15 +456,15 @@ export default function FreeCanvas({
 							transition={{ duration: 0.4, delay: 0.8 }}
 						>
 							<svg
-								className="w-16 h-16 text-gray-400"
+								className="w-20 h-20 text-gray-400"
 								viewBox="0 0 100 100"
 								fill="none"
 								stroke="currentColor"
-								strokeWidth="2"
+								strokeWidth="3"
 							>
 								<path d="M90 90 Q40 70 20 20" />
 								<polygon
-									points="14,24 20,18 26,24"
+									points="10,28 20,18 30,28"
 									fill="currentColor"
 								/>
 							</svg>
@@ -398,21 +479,49 @@ export default function FreeCanvas({
 							transition={{ duration: 0.4, delay: 0.9 }}
 						>
 							<svg
-								className="w-16 h-16 text-gray-400 "
+								className="w-20 h-20 text-gray-400"
 								viewBox="0 0 100 100"
 								fill="none"
 								stroke="currentColor"
-								strokeWidth="2"
+								strokeWidth="3"
 							>
 								<path d="M90 90 Q40 70 20 20" />
 								<polygon
-									points="14,24 20,18 26,24"
+									points="10,28 20,18 30,28"
 									fill="currentColor"
 								/>
 							</svg>
 							<div className="ml-16 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md px-3 py-2 rounded-lg">
 								<p>Pick a tool &</p>
 								<p> start drawing!</p>
+							</div>
+						</motion.div>
+
+						{/* End-to-End Encryption Icon */}
+						<motion.div
+							className="absolute bottom-6 right-6 group"
+							initial={{ opacity: 0, scale: 0.8 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ duration: 0.4, delay: 1.0 }}
+						>
+							<div className="relative">
+								<div className="p-2 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-lg border border-canvora-200/30 dark:border-canvora-600/30 text-green-600 dark:text-green-400">
+									<svg
+										className="w-6 h-6"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+									>
+										<path d="M11.553 22.894a.998.998 0 00.894 0s3.037-1.516 5.465-4.097C19.616 16.987 21 14.663 21 12V5a1 1 0 00-.649-.936l-8-3a.998.998 0 00-.702 0l-8 3A1 1 0 003 5v7c0 2.663 1.384 4.987 3.088 6.797 2.428 2.581 5.465 4.097 5.465 4.097zm-1.303-8.481l6.644-6.644a.856.856 0 111.212 1.212l-7.25 7.25a.856.856 0 01-1.212 0l-3.75-3.75a.856.856 0 111.212-1.212l3.144 3.144z" />
+									</svg>
+								</div>
+
+								{/* Tooltip */}
+								<div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+									<div className="bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+										End-to-end encrypted
+										<div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
+									</div>
+								</div>
 							</div>
 						</motion.div>
 					</motion.div>
