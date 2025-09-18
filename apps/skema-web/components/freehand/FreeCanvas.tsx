@@ -42,11 +42,6 @@ export default function FreeCanvas({
 	const props = usePropsStore();
 	const propsSize = useToolStore((state) => state.props.length);
 
-	const [dimensions, setDimensions] = useState(() => ({
-		w: typeof window !== "undefined" ? window.innerWidth : 0,
-		h: typeof window !== "undefined" ? window.innerHeight : 0,
-	}));
-
 	const prevPropsRef = useRef<any>(null);
 	const prevToolRef = useRef<string | null>(null);
 
@@ -151,8 +146,8 @@ export default function FreeCanvas({
 
 	useEffect(() => {
 		if (canvasRef.current) {
-			canvasRef.current.width = dimensions.w;
-			canvasRef.current.height = dimensions.h;
+			canvasRef.current.width = window.innerWidth;
+			canvasRef.current.height = window.innerHeight;
 
 			const g = new FreeGame(
 				sessionData,
@@ -166,37 +161,7 @@ export default function FreeCanvas({
 				g.destructor();
 			};
 		}
-	}, [canvasRef, dimensions.w, dimensions.h, sessionData]);
-
-	useEffect(() => {
-		let timer: number | null = null;
-		const onResize = () => {
-			if (typeof window === "undefined") return;
-			if (timer) window.clearTimeout(timer);
-			timer = window.setTimeout(() => {
-				const w = window.innerWidth;
-				const h = window.innerHeight;
-				setDimensions({ w, h });
-				if (canvasRef.current) {
-					canvasRef.current.width = w;
-					canvasRef.current.height = h;
-				}
-			}, 300);
-		};
-
-		if (typeof window !== "undefined") {
-			window.addEventListener("resize", onResize);
-			// run once to sync
-			onResize();
-		}
-
-		return () => {
-			if (typeof window !== "undefined") {
-				if (timer) window.clearTimeout(timer);
-				window.removeEventListener("resize", onResize);
-			}
-		};
-	}, []);
+	}, [canvasRef, sessionData]);
 
 	useEffect(() => {
 		if (!game) return;

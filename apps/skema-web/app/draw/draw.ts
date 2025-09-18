@@ -470,6 +470,8 @@ export class Game {
 	/** ------------------------------------------------------------------- */
 	async initHandler() {
 		this.messages = await getExistingMessages(this.roomId);
+		// Update layer manager with loaded messages
+		this.layerManager.setMessages(this.messages);
 
 		if (this.onMessageChange) {
 			this.onMessageChange();

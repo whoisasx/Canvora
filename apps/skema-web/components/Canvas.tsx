@@ -30,11 +30,6 @@ export default function Canvas({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [game, setGame] = useState<Game>();
 
-	const [dimensions, setDimensions] = useState(() => ({
-		w: typeof window !== "undefined" ? window.innerWidth : 0,
-		h: typeof window !== "undefined" ? window.innerHeight : 0,
-	}));
-
 	const tool = useToolStore((state) => state.tool);
 	const props = usePropsStore();
 	const prevPropsRef = useRef<any>(null);
@@ -156,8 +151,8 @@ export default function Canvas({
 	useEffect(() => {
 		if (canvasRef.current) {
 			// ensure canvas element has current dimensions before creating Game
-			canvasRef.current.width = dimensions.w;
-			canvasRef.current.height = dimensions.h;
+			canvasRef.current.width = window.innerWidth;
+			canvasRef.current.height = window.innerHeight;
 
 			const g = new Game(socket, canvasRef.current, roomId);
 			setGame(g);
@@ -166,32 +161,7 @@ export default function Canvas({
 				g.destructor();
 			};
 		}
-	}, [canvasRef, dimensions.w, dimensions.h]);
-
-	useEffect(() => {
-		let timer: number | null = null;
-		const onResize = () => {
-			if (timer) window.clearTimeout(timer);
-			timer = window.setTimeout(() => {
-				const w = window.innerWidth;
-				const h = window.innerHeight;
-				setDimensions({ w, h });
-				if (canvasRef.current) {
-					canvasRef.current.width = w;
-					canvasRef.current.height = h;
-				}
-			}, 120);
-		};
-
-		window.addEventListener("resize", onResize);
-		// run once to sync
-		onResize();
-
-		return () => {
-			if (timer) window.clearTimeout(timer);
-			window.removeEventListener("resize", onResize);
-		};
-	}, []);
+	}, [canvasRef]);
 
 	useEffect(() => {
 		if (!game) return;

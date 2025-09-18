@@ -386,6 +386,7 @@ export class MessageHandlers {
 
 	async handleSyncAll(ws: WebSocket, data: MessageData) {
 		const roomId = data.roomId;
+		const messages = data.messages;
 
 		if (!validateRoomId(roomId)) {
 			ws.send(
@@ -397,13 +398,29 @@ export class MessageHandlers {
 			return;
 		}
 
+		// Update server's state with the received messages
+		if (messages) {
+			this.messagesByRoom.set(roomId, messages);
+		}
+
+		// Get the updated messages (or current if no messages were provided)
 		const current = this.messagesByRoom.get(roomId) || [];
-		ws.send(
-			JSON.stringify({
-				type: "sync",
-				messages: current,
-			})
-		);
+
+		// Broadcast the updated state to all users in the room
+		for (let user of this.users) {
+			if (user.rooms.includes(roomId)) {
+				try {
+					user.ws.send(
+						JSON.stringify({
+							type: "sync",
+							messages: current,
+						})
+					);
+				} catch (err) {
+					// ignore send errors
+				}
+			}
+		}
 	}
 
 	async handleUndo(ws: WebSocket, data: MessageData, userId: string) {

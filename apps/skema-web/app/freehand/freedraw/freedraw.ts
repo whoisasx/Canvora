@@ -192,6 +192,11 @@ export class FreeGame {
 	private coordinateHelper: CoordinateHelper;
 	private shapeCreator: ShapeCreator;
 
+	// Local undo/redo history management
+	private localHistory: Message[][] = [];
+	private localHistoryIndex: number = -1;
+	private maxHistorySize: number = 50;
+
 	constructor(
 		sessionData: SessionData | undefined,
 		canvas: HTMLCanvasElement,
@@ -416,10 +421,136 @@ export class FreeGame {
 
 	//TODO: implemet undo redo
 	undo() {
+		if (!this.roomId || !this.socket) {
+			// Handle local undo
+			this.performLocalUndo();
+			return;
+		}
 		this.socketHelper.sendUndo();
 	}
 	redo() {
+		if (!this.roomId || !this.socket) {
+			// Handle local redo
+			this.performLocalRedo();
+			return;
+		}
 		this.socketHelper.sendRedo();
+	}
+
+	// Local history management methods
+	private saveToLocalHistory(): void {
+		if (this.roomId || this.socket) return; // Only save for local drawing
+
+		// Deep clone the current messages state
+		const currentState = JSON.parse(JSON.stringify(this.messages));
+
+		// Remove any future history if we're not at the end
+		if (this.localHistoryIndex < this.localHistory.length - 1) {
+			this.localHistory = this.localHistory.slice(
+				0,
+				this.localHistoryIndex + 1
+			);
+		}
+
+		// Add current state to history
+		this.localHistory.push(currentState);
+		this.localHistoryIndex = this.localHistory.length - 1;
+
+		// Limit history size
+		if (this.localHistory.length > this.maxHistorySize) {
+			this.localHistory.shift();
+			this.localHistoryIndex--;
+		}
+
+		console.log(
+			`[Local History] Saved state. History length: ${this.localHistory.length}, Index: ${this.localHistoryIndex}`
+		);
+	}
+
+	private performLocalUndo(): void {
+		if (this.localHistoryIndex > 0) {
+			this.localHistoryIndex--;
+			const previousState = JSON.parse(
+				JSON.stringify(this.localHistory[this.localHistoryIndex])
+			);
+			console.log(
+				`[Local History] Undo to index ${this.localHistoryIndex}. Messages count: ${previousState.length}`
+			);
+			this.restoreLocalState(previousState);
+		} else {
+			console.log(
+				"[Local History] Cannot undo - no previous state available"
+			);
+		}
+	}
+
+	private performLocalRedo(): void {
+		if (this.localHistoryIndex < this.localHistory.length - 1) {
+			this.localHistoryIndex++;
+			const nextState = JSON.parse(
+				JSON.stringify(this.localHistory[this.localHistoryIndex])
+			);
+			console.log(
+				`[Local History] Redo to index ${this.localHistoryIndex}. Messages count: ${nextState.length}`
+			);
+			this.restoreLocalState(nextState);
+		} else {
+			console.log(
+				"[Local History] Cannot redo - no future state available"
+			);
+		}
+	}
+
+	private restoreLocalState(state: Message[]): void {
+		this.messages = state;
+		this.layerManager.setMessages(this.messages);
+
+		// Clear selection if the selected message no longer exists
+		if (
+			this.selectedMessage &&
+			!this.messages.find((msg) => msg.id === this.selectedMessage!.id)
+		) {
+			this.selectedMessage = null;
+			this.setSelectedMessage(null);
+		}
+
+		// Update IndexDB with the restored state
+		this.syncLocalStateToIndexDB();
+
+		// Re-render the canvas
+		this.throttledRender();
+
+		// Notify about message changes
+		if (this.onMessageChange) {
+			this.onMessageChange();
+		}
+	}
+
+	private async syncLocalStateToIndexDB(): Promise<void> {
+		try {
+			// Clear existing messages from IndexDB
+			await this.indexdb.clearCanvas();
+
+			// Add all current messages to IndexDB
+			for (const message of this.messages) {
+				await this.indexdb.addMessage(message);
+			}
+		} catch (error) {
+			console.error("Error syncing local state to IndexDB:", error);
+		}
+	}
+
+	// Public methods for checking undo/redo state (useful for UI)
+	canUndo(): boolean {
+		return !this.roomId && !this.socket && this.localHistoryIndex > 0;
+	}
+
+	canRedo(): boolean {
+		return (
+			!this.roomId &&
+			!this.socket &&
+			this.localHistoryIndex < this.localHistory.length - 1
+		);
 	}
 
 	setCursor(cursor: string): void {
@@ -612,6 +743,11 @@ export class FreeGame {
 			this.sessiondb
 		);
 
+		// Save initial state for local undo/redo
+		if (!this.roomId && !this.socket) {
+			this.saveToLocalHistory();
+		}
+
 		if (this.onMessageChange) {
 			this.onMessageChange();
 		}
@@ -621,6 +757,8 @@ export class FreeGame {
 			if (e.key === "Backspace") {
 				if (this.selectedMessage) {
 					if (!this.socket && !this.roomId) {
+						// Save current state before making changes
+						this.saveToLocalHistory();
 						this.messages = this.messages.filter(
 							(msg) => msg.id !== this.selectedMessage!.id
 						);
@@ -1174,6 +1312,10 @@ export class FreeGame {
 			if (this.selectedMessage) {
 				if (this.preSelectedMessage) {
 					if (this.selectedMessage === this.preSelectedMessage) {
+						// Save state before starting to drag
+						if (!this.socket && !this.roomId) {
+							this.saveToLocalHistory();
+						}
 						this.isDragging = true;
 						this.prevX = pos.x;
 						this.prevY = pos.y;
@@ -1190,10 +1332,18 @@ export class FreeGame {
 					}
 				} else {
 					if (this.canvas.style.cursor.includes("resize")) {
+						// Save state before starting to resize
+						if (!this.socket && !this.roomId) {
+							this.saveToLocalHistory();
+						}
 						this.isResizing = true;
 						this.prevX = pos.x;
 						this.prevY = pos.y;
 					} else if (this.canvas.style.cursor === "move") {
+						// Save state before starting to drag
+						if (!this.socket && !this.roomId) {
+							this.saveToLocalHistory();
+						}
 						this.isDragging = true;
 						this.prevX = pos.x;
 						this.prevY = pos.y;
@@ -1288,6 +1438,8 @@ export class FreeGame {
 		if (!message) return;
 		this.socketHelper.sendCreateMessage(message, this.previewId);
 		if (!this.socket && !this.roomId) {
+			// Save current state before making changes
+			this.saveToLocalHistory();
 			this.messages.push(message);
 			this.indexdb.addMessage(message);
 			this.throttledRender();
@@ -2321,6 +2473,8 @@ export class FreeGame {
 				}
 			);
 			if (message && !this.socket && !this.roomId) {
+				// Save current state before making changes
+				this.saveToLocalHistory();
 				this.messages.push(message);
 				this.indexdb.addMessage(message);
 				this.throttledRender();
@@ -2406,6 +2560,8 @@ export class FreeGame {
 			);
 
 			if (!this.socket && !this.roomId) {
+				// Save current state before making changes
+				this.saveToLocalHistory();
 				this.messages.push(message);
 				this.indexdb.addMessage(message);
 				this.throttledRender();
@@ -2493,6 +2649,8 @@ export class FreeGame {
 
 			if (foundMessage) {
 				if (!this.socket && !this.roomId) {
+					// Save current state before making changes
+					this.saveToLocalHistory();
 					this.messages = this.messages.filter(
 						(msg) => msg.id !== message.id
 					);
