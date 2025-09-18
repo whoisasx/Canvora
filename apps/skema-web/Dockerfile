@@ -22,7 +22,6 @@ COPY apps/skema-web ./apps/skema-web
 # Build using Node (more reliable than bun for building)
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_FONT_GOOGLE_MOCKED_RESPONSES='[{"url":"https://fonts.googleapis.com/css2?family=Caveat","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=Fira+Code","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=Cutive+Mono","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=Source+Code+Pro","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=Nunito","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=Inter","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans","css":"/* mocked */"},{"url":"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans","css":"/* mocked */"}]'
 WORKDIR /app/apps/skema-web
 RUN npm run build
 
