@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json();
-		console.log("Received request body:", body);
 
 		const { user } = body;
 

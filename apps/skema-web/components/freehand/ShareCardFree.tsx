@@ -28,6 +28,7 @@ export default function ShareCardFree({
 	const [modalOpen, setModalOpen] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
+	const [websocket, setWebsocket] = useState<WebSocket | null>(null);
 
 	useEffect(() => {
 		if (!user) return;
@@ -53,6 +54,24 @@ export default function ShareCardFree({
 			setLocalSession(null);
 		}
 	}, [user]);
+
+	// Cleanup WebSocket on component unmount
+	useEffect(() => {
+		return () => {
+			if (websocket && websocket.readyState === WebSocket.OPEN) {
+				console.log("Cleaning up WebSocket on component unmount");
+				if (localSession) {
+					websocket.send(
+						JSON.stringify({
+							type: "leave-room",
+							roomId: localSession.id,
+						})
+					);
+				}
+				websocket.close(1000, "Component unmounted");
+			}
+		};
+	}, [websocket, localSession]);
 
 	const handleCreateSession = async () => {
 		if (!user) {
@@ -82,7 +101,7 @@ export default function ShareCardFree({
 			}
 
 			const ws = new WebSocket(
-				`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand&roomId=${roomId}`
+				`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand`
 			);
 
 			if (!ws) {
@@ -91,6 +110,10 @@ export default function ShareCardFree({
 
 			ws.onopen = async () => {
 				console.log("WebSocket connected successfully");
+
+				// Store the WebSocket reference
+				setWebsocket(ws);
+
 				const messages = await indexdb.getAllMessages();
 				ws.send(
 					JSON.stringify({
@@ -109,15 +132,20 @@ export default function ShareCardFree({
 					id: roomId,
 					isActive: true,
 					username: user.username,
-				}); // Notify parent component with roomId
+				});
+
+				// Notify parent component with roomId
 				if (onSessionCreate) {
 					onSessionCreate(roomId);
 				}
 
-				// Navigate to the session URL
-				window.open(`/freehand/${roomId}`, "_blank");
+				// Navigate to the session URL in the same tab
+				router.push(`/freehand/${roomId}`);
 
 				toast.success("Session created! 🎉");
+
+				// Close the modal since we're navigating
+				setModalOpen(false);
 			};
 
 			ws.onerror = (error) => {
@@ -126,9 +154,22 @@ export default function ShareCardFree({
 				router.push("/");
 			};
 
-			ws.onclose = () => {
-				console.log("WebSocket connection closed");
-				toast("Disconnected from server");
+			ws.onclose = (event) => {
+				console.log(
+					"WebSocket connection closed",
+					event.code,
+					event.reason
+				);
+
+				// Clear the WebSocket reference
+				setWebsocket(null);
+
+				// Only show disconnect message if it wasn't a clean close and we haven't navigated away
+				if (event.code !== 1000 && !creating) {
+					toast("Disconnected from server", {
+						icon: "⚠️",
+					});
+				}
 			};
 		} catch (error) {
 			console.error("Failed to create session:", error);
@@ -168,8 +209,29 @@ export default function ShareCardFree({
 
 	const confirmLeaveSession = async () => {
 		try {
+			// Send leave-room message if WebSocket is connected
+			if (
+				websocket &&
+				websocket.readyState === WebSocket.OPEN &&
+				localSession
+			) {
+				console.log("Sending leave-room message");
+				websocket.send(
+					JSON.stringify({
+						type: "leave-room",
+						roomId: localSession.id,
+					})
+				);
+
+				// Close the WebSocket connection
+				websocket.close(1000, "User left session");
+			}
+
 			// Remove from localStorage
 			localStorage.removeItem("localRoom");
+
+			// Clear WebSocket reference
+			setWebsocket(null);
 
 			// Update state
 			setLocalSession(null);
@@ -179,6 +241,7 @@ export default function ShareCardFree({
 			router.push("/freehand");
 			toast.success("Left the session 👋");
 		} catch (error) {
+			console.error("Error leaving session:", error);
 			toast.error("Failed to leave session");
 		}
 	};

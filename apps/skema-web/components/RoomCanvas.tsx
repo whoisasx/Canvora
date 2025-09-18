@@ -77,12 +77,34 @@ export default function RoomCanvas({
 					router.push("/dashboard");
 				};
 
-				ws.onclose = () => {
-					toast("Disconnected from server");
+				ws.onclose = (event) => {
+					console.log(
+						"WebSocket connection closed",
+						event.code,
+						event.reason
+					);
+					setSocket(null);
+
+					// Only show disconnect message if it wasn't a clean close
+					if (event.code !== 1000) {
+						toast("Disconnected from server");
+					}
 				};
 
 				return () => {
-					ws.close();
+					if (ws && ws.readyState === WebSocket.OPEN) {
+						console.log(
+							"Cleaning up WebSocket connection in RoomCanvas"
+						);
+						// Send leave-room message before closing
+						ws.send(
+							JSON.stringify({
+								type: "leave-room",
+								roomId: roomId,
+							})
+						);
+						ws.close(1000, "Component unmounting");
+					}
 				};
 			} catch (error) {
 				console.log("error: ", error);

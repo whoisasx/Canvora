@@ -101,13 +101,21 @@ export default function FreehandSlugPage() {
 
 				console.log("Connecting to WebSocket with token");
 				ws = new WebSocket(
-					`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand&roomId=${roomId}`
+					`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand`
 				);
 
 				ws.onopen = () => {
 					console.log("WebSocket connected successfully");
 					setSocket(ws);
-					ws?.send(JSON.stringify({ type: "join-room", roomId }));
+
+					// Join the room as a participant, not creator
+					ws?.send(
+						JSON.stringify({
+							type: "join-room",
+							roomId,
+							userRole: "participant", // Specify as participant to preserve existing messages
+						})
+					);
 				};
 
 				ws.onerror = (error) => {
@@ -116,9 +124,25 @@ export default function FreehandSlugPage() {
 					router.push("/");
 				};
 
-				ws.onclose = () => {
-					console.log("WebSocket connection closed");
-					toast("Disconnected from server");
+				ws.onclose = (event) => {
+					console.log(
+						"WebSocket connection closed",
+						event.code,
+						event.reason
+					);
+					setSocket(null);
+
+					// Only show disconnect message if it wasn't a clean close
+					if (event.code !== 1000) {
+						toast("Disconnected from server. Reconnecting...", {
+							icon: "🔄",
+						});
+
+						// Attempt to reconnect after a delay
+						setTimeout(() => {
+							connectToWebSocket();
+						}, 2000);
+					}
 				};
 			} catch (error) {
 				console.error("Failed to connect:", error);
@@ -142,8 +166,16 @@ export default function FreehandSlugPage() {
 
 		// Cleanup function
 		return () => {
-			if (ws) {
-				ws.close();
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				console.log("Cleaning up WebSocket connection");
+				// Send leave-room message before closing
+				ws.send(
+					JSON.stringify({
+						type: "leave-room",
+						roomId: roomId,
+					})
+				);
+				ws.close(1000, "User navigated away");
 			}
 		};
 	}, [roomId, indexdb, router, mounted]);

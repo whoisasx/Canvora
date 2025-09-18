@@ -17,9 +17,11 @@ interface Room {
 export default function ShareCard({
 	roomId,
 	username,
+	socket,
 }: {
 	roomId: string;
 	username: string | undefined | null;
+	socket?: WebSocket;
 }) {
 	const { data: session } = useSession();
 	const [room, setRoom] = useState<Room | null>(null);
@@ -146,11 +148,28 @@ export default function ShareCard({
 
 	const confirmLeaveSession = async () => {
 		try {
+			// Send leave-room message if WebSocket is connected
+			if (socket && socket.readyState === WebSocket.OPEN && room) {
+				console.log(
+					"Sending leave-room message for authenticated session"
+				);
+				socket.send(
+					JSON.stringify({
+						type: "leave-room",
+						roomId: room.id,
+					})
+				);
+
+				// Give a small delay to ensure message is sent before navigation
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+
 			setShowLeaveConfirmation(false);
 			// Navigate away from the room
 			window.location.href = "/dashboard";
 			toast.success("Left the session 👋");
 		} catch (error) {
+			console.error("Error leaving session:", error);
 			toast.error("Failed to leave session");
 		}
 	};

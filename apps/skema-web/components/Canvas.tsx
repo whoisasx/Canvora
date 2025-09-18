@@ -550,6 +550,7 @@ export default function Canvas({
 					<ShareCard
 						roomId={roomId}
 						username={session?.user.username}
+						socket={socket}
 					/>
 				</motion.div>
 			</div>

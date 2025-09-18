@@ -39,11 +39,12 @@ export class MessageHandlers {
 		if (!this.redoByRoomUser.has(roomId))
 			this.redoByRoomUser.set(roomId, new Map());
 
-		if (data.userRole === "creator") {
+		// Only set messages if user is creator and provides messages
+		if (data.userRole === "creator" && data.messages) {
 			const messages = data.messages;
-			console.log("messages", messages);
-			this.messagesByRoom.set(roomId, messages ? messages : []);
+			this.messagesByRoom.set(roomId, messages);
 		}
+
 		const current = this.messagesByRoom.get(roomId) || [];
 		ws.send(JSON.stringify({ type: "sync", messages: current }));
 
@@ -65,11 +66,31 @@ export class MessageHandlers {
 			return;
 		}
 
+		// Remove user from room
 		for (let user of this.users) {
 			if (user.ws === ws) {
 				user.rooms = user.rooms.filter((room) => room !== roomId);
+				break;
 			}
 		}
+
+		// Check if room still has users for cursor broadcasting
+		const remainingUsers = this.users.filter((user) =>
+			user.rooms.includes(roomId)
+		);
+
+		// Stop cursor broadcasting if less than 2 users remain
+		if (remainingUsers.length < 2) {
+			this.stopCursorBroadcasting(roomId);
+		}
+
+		// Send confirmation back to client
+		ws.send(
+			JSON.stringify({
+				type: "leave-room-success",
+				roomId: roomId,
+			})
+		);
 	}
 
 	async handleDrawMessage(ws: WebSocket, data: MessageData) {

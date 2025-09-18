@@ -597,7 +597,9 @@ export class FreeGame {
 		return this.messages.filter((message) =>
 			this.isMessageInViewport(message)
 		);
-	} /* ----------------------------------------------------------------------- */
+	}
+
+	/* ----------------------------------------------------------------------- */
 
 	async initHandler() {
 		this.messages = await getExistingMessagesLocal(
