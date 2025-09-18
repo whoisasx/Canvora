@@ -14,6 +14,7 @@ import useToolStore from "@/utils/toolStore";
 import ActionCard from "../ActionCard";
 import CanvasTool from "../CanvasTool";
 import ShareCard from "../ShareCard";
+import ShareCardFree from "./ShareCardFree";
 import ZoomBar from "../ZoomBar";
 import UndoRedo from "../UndoRedo";
 import CanvasOpt from "../CanvasOpt";
@@ -23,15 +24,16 @@ import { localUser } from "@/app/freehand/page";
 
 export default function FreeCanvas({
 	sessionData,
-	user,
 	indexdb,
+	user,
 }: {
 	sessionData?: { roomId: string; socket: WebSocket };
-	user: localUser;
 	indexdb: IndexDB;
+	user: localUser | null;
 }) {
 	const router = useRouter();
 	const background = useCanvasBgStore((state) => state.background);
+
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [game, setGame] = useState<FreeGame>();
 	const tool = useToolStore((state) => state.tool);
@@ -157,7 +159,7 @@ export default function FreeCanvas({
 				g.destructor();
 			};
 		}
-	}, [canvasRef, dimensions.w, dimensions.h]);
+	}, [canvasRef, dimensions.w, dimensions.h, sessionData]);
 
 	useEffect(() => {
 		let timer: number | null = null;
@@ -207,7 +209,7 @@ export default function FreeCanvas({
 		});
 	}, [sessionData]);
 
-	if (!canvasRef) {
+	if (!canvasRef || !user) {
 		return (
 			<div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
 				{/* Animated Logo */}
@@ -568,9 +570,14 @@ export default function FreeCanvas({
 					animate={{ opacity: 1, x: 0 }}
 					transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
 				>
-					<ShareCard
-						roomId={sessionData?.roomId || ""}
-						username={user?.username}
+					<ShareCardFree
+						indexdb={indexdb}
+						onSessionCreate={(roomId) => {
+							// Handle session creation if needed
+							console.log("Session created:", roomId);
+							// No need to update session data here as user will be redirected
+						}}
+						user={user}
 					/>
 				</motion.div>
 			</div>

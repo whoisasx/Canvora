@@ -11,19 +11,19 @@ export interface SessionData {
 
 export default function FreeRoomCanvas({
 	sessionData,
-	user,
 	indexdb,
+	user,
 }: {
 	sessionData?: SessionData;
-	user: localUser;
 	indexdb: IndexDB;
+	user: localUser | null;
 }) {
 	return (
 		<SessionProvider>
 			<FreeCanvas
 				sessionData={sessionData}
-				user={user}
 				indexdb={indexdb}
+				user={user}
 			/>
 		</SessionProvider>
 	);

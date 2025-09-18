@@ -14,30 +14,44 @@ export type localRoom = string;
 export default function () {
 	const [user, setUser] = useState<localUser | null>(null);
 	const [indexdb, setIndexdb] = useState<IndexDB | null>(null);
+	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
-		if (!indexdb) {
-			const tempIndexdb = new IndexDB();
-			setIndexdb(tempIndexdb);
-		}
-		const getNewUser = (): localUser => {
-			return {
+		setMounted(true);
+	}, []);
+
+	useEffect(() => {
+		if (!mounted) return;
+
+		const db = new IndexDB();
+		setIndexdb(db);
+
+		const storedUser = localStorage.getItem("user");
+		if (storedUser) {
+			try {
+				const parsedUser = JSON.parse(storedUser);
+				setUser(parsedUser);
+			} catch (error) {
+				console.error("Failed to parse stored user:", error);
+				// Create new user if parsing fails
+				const newUser: localUser = {
+					id: crypto.randomUUID(),
+					username: generateUsername("", 0),
+				};
+				localStorage.setItem("user", JSON.stringify(newUser));
+				setUser(newUser);
+			}
+		} else {
+			const newUser: localUser = {
 				id: crypto.randomUUID(),
 				username: generateUsername("", 0),
 			};
-		};
-
-		const storedUser = localStorage.getItem("user");
-		if (!storedUser) {
-			const newUser = getNewUser();
 			localStorage.setItem("user", JSON.stringify(newUser));
 			setUser(newUser);
-		} else {
-			setUser(JSON.parse(storedUser));
 		}
-	}, []);
+	}, [mounted]);
 
-	if (!user || !indexdb) {
+	if (!mounted || !indexdb || !user) {
 		return (
 			<div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
 				{/* Animated Logo */}
@@ -72,5 +86,5 @@ export default function () {
 		);
 	}
 
-	return <FreeRoomCanvas user={user} indexdb={indexdb} />;
+	return <FreeRoomCanvas indexdb={indexdb} user={user} />;
 }

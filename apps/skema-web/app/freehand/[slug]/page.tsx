@@ -4,84 +4,151 @@ import { useEffect, useState } from "react";
 import { localRoom, localUser } from "../page";
 import { IndexDB } from "@/lib/indexdb";
 import { generateUsername } from "unique-username-generator";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
 import FreeRoomCanvas from "@/components/freehand/FreeRoomCanvas";
-import jwt from "jsonwebtoken";
 import { Message } from "@/app/draw/draw";
+import axios from "axios";
 
-export default async function ({
-	params,
-}: {
-	params: Promise<{ slug: string }>;
-}) {
+export default function FreehandSlugPage() {
 	const router = useRouter();
-	const slug = (await params).slug;
-	if (!slug) {
-		router.push("/");
-		toast.error("invalid link. ❌");
-	}
+	const params = useParams();
+	const slug = params.slug as string;
 
-	const [user, setUser] = useState<localUser | null>(null);
 	const [roomId, setRoomId] = useState<localRoom | null>(null);
+	const [user, setUser] = useState<localUser | null>(null);
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const [indexdb, setIndexdb] = useState<IndexDB | null>(null);
+	const [mounted, setMounted] = useState(false);
+
+	// Handle client-side mounting
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	// Validate slug on mount
+	useEffect(() => {
+		if (!slug) {
+			router.push("/");
+			toast.error("invalid link. ❌");
+			return;
+		}
+	}, [slug, router]);
 
 	useEffect(() => {
+		if (!slug || !mounted) return;
+
 		if (!indexdb) {
 			const tempIndexdb = new IndexDB();
 			setIndexdb(tempIndexdb);
 		}
-		const getNewUser = (): localUser => {
-			return {
+
+		const storedUser = localStorage.getItem("user");
+		if (storedUser) {
+			try {
+				const parsedUser = JSON.parse(storedUser);
+				setUser(parsedUser);
+			} catch (error) {
+				console.error("Failed to parse stored user:", error);
+				// Create new user if parsing fails
+				const newUser: localUser = {
+					id: crypto.randomUUID(),
+					username: generateUsername("", 0),
+				};
+				localStorage.setItem("user", JSON.stringify(newUser));
+				setUser(newUser);
+			}
+		} else {
+			const newUser: localUser = {
 				id: crypto.randomUUID(),
 				username: generateUsername("", 0),
 			};
-		};
-
-		const storedUser = localStorage.getItem("user");
-		if (!storedUser) {
-			const newUser = getNewUser();
 			localStorage.setItem("user", JSON.stringify(newUser));
 			setUser(newUser);
-		} else {
-			setUser(JSON.parse(storedUser));
 		}
+
 		setRoomId(slug);
-	}, []);
+		localStorage.setItem("localRoom", slug);
+	}, [slug, mounted, indexdb]);
 
 	useEffect(() => {
-		if (!user || !roomId || !indexdb) {
+		if (!roomId || !indexdb || !mounted || !user) {
 			return;
 		}
 
-		const token = jwt.sign(user, process.env.JWT_SECRET ?? "wrong-secret", {
-			expiresIn: "1h",
-		});
+		let ws: WebSocket | null = null;
 
-		const ws = new WebSocket(
-			`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand&roomId=${roomId}`
-		);
+		const connectToWebSocket = async () => {
+			try {
+				const storedUser = localStorage.getItem("user");
+				if (!storedUser) {
+					toast.error(
+						"User data not found. Please refresh the page."
+					);
+					router.push("/freehand");
+					return;
+				}
 
-		ws.onopen = () => {
-			setSocket(ws);
-			ws.send(JSON.stringify({ type: "join-room", roomId }));
+				const user = JSON.parse(storedUser);
+				const response = await axios.post("/api/freehand-token", {
+					user,
+				});
+
+				const { token } = response.data;
+				if (!token) {
+					throw new Error("No token received from server");
+				}
+
+				console.log("Connecting to WebSocket with token");
+				ws = new WebSocket(
+					`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand&roomId=${roomId}`
+				);
+
+				ws.onopen = () => {
+					console.log("WebSocket connected successfully");
+					setSocket(ws);
+					ws?.send(JSON.stringify({ type: "join-room", roomId }));
+				};
+
+				ws.onerror = (error) => {
+					console.error("WebSocket error:", error);
+					toast.error("Server error 😢");
+					router.push("/");
+				};
+
+				ws.onclose = () => {
+					console.log("WebSocket connection closed");
+					toast("Disconnected from server");
+				};
+			} catch (error) {
+				console.error("Failed to connect:", error);
+
+				// Better error handling with axios
+				if (axios.isAxiosError(error)) {
+					console.log("Axios error response:", error.response?.data);
+					const errorMessage =
+						error.response?.data?.error ||
+						"Failed to get authentication token";
+					toast.error(`Connection failed: ${errorMessage} 😢`);
+				} else {
+					toast.error("Failed to connect to server 😢");
+				}
+
+				router.push("/");
+			}
 		};
-		ws.onerror = () => {
-			toast.error("Server error 😢");
-			router.push("/");
-		};
 
-		ws.onclose = () => {
-			toast("Disconnected from server");
-		};
+		connectToWebSocket();
 
+		// Cleanup function
 		return () => {
-			ws.close();
+			if (ws) {
+				ws.close();
+			}
 		};
-	}, [user, roomId, indexdb]);
+	}, [roomId, indexdb, router, mounted]);
 
-	if (!user || !indexdb || !roomId || !socket) {
+	if (!mounted || !indexdb || !roomId || !socket || !user) {
 		return (
 			<div className="h-screen w-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
 				{/* Animated Logo */}
@@ -118,9 +185,9 @@ export default async function ({
 
 	return (
 		<FreeRoomCanvas
-			user={user}
 			sessionData={{ roomId, socket }}
 			indexdb={indexdb}
+			user={user}
 		/>
 	);
 }

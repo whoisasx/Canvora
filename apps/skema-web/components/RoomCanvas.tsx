@@ -64,6 +64,7 @@ export default function RoomCanvas({
 								type: "join-room",
 								roomId,
 								messages,
+								userRole: "creator",
 							})
 						);
 					} else
