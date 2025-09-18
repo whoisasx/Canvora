@@ -14,10 +14,7 @@ export async function createMessage(
 				roomId,
 			}
 		);
-		console.log("create");
-	} catch (err) {
-		console.log("create error");
-	}
+	} catch (err) {}
 }
 
 export async function updateMessage(message: any, id: string) {
@@ -29,10 +26,7 @@ export async function updateMessage(message: any, id: string) {
 				message,
 			}
 		);
-		console.log("update");
-	} catch (err) {
-		console.log("update error");
-	}
+	} catch (err) {}
 }
 
 export async function deleteMessage(id: string) {
@@ -45,8 +39,5 @@ export async function deleteMessage(id: string) {
 				},
 			}
 		);
-		console.log("delete");
-	} catch (error) {
-		console.log("delete error");
-	}
+	} catch (error) {}
 }

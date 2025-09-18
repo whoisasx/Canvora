@@ -118,7 +118,7 @@ export default function ActionCard({
 									>
 										<ButtonAction
 											children={actionIcon.cp}
-											onClick={() => console.log("hi")}
+											onClick={() => {}}
 										/>
 									</motion.div>
 									<motion.div
@@ -127,7 +127,7 @@ export default function ActionCard({
 									>
 										<ButtonAction
 											children={actionIcon.st}
-											onClick={() => console.log("hi")}
+											onClick={() => {}}
 										/>
 									</motion.div>
 									<motion.div
@@ -136,7 +136,7 @@ export default function ActionCard({
 									>
 										<ButtonAction
 											children={actionIcon.xi}
-											onClick={() => console.log("hi")}
+											onClick={() => {}}
 										/>
 									</motion.div>
 									<motion.div
@@ -145,7 +145,7 @@ export default function ActionCard({
 									>
 										<ButtonAction
 											children={actionIcon.lc}
-											onClick={() => console.log("hi")}
+											onClick={() => {}}
 										/>
 									</motion.div>
 								</div>

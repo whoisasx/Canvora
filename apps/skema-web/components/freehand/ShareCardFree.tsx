@@ -61,11 +61,9 @@ export default function ShareCardFree({
 		localSessionSetter();
 	}, [user]);
 
-	// Cleanup WebSocket on component unmount
 	useEffect(() => {
 		return () => {
 			if (websocket && websocket.readyState === WebSocket.OPEN) {
-				console.log("Cleaning up WebSocket on component unmount");
 				if (localSession) {
 					websocket.send(
 						JSON.stringify({
@@ -95,7 +93,6 @@ export default function ShareCardFree({
 			}
 
 			const roomId = crypto.randomUUID();
-			console.log("Creating session with user:", user);
 
 			const response = await axios.post("/api/freehand-token", {
 				user,
@@ -115,9 +112,6 @@ export default function ShareCardFree({
 			}
 
 			ws.onopen = async () => {
-				console.log("WebSocket connected successfully");
-
-				// Store the WebSocket reference
 				setWebsocket(ws);
 
 				const messages = await indexdb.getAllMessages();
@@ -131,11 +125,7 @@ export default function ShareCardFree({
 				);
 
 				await sessiondb.createSession(roomId, messages);
-				console.log("session created");
-				// Store roomId in localStorage
-				// localStorage.setItem("localRoom", roomId); //FIXME: FIX HERE
 
-				// Update state
 				setLocalSession({
 					id: roomId,
 					isActive: true,
@@ -157,22 +147,13 @@ export default function ShareCardFree({
 			};
 
 			ws.onerror = (error) => {
-				console.error("WebSocket error:", error);
 				toast.error("Server error 😢");
 				router.push("/");
 			};
 
 			ws.onclose = (event) => {
-				console.log(
-					"WebSocket connection closed",
-					event.code,
-					event.reason
-				);
-
-				// Clear the WebSocket reference
 				setWebsocket(null);
 
-				// Only show disconnect message if it wasn't a clean close and we haven't navigated away
 				if (event.code !== 1000 && !creating) {
 					toast("Disconnected from server", {
 						icon: "⚠️",
@@ -180,11 +161,7 @@ export default function ShareCardFree({
 				}
 			};
 		} catch (error) {
-			console.error("Failed to create session:", error);
-
-			// Better error handling with axios
 			if (axios.isAxiosError(error)) {
-				console.log("Axios error response:", error.response?.data);
 				const errorMessage =
 					error.response?.data?.error ||
 					"Failed to get authentication token";
@@ -217,13 +194,11 @@ export default function ShareCardFree({
 
 	const confirmLeaveSession = async () => {
 		try {
-			// Send leave-room message if WebSocket is connected
 			if (
 				websocket &&
 				websocket.readyState === WebSocket.OPEN &&
 				localSession
 			) {
-				console.log("Sending leave-room message");
 				websocket.send(
 					JSON.stringify({
 						type: "leave-room",
@@ -231,27 +206,19 @@ export default function ShareCardFree({
 					})
 				);
 
-				// Close the WebSocket connection
 				websocket.close(1000, "User left session");
 			}
 
 			localSession && (await sessiondb.deleteSession(localSession.id));
-			console.log("session deleted");
-			// Remove from localStorage
-			// localStorage.removeItem("localRoom"); //FIXME: FIX HERE
 
-			// Clear WebSocket reference
 			setWebsocket(null);
 
-			// Update state
 			setLocalSession(null);
 			setShowLeaveConfirmation(false);
 
-			// Navigate to main freehand page
 			router.push("/freehand");
 			toast.success("Left the session 👋");
 		} catch (error) {
-			console.error("Error leaving session:", error);
 			toast.error("Failed to leave session");
 		}
 	};

@@ -54,8 +54,6 @@ export default function FreehandSlugPage() {
 				const parsedUser = JSON.parse(storedUser);
 				setUser(parsedUser);
 			} catch (error) {
-				console.error("Failed to parse stored user:", error);
-				// Create new user if parsing fails
 				const newUser: localUser = {
 					id: crypto.randomUUID(),
 					username: generateUsername("", 0),
@@ -73,7 +71,6 @@ export default function FreehandSlugPage() {
 		}
 
 		setRoomId(slug);
-		// localStorage.setItem("localRoom", slug); //FIXME: FIX HERE
 	}, [slug, mounted, indexdb]);
 
 	useEffect(() => {
@@ -104,57 +101,42 @@ export default function FreehandSlugPage() {
 					throw new Error("No token received from server");
 				}
 
-				console.log("Connecting to WebSocket with token");
 				ws = new WebSocket(
 					`${process.env.NEXT_PUBLIC_WS_URL ?? "wss:canvora.asxcode.com"}?token=${token}&authflag=freehand`
 				);
 
 				ws.onopen = () => {
-					console.log("WebSocket connected successfully");
 					setSocket(ws);
 
-					// Join the room as a participant, not creator
 					ws?.send(
 						JSON.stringify({
 							type: "join-room",
 							roomId,
-							userRole: "participant", // Specify as participant to preserve existing messages
+							userRole: "participant",
 						})
 					);
 				};
 
 				ws.onerror = (error) => {
-					console.error("WebSocket error:", error);
 					toast.error("Server error 😢");
 					router.push("/");
 				};
 
 				ws.onclose = (event) => {
-					console.log(
-						"WebSocket connection closed",
-						event.code,
-						event.reason
-					);
 					setSocket(null);
 
-					// Only show disconnect message if it wasn't a clean close
 					if (event.code !== 1000) {
 						toast("Disconnected from server. Reconnecting...", {
 							icon: "🔄",
 						});
 
-						// Attempt to reconnect after a delay
 						setTimeout(() => {
 							connectToWebSocket();
 						}, 2000);
 					}
 				};
 			} catch (error) {
-				console.error("Failed to connect:", error);
-
-				// Better error handling with axios
 				if (axios.isAxiosError(error)) {
-					console.log("Axios error response:", error.response?.data);
 					const errorMessage =
 						error.response?.data?.error ||
 						"Failed to get authentication token";
@@ -169,11 +151,8 @@ export default function FreehandSlugPage() {
 
 		connectToWebSocket();
 
-		// Cleanup function
 		return () => {
 			if (ws && ws.readyState === WebSocket.OPEN) {
-				console.log("Cleaning up WebSocket connection");
-				// Send leave-room message before closing
 				ws.send(
 					JSON.stringify({
 						type: "leave-room",

@@ -78,14 +78,8 @@ export default function RoomCanvas({
 				};
 
 				ws.onclose = (event) => {
-					console.log(
-						"WebSocket connection closed",
-						event.code,
-						event.reason
-					);
 					setSocket(null);
 
-					// Only show disconnect message if it wasn't a clean close
 					if (event.code !== 1000) {
 						toast("Disconnected from server");
 					}
@@ -93,10 +87,6 @@ export default function RoomCanvas({
 
 				return () => {
 					if (ws && ws.readyState === WebSocket.OPEN) {
-						console.log(
-							"Cleaning up WebSocket connection in RoomCanvas"
-						);
-						// Send leave-room message before closing
 						ws.send(
 							JSON.stringify({
 								type: "leave-room",
@@ -107,7 +97,6 @@ export default function RoomCanvas({
 					}
 				};
 			} catch (error) {
-				console.log("error: ", error);
 				toast.error("Failed to connect ❌");
 				router.push("/dashboard");
 			}

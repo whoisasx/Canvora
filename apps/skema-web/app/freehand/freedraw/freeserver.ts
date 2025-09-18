@@ -15,8 +15,6 @@ export async function getExistingMessagesLocal(
 			const messages = await indexdb.getAllMessages();
 			return messages;
 		}
-	} catch (err) {
-		console.error("error", err);
-	}
+	} catch (err) {}
 	return [];
 }

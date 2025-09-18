@@ -9,7 +9,6 @@ export interface localUser {
 	id: string;
 	username: string;
 }
-// export type localRoom = string;
 
 export default function () {
 	const [user, setUser] = useState<localUser | null>(null);
@@ -35,8 +34,6 @@ export default function () {
 				const parsedUser = JSON.parse(storedUser);
 				setUser(parsedUser);
 			} catch (error) {
-				console.error("Failed to parse stored user:", error);
-				// Create new user if parsing fails
 				const newUser: localUser = {
 					id: crypto.randomUUID(),
 					username: generateUsername("", 0),

@@ -552,11 +552,7 @@ export default function FreeCanvas({
 					<ShareCardFree
 						indexdb={indexdb}
 						sessiondb={sessiondb}
-						onSessionCreate={(roomId) => {
-							// Handle session creation if needed
-							console.log("Session created:", roomId);
-							// No need to update session data here as user will be redirected
-						}}
+						onSessionCreate={(roomId) => {}}
 						user={user}
 					/>
 				</motion.div>

@@ -14,7 +14,6 @@ export default function AuthPage({ type }: { type: "signup" | "signin" }) {
 		try {
 			await signIn(provider, { redirectTo: "/dashboard" });
 		} catch (error) {
-			console.error("Sign in error:", error);
 		} finally {
 			setIsLoading(false);
 		}

@@ -799,8 +799,10 @@ export class FreeGame {
 						this.messages.push(msg as Message);
 						this.layerManager.setMessages(this.messages);
 						if (parsedData.authflag === "freehand")
-							console.log("added");
-						this.sessiondb.addMessageToSession(this.roomId!, msg);
+							this.sessiondb.addMessageToSession(
+								this.roomId!,
+								msg
+							);
 					}
 
 					// 1) preferred: clear preview by previewId (if server forwarded it)
@@ -865,8 +867,10 @@ export class FreeGame {
 						(message) => id !== message.id
 					);
 					if (parsedData.authflag === "freehand")
-						console.log("deleted");
-					this.sessiondb.removeMessageFromSession(this.roomId!, id);
+						this.sessiondb.removeMessageFromSession(
+							this.roomId!,
+							id
+						);
 					if (
 						this.selectedMessage &&
 						this.selectedMessage.id === id
@@ -913,11 +917,10 @@ export class FreeGame {
 						return message;
 					});
 					if (parsedData.authflag === "freehand")
-						console.log("updated");
-					this.sessiondb.updateMessageInSession(
-						this.roomId!,
-						newMessage
-					);
+						this.sessiondb.updateMessageInSession(
+							this.roomId!,
+							newMessage
+						);
 					if (
 						this.selectedMessage &&
 						this.selectedMessage.id === id
@@ -967,7 +970,6 @@ export class FreeGame {
 				case "sync": {
 					this.messages = parsedData.messages;
 					if (this.indexdb && this.sessionData) {
-						console.log("syncing");
 						this.sessiondb.updateSession(
 							this.sessionData.roomId,
 							this.messages

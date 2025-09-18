@@ -118,10 +118,8 @@ export class MessageHandlers {
 			return;
 		}
 
-		// Send to other users, not back to sender
 		for (let user of this.users) {
 			if (user.ws === ws) {
-				console.log("user");
 				continue;
 			}
 			if (user.rooms.includes(roomId) && user.ws !== ws) {
