@@ -15,7 +15,9 @@ import type {
 import { validateMessage, validateRoomId, validateUserId } from "./types";
 import { MessageHandlers } from "./messageHandlers";
 
-// Create HTTP server for health checks
+const wsToUser = new WeakMap<WebSocket, User>();
+const roomToUsers = new Map<string, Set<User>>();
+
 const server = http.createServer((req, res) => {
 	const parsedUrl = url.parse(req.url!, true);
 
@@ -28,7 +30,16 @@ const server = http.createServer((req, res) => {
 				service: "skema-ws-server",
 				connectedUsers: users.length,
 				activeRooms: messagesByRoom.size,
+				optimizedRooms: roomToUsers.size,
+				rateLimitedUsers: userBuckets.size,
 				uptime: process.uptime(),
+				performance: {
+					wsToUserOptimization: "Active (WeakMap for O(1) lookups)",
+					roomToUsersMapSize: roomToUsers.size,
+					throttledUsers: userThrottles.size,
+					activeBuckets: userBuckets.size,
+					messagePoolSize: messagePool.getPoolSize(),
+				},
 			})
 		);
 		return;
@@ -51,14 +62,13 @@ server.listen(
 	}
 );
 
-// Configuration
 const config: ServerConfig = {
 	port: process.env.PORT ? Number(process.env.PORT) : 8080,
 	jwtSecret: process.env.JWT_SECRET || "duplicate-secret",
 	baseUrl: process.env.BASE_URL || "http://localhost:3000",
 	drawThrottleMs: Number(process.env.DRAW_THROTTLE_MS) || 100,
 	maxHistorySize: Number(process.env.MAX_HISTORY_SIZE) || 1000,
-	roomCleanupInterval: 30 * 60 * 1000, // 30 minutes
+	roomCleanupInterval: 30 * 60 * 1000,
 };
 
 const users: User[] = [];
@@ -66,26 +76,77 @@ const messagesByRoom = new Map<string, any[]>();
 const historyByRoom = new Map<string, Op[]>();
 const redoByRoomUser = new Map<string, Map<string, Op[]>>();
 
-// Add throttling for draw messages
 const userThrottles = new Map<string, number>();
 
-// Cursor broadcasting system
+class TokenBucket {
+	private tokens: number;
+	private lastRefill: number;
+
+	constructor(
+		private capacity: number,
+		private refillRate: number
+	) {
+		this.tokens = capacity;
+		this.lastRefill = Date.now();
+	}
+
+	consume(): boolean {
+		this.refill();
+		if (this.tokens >= 1) {
+			this.tokens--;
+			return true;
+		}
+		return false;
+	}
+
+	private refill() {
+		const now = Date.now();
+		const timePassed = (now - this.lastRefill) / 1000;
+		this.tokens = Math.min(
+			this.capacity,
+			this.tokens + timePassed * this.refillRate
+		);
+		this.lastRefill = now;
+	}
+}
+
+const userBuckets = new Map<string, TokenBucket>();
+
+class MessagePool {
+	private pool: any[] = [];
+
+	acquire(): any {
+		return this.pool.pop() || {};
+	}
+
+	release(obj: any) {
+		for (const key in obj) {
+			delete obj[key];
+		}
+		this.pool.push(obj);
+	}
+
+	getPoolSize(): number {
+		return this.pool.length;
+	}
+}
+const messagePool = new MessagePool();
+
 const roomCursorBroadcasters = new Map<string, NodeJS.Timeout>();
 
-// Cursor broadcasting functions
 function startCursorBroadcasting(roomId: string) {
-	// Clear existing interval if any
 	if (roomCursorBroadcasters.has(roomId)) {
 		clearInterval(roomCursorBroadcasters.get(roomId)!);
 	}
 
 	const interval = setInterval(() => {
-		const roomUsers = users.filter((user) => user.rooms.includes(roomId));
+		const roomUsers = roomToUsers.has(roomId)
+			? Array.from(roomToUsers.get(roomId)!)
+			: users.filter((user) => user.rooms.includes(roomId));
 
-		// Only broadcast if there are multiple users in the room
 		if (roomUsers.length <= 1) return;
 
-		// Collect all cursor positions for this room
+		const now = Date.now();
 		const cursors: Array<{
 			username: string;
 			pos: { x: number; y: number };
@@ -94,8 +155,7 @@ function startCursorBroadcasting(roomId: string) {
 
 		for (const user of roomUsers) {
 			if (user.lastCursorPos && user.lastCursorUpdate) {
-				// Only include recent cursor positions (within last 10 seconds)
-				const timeSinceUpdate = Date.now() - user.lastCursorUpdate;
+				const timeSinceUpdate = now - user.lastCursorUpdate;
 				if (timeSinceUpdate < 10000) {
 					cursors.push({
 						username: user.username,
@@ -106,8 +166,11 @@ function startCursorBroadcasting(roomId: string) {
 			}
 		}
 
-		// Broadcast to each user (excluding their own cursor)
+		if (cursors.length === 0) return;
+
 		for (const user of roomUsers) {
+			if (user.ws.readyState !== WebSocket.OPEN) continue;
+
 			const otherCursors = cursors.filter(
 				(cursor) => cursor.username !== user.username
 			);
@@ -120,12 +183,10 @@ function startCursorBroadcasting(roomId: string) {
 							cursors: otherCursors,
 						})
 					);
-				} catch (error) {
-					// Handle send errors silently
-				}
+				} catch (error) {}
 			}
 		}
-	}, 500); // Broadcast every 500ms
+	}, 500);
 
 	roomCursorBroadcasters.set(roomId, interval);
 }
@@ -137,7 +198,6 @@ function stopCursorBroadcasting(roomId: string) {
 	}
 }
 
-// Initialize message handlers
 const messageHandlers = new MessageHandlers(
 	users,
 	messagesByRoom,
@@ -145,7 +205,10 @@ const messageHandlers = new MessageHandlers(
 	redoByRoomUser,
 	{ maxHistorySize: config.maxHistorySize },
 	startCursorBroadcasting,
-	stopCursorBroadcasting
+	stopCursorBroadcasting,
+	wsToUser,
+	roomToUsers,
+	messagePool
 );
 
 wss.on("connection", (ws, req) => {
@@ -198,12 +261,15 @@ wss.on("connection", (ws, req) => {
 	}
 
 	if (user) {
-		users.push({
+		const newUser = {
 			username: user.username,
 			userId: user.id,
 			ws,
 			rooms: [],
-		});
+		};
+		users.push(newUser);
+
+		wsToUser.set(ws, newUser);
 	}
 
 	ws.on("message", async (data) => {
@@ -224,8 +290,7 @@ wss.on("connection", (ws, req) => {
 			return;
 		}
 
-		// Get current user
-		const currentUser = users.find((u) => u.ws === ws);
+		const currentUser = wsToUser.get(ws) || users.find((u) => u.ws === ws);
 		if (!currentUser) {
 			ws.send(
 				JSON.stringify({ type: "error", message: "User not found" })
@@ -233,7 +298,6 @@ wss.on("connection", (ws, req) => {
 			return;
 		}
 
-		// Route messages to appropriate handlers
 		try {
 			switch (parsedData.type) {
 				case "join-room":
@@ -243,15 +307,15 @@ wss.on("connection", (ws, req) => {
 					await messageHandlers.handleLeaveRoom(ws, parsedData);
 					break;
 				case "draw-message":
-					// Add throttling for draw messages
 					const userId = parsedData.clientId;
 					if (validateUserId(userId)) {
-						const now = Date.now();
-						const lastSent = userThrottles.get(userId) || 0;
-						if (now - lastSent < config.drawThrottleMs) {
-							return; // Skip this message
+						if (!userBuckets.has(userId)) {
+							userBuckets.set(userId, new TokenBucket(10, 20));
 						}
-						userThrottles.set(userId, now);
+
+						if (!userBuckets.get(userId)!.consume()) {
+							return;
+						}
 					}
 					await messageHandlers.handleDrawMessage(ws, parsedData);
 					break;
@@ -307,15 +371,18 @@ wss.on("connection", (ws, req) => {
 	});
 
 	ws.on("close", () => {
-		// Remove user from users list
-		const idx = users.findIndex((u) => u.ws === ws);
-		if (idx !== -1) {
-			const user = users[idx];
-			if (user) {
-				Logger.info("User disconnected:", user.userId);
+		const user = wsToUser.get(ws);
+		if (user) {
+			Logger.info("User disconnected:", user.userId);
 
-				// Check if any rooms need cursor broadcasting updates
-				for (const roomId of user.rooms) {
+			for (const roomId of user.rooms) {
+				const roomUsers = roomToUsers.get(roomId);
+				if (roomUsers) {
+					roomUsers.delete(user);
+					if (roomUsers.size < 2) {
+						stopCursorBroadcasting(roomId);
+					}
+				} else {
 					const remainingUsers = users.filter(
 						(u) => u !== user && u.rooms.includes(roomId)
 					);
@@ -324,36 +391,39 @@ wss.on("connection", (ws, req) => {
 					}
 				}
 			}
-			users.splice(idx, 1);
+
+			const idx = users.findIndex((u) => u.ws === ws);
+			if (idx !== -1) {
+				users.splice(idx, 1);
+			}
+			wsToUser.delete(ws);
 		}
 	});
 });
 
-// Add memory management and cleanup
 setInterval(() => {
 	for (const [roomId, messages] of messagesByRoom.entries()) {
-		const hasActiveUsers = users.some((user) =>
-			user.rooms.includes(roomId)
-		);
+		const hasActiveUsers = roomToUsers.has(roomId)
+			? roomToUsers.get(roomId)!.size > 0
+			: users.some((user) => user.rooms.includes(roomId));
 
 		if (!hasActiveUsers) {
-			// Clean up empty rooms after some time
 			messagesByRoom.delete(roomId);
 			historyByRoom.delete(roomId);
 			redoByRoomUser.delete(roomId);
-			stopCursorBroadcasting(roomId); // Stop cursor broadcasting
+			roomToUsers.delete(roomId);
+			stopCursorBroadcasting(roomId);
 			Logger.info(`Cleaned up inactive room: ${roomId}`);
 		} else {
-			// Limit history size
 			const history = historyByRoom.get(roomId);
 			if (history && history.length > config.maxHistorySize) {
 				history.splice(0, history.length - config.maxHistorySize);
 			}
 
-			// Start cursor broadcasting if multiple users
-			const roomUsers = users.filter((user) =>
-				user.rooms.includes(roomId)
-			);
+			const roomUsers = roomToUsers.has(roomId)
+				? Array.from(roomToUsers.get(roomId)!)
+				: users.filter((user) => user.rooms.includes(roomId));
+
 			if (roomUsers.length >= 2 && !roomCursorBroadcasters.has(roomId)) {
 				startCursorBroadcasting(roomId);
 			} else if (roomUsers.length < 2) {
@@ -363,24 +433,33 @@ setInterval(() => {
 	}
 }, config.roomCleanupInterval);
 
-// Add connection health monitoring
 setInterval(() => {
-	users.forEach((user, index) => {
+	for (let i = users.length - 1; i >= 0; i--) {
+		const user = users[i];
+		if (!user) continue;
+
 		if (user.ws.readyState === WebSocket.CLOSED) {
 			Logger.info("Removing dead connection:", user.userId);
-			users.splice(index, 1);
+
+			for (const roomId of user.rooms) {
+				const roomUsers = roomToUsers.get(roomId);
+				if (roomUsers) {
+					roomUsers.delete(user);
+				}
+			}
+
+			users.splice(i, 1);
+			wsToUser.delete(user.ws);
 		} else if (user.ws.readyState === WebSocket.OPEN) {
-			// Send ping to check connection
 			try {
 				user.ws.ping();
 			} catch (error) {
 				Logger.error(`Failed to ping user ${user.username}:`, error);
 			}
 		}
-	});
-}, 30000); // Check every 30 seconds
+	}
+}, 30000);
 
-// Utility events
 wss.on("listening", () => {
 	Logger.info("WebSocket server is listening on port " + config.port);
 });

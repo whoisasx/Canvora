@@ -35,7 +35,6 @@ export interface User {
 	userId: string;
 	ws: WebSocket;
 	rooms: string[];
-	// Cursor tracking fields
 	lastCursorPos?: { x: number; y: number };
 	lastCursorUpdate?: number;
 }
@@ -70,7 +69,6 @@ export interface ServerConfig {
 	roomCleanupInterval: number;
 }
 
-// Validation functions
 export function validateMessage(data: any): data is MessageData {
 	return data && typeof data.type === "string";
 }

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { NextAuthRequest } from "next-auth";
 import { NextResponse as res } from "next/server";
 import jwt from "jsonwebtoken";
+import { config } from "@/config";
 
 export const GET = auth(async function GET(req: NextAuthRequest) {
 	if (!req.auth) {
@@ -14,7 +15,7 @@ export const GET = auth(async function GET(req: NextAuthRequest) {
 		);
 	}
 	try {
-		const secret = process.env.JWT_SECRET;
+		const secret = config.jwt.secret;
 		if (!secret) {
 			return res.json(
 				{
@@ -70,7 +71,7 @@ export async function POST(req: NextAuthRequest) {
 				}
 			);
 		}
-		const secret = process.env.JWT_SECRET;
+		const secret = config.jwt.secret;
 		if (!secret) {
 			return res.json(
 				{

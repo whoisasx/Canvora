@@ -12,8 +12,55 @@ export class MessageHandlers {
 		private redoByRoomUser: Map<string, Map<string, Op[]>>,
 		private config: { maxHistorySize: number },
 		private startCursorBroadcasting: (roomId: string) => void,
-		private stopCursorBroadcasting: (roomId: string) => void
+		private stopCursorBroadcasting: (roomId: string) => void,
+		private wsToUser?: WeakMap<WebSocket, User>,
+		private roomToUsers?: Map<string, Set<User>>,
+		private messagePool?: { acquire(): any; release(obj: any): void }
 	) {}
+
+	private findUser(ws: WebSocket): User | undefined {
+		return this.wsToUser?.get(ws) || this.users.find((u) => u.ws === ws);
+	}
+
+	private getRoomUsers(roomId: string): User[] {
+		return this.roomToUsers?.has(roomId)
+			? Array.from(this.roomToUsers.get(roomId)!)
+			: this.users.filter((user) => user.rooms.includes(roomId));
+	}
+
+	private updateRoomMembership(
+		user: User,
+		roomId: string,
+		action: "join" | "leave"
+	) {
+		if (action === "join") {
+			if (this.roomToUsers) {
+				if (!this.roomToUsers.has(roomId)) {
+					this.roomToUsers.set(roomId, new Set());
+				}
+				this.roomToUsers.get(roomId)!.add(user);
+			}
+
+			if (!user.rooms.includes(roomId)) {
+				user.rooms.push(roomId);
+			}
+		} else {
+			if (this.roomToUsers) {
+				const roomUsers = this.roomToUsers.get(roomId);
+				if (roomUsers) {
+					roomUsers.delete(user);
+					if (roomUsers.size === 0) {
+						this.roomToUsers.delete(roomId);
+					}
+				}
+			}
+
+			const roomIndex = user.rooms.indexOf(roomId);
+			if (roomIndex !== -1) {
+				user.rooms.splice(roomIndex, 1);
+			}
+		}
+	}
 
 	async handleJoinRoom(ws: WebSocket, data: MessageData) {
 		const roomId = data.roomId;
@@ -24,22 +71,22 @@ export class MessageHandlers {
 			return;
 		}
 
-		for (let user of this.users) {
-			if (user.ws === ws) {
-				if (!user.rooms.includes(roomId)) {
-					user.rooms.push(roomId);
-				}
-			}
+		const user = this.findUser(ws);
+		if (!user) {
+			ws.send(
+				JSON.stringify({ type: "error", message: "User not found" })
+			);
+			return;
 		}
 
-		// Initialize room structures
+		this.updateRoomMembership(user, roomId, "join");
+
 		if (!this.messagesByRoom.has(roomId))
 			this.messagesByRoom.set(roomId, []);
 		if (!this.historyByRoom.has(roomId)) this.historyByRoom.set(roomId, []);
 		if (!this.redoByRoomUser.has(roomId))
 			this.redoByRoomUser.set(roomId, new Map());
 
-		// Only set messages if user is creator and provides messages
 		if (data.userRole === "creator" && data.messages) {
 			const messages = data.messages;
 			this.messagesByRoom.set(roomId, messages);
@@ -48,10 +95,7 @@ export class MessageHandlers {
 		const current = this.messagesByRoom.get(roomId) || [];
 		ws.send(JSON.stringify({ type: "sync", messages: current }));
 
-		// Start cursor broadcasting for this room if multiple users
-		const roomUsers = this.users.filter((user) =>
-			user.rooms.includes(roomId)
-		);
+		const roomUsers = this.getRoomUsers(roomId);
 		if (roomUsers.length >= 2) {
 			this.startCursorBroadcasting(roomId);
 		}
@@ -66,25 +110,22 @@ export class MessageHandlers {
 			return;
 		}
 
-		// Remove user from room
-		for (let user of this.users) {
-			if (user.ws === ws) {
-				user.rooms = user.rooms.filter((room) => room !== roomId);
-				break;
-			}
+		const user = this.findUser(ws);
+		if (!user) {
+			ws.send(
+				JSON.stringify({ type: "error", message: "User not found" })
+			);
+			return;
 		}
 
-		// Check if room still has users for cursor broadcasting
-		const remainingUsers = this.users.filter((user) =>
-			user.rooms.includes(roomId)
-		);
+		this.updateRoomMembership(user, roomId, "leave");
 
-		// Stop cursor broadcasting if less than 2 users remain
+		const remainingUsers = this.getRoomUsers(roomId);
+
 		if (remainingUsers.length < 2) {
 			this.stopCursorBroadcasting(roomId);
 		}
 
-		// Send confirmation back to client
 		ws.send(
 			JSON.stringify({
 				type: "leave-room-success",
@@ -118,25 +159,34 @@ export class MessageHandlers {
 			return;
 		}
 
-		for (let user of this.users) {
-			if (user.ws === ws) {
-				continue;
-			}
-			if (user.rooms.includes(roomId) && user.ws !== ws) {
-				try {
-					if (data.flag === "text-preview" && user.ws === ws)
-						continue;
-					user.ws.send(
-						JSON.stringify({
-							type: "draw",
-							message,
-							clientId: userId,
-						})
-					);
-				} catch (err) {
-					// ignore send errors
+		const roomUsers = this.getRoomUsers(roomId);
+
+		let serializedMessage: string;
+		if (this.messagePool) {
+			const messageObj = this.messagePool.acquire();
+			messageObj.type = "draw";
+			messageObj.message = message;
+			messageObj.clientId = userId;
+
+			serializedMessage = JSON.stringify(messageObj);
+			this.messagePool.release(messageObj);
+		} else {
+			serializedMessage = JSON.stringify({
+				type: "draw",
+				message,
+				clientId: userId,
+			});
+		}
+
+		for (const user of roomUsers) {
+			if (user.ws === ws) continue;
+			if (data.flag === "text-preview" && user.ws === ws) continue;
+
+			try {
+				if (user.ws.readyState === WebSocket.OPEN) {
+					user.ws.send(serializedMessage);
 				}
-			}
+			} catch (err) {}
 		}
 	}
 
@@ -165,40 +215,47 @@ export class MessageHandlers {
 		const roomMsgs = this.messagesByRoom.get(roomId)!;
 		roomMsgs.push(message);
 
-		// Add to history for undo/redo
 		const hist = this.historyByRoom.get(roomId)!;
 		hist.push({ type: "create", userId, message });
 
-		// Limit history size
 		if (hist.length > this.config.maxHistorySize) {
 			hist.splice(0, hist.length - this.config.maxHistorySize);
 		}
 		this.historyByRoom.set(roomId, hist);
 
-		// Clear redo stacks when new action is performed
 		const roomRedo = this.redoByRoomUser.get(roomId)!;
 		roomRedo.clear();
 
-		// Broadcast to all users in the room
-		for (let user of this.users) {
-			if (user.rooms.includes(roomId)) {
-				try {
-					user.ws.send(
-						JSON.stringify({
-							type: "create",
-							message: message,
-							previewId: data.previewId,
-							authflag,
-						})
-					);
-				} catch (err) {
-					// ignore send errors
+		const roomUsers = this.getRoomUsers(roomId);
+
+		let serializedMessage: string;
+		if (this.messagePool) {
+			const messageObj = this.messagePool.acquire();
+			messageObj.type = "create";
+			messageObj.message = message;
+			messageObj.previewId = data.previewId;
+			messageObj.authflag = authflag;
+
+			serializedMessage = JSON.stringify(messageObj);
+			this.messagePool.release(messageObj);
+		} else {
+			serializedMessage = JSON.stringify({
+				type: "create",
+				message: message,
+				previewId: data.previewId,
+				authflag,
+			});
+		}
+
+		for (const user of roomUsers) {
+			try {
+				if (user.ws.readyState === WebSocket.OPEN) {
+					user.ws.send(serializedMessage);
 				}
-			}
+			} catch (err) {}
 		}
 
 		if (authflag === "freehand") return;
-		// Persist to database
 		try {
 			await createMessage(message, userId, roomId);
 		} catch (error) {
@@ -237,7 +294,6 @@ export class MessageHandlers {
 				message: deletedMessage,
 			});
 
-			// Limit history size
 			if (hist.length > this.config.maxHistorySize) {
 				hist.splice(0, hist.length - this.config.maxHistorySize);
 			}
@@ -245,25 +301,37 @@ export class MessageHandlers {
 
 			roomMsgs.splice(msgIndex, 1);
 
-			// Clear redo stacks
 			const roomRedo = this.redoByRoomUser.get(roomId)!;
 			roomRedo.clear();
 
-			// Broadcast to all users in the room
-			for (let user of this.users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						user.ws.send(
-							JSON.stringify({ type: "delete", id, authflag })
-						);
-					} catch (err) {
-						// ignore send errors
+			const roomUsers = this.getRoomUsers(roomId);
+
+			let serializedMessage: string;
+			if (this.messagePool) {
+				const messageObj = this.messagePool.acquire();
+				messageObj.type = "delete";
+				messageObj.id = id;
+				messageObj.authflag = authflag;
+
+				serializedMessage = JSON.stringify(messageObj);
+				this.messagePool.release(messageObj);
+			} else {
+				serializedMessage = JSON.stringify({
+					type: "delete",
+					id,
+					authflag,
+				});
+			}
+
+			for (const user of roomUsers) {
+				try {
+					if (user.ws.readyState === WebSocket.OPEN) {
+						user.ws.send(serializedMessage);
 					}
-				}
+				} catch (err) {}
 			}
 
 			if (authflag === "freehand") return;
-			// Persist to database
 			try {
 				await deleteMessage(id);
 			} catch (error) {
@@ -302,12 +370,10 @@ export class MessageHandlers {
 		const msgIndex = roomMsgs.findIndex((msg) => msg.id === id);
 
 		if (msgIndex !== -1) {
-			//only if preview flag is not there.
 			if (!flag) {
 				const prevMessage = { ...roomMsgs[msgIndex] };
 				roomMsgs[msgIndex] = newMessage;
 
-				// Add to history
 				const hist = this.historyByRoom.get(roomId)!;
 				hist.push({
 					type: "update",
@@ -317,39 +383,57 @@ export class MessageHandlers {
 					newMessage,
 				});
 
-				// Limit history size
 				if (hist.length > this.config.maxHistorySize) {
 					hist.splice(0, hist.length - this.config.maxHistorySize);
 				}
 				this.historyByRoom.set(roomId, hist);
 
-				// Clear redo stacks
 				const roomRedo = this.redoByRoomUser.get(roomId)!;
 				roomRedo.clear();
 			}
 
-			// Broadcast to all users in the room
-			for (let user of this.users) {
-				if (user.rooms.includes(roomId)) {
-					try {
-						user.ws.send(
-							JSON.stringify({
-								type: "update",
-								flag,
-								id,
-								newMessage,
-								clientId: data.clientId,
-								authflag,
-							})
-						);
-					} catch (err) {
-						// ignore send errors
+			const roomUsers = this.getRoomUsers(roomId);
+
+			let serializedMessage: string;
+			if (this.messagePool) {
+				const messageObj = this.messagePool.acquire();
+				messageObj.type = "update";
+				messageObj.flag = flag;
+				messageObj.id = id;
+				messageObj.newMessage = newMessage;
+				messageObj.clientId = data.clientId;
+				messageObj.authflag = authflag;
+
+				serializedMessage = JSON.stringify(messageObj);
+				this.messagePool.release(messageObj);
+			} else {
+				serializedMessage = JSON.stringify({
+					type: "update",
+					flag,
+					id,
+					newMessage,
+					clientId: data.clientId,
+					authflag,
+				});
+			}
+
+			for (const user of roomUsers) {
+				try {
+					if (user.ws.readyState === WebSocket.OPEN) {
+						user.ws.send(serializedMessage);
 					}
+				} catch (err) {}
+			}
+
+			if (!flag && authflag !== "freehand") {
+				try {
+					await updateMessage(id, newMessage);
+				} catch (error) {
+					Logger.error("Failed to update message:", error);
 				}
 			}
 
 			if (authflag === "freehand") return;
-			// Persist to database
 			if (!flag) {
 				try {
 					await updateMessage(newMessage, id);
@@ -372,7 +456,6 @@ export class MessageHandlers {
 			return;
 		}
 
-		// Update user's cursor position in memory
 		for (let user of this.users) {
 			if (user.ws === ws) {
 				user.lastCursorPos = pos;
@@ -380,8 +463,6 @@ export class MessageHandlers {
 				break;
 			}
 		}
-
-		// Note: No immediate broadcasting here - the interval will handle it
 	}
 
 	async handleSyncAll(ws: WebSocket, data: MessageData) {
@@ -398,15 +479,12 @@ export class MessageHandlers {
 			return;
 		}
 
-		// Update server's state with the received messages
 		if (messages) {
 			this.messagesByRoom.set(roomId, messages);
 		}
 
-		// Get the updated messages (or current if no messages were provided)
 		const current = this.messagesByRoom.get(roomId) || [];
 
-		// Broadcast the updated state to all users in the room
 		for (let user of this.users) {
 			if (user.rooms.includes(roomId)) {
 				try {
@@ -416,9 +494,7 @@ export class MessageHandlers {
 							messages: current,
 						})
 					);
-				} catch (err) {
-					// ignore send errors
-				}
+				} catch (err) {}
 			}
 		}
 	}
@@ -443,16 +519,13 @@ export class MessageHandlers {
 
 		const lastOpIndex = hist.lastIndexOf(lastOp);
 
-		// Remove from history
 		hist.splice(lastOpIndex, 1);
 
-		// Add to redo stack
 		const roomRedo = this.redoByRoomUser.get(roomId)!;
 		if (!roomRedo.has(userId)) roomRedo.set(userId, []);
 		const userRedo = roomRedo.get(userId)!;
 		userRedo.push(lastOp);
 
-		// Apply the undo operation
 		const roomMsgs = this.messagesByRoom.get(roomId)!;
 
 		if (lastOp.type === "create") {
@@ -461,7 +534,6 @@ export class MessageHandlers {
 			);
 			if (msgIndex !== -1) {
 				roomMsgs.splice(msgIndex, 1);
-				// Broadcast delete
 				for (let user of this.users) {
 					if (user.rooms.includes(roomId)) {
 						try {
@@ -477,7 +549,6 @@ export class MessageHandlers {
 			}
 		} else if (lastOp.type === "delete") {
 			roomMsgs.push(lastOp.message);
-			// Broadcast create
 			for (let user of this.users) {
 				if (user.rooms.includes(roomId)) {
 					try {
@@ -494,7 +565,6 @@ export class MessageHandlers {
 			const msgIndex = roomMsgs.findIndex((msg) => msg.id === lastOp.id);
 			if (msgIndex !== -1) {
 				roomMsgs[msgIndex] = lastOp.prevMessage;
-				// Broadcast update
 				for (let user of this.users) {
 					if (user.rooms.includes(roomId)) {
 						try {
@@ -530,16 +600,13 @@ export class MessageHandlers {
 		const opToRedo = userRedo.pop();
 		if (!opToRedo) return;
 
-		// Add back to history
 		const hist = this.historyByRoom.get(roomId)!;
 		hist.push(opToRedo);
 
-		// Apply the redo operation
 		const roomMsgs = this.messagesByRoom.get(roomId)!;
 
 		if (opToRedo.type === "create") {
 			roomMsgs.push(opToRedo.message);
-			// Broadcast create
 			for (let user of this.users) {
 				if (user.rooms.includes(roomId)) {
 					try {
@@ -558,7 +625,6 @@ export class MessageHandlers {
 			);
 			if (msgIndex !== -1) {
 				roomMsgs.splice(msgIndex, 1);
-				// Broadcast delete
 				for (let user of this.users) {
 					if (user.rooms.includes(roomId)) {
 						try {
@@ -578,7 +644,6 @@ export class MessageHandlers {
 			);
 			if (msgIndex !== -1) {
 				roomMsgs[msgIndex] = opToRedo.newMessage;
-				// Broadcast update
 				for (let user of this.users) {
 					if (user.rooms.includes(roomId)) {
 						try {
@@ -606,19 +671,15 @@ export class MessageHandlers {
 			return;
 		}
 
-		// Clear all messages for the room
 		this.messagesByRoom.set(roomId, []);
 		this.historyByRoom.set(roomId, []);
 		this.redoByRoomUser.set(roomId, new Map());
 
-		// Broadcast reset to all users in the room
 		for (let user of this.users) {
 			if (user.rooms.includes(roomId)) {
 				try {
 					user.ws.send(JSON.stringify({ type: "reset-canvas" }));
-				} catch (err) {
-					// ignore send errors
-				}
+				} catch (err) {}
 			}
 		}
 	}

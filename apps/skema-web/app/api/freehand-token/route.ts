@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { config } from "@/config";
 
 export async function POST(request: NextRequest) {
 	try {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		console.log("Generating token for user:", user);
-		const token = jwt.sign(user, process.env.JWT_SECRET ?? "wrong-secret", {
+		const token = jwt.sign(user, config.jwt.secret, {
 			expiresIn: "1h",
 		});
 
